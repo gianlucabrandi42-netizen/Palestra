@@ -49,6 +49,22 @@ function lastBefore(k) { const l = gymSessions(S.gym).filter(s => s.date < S.dat
 const tnum = t => { const n = parseFloat(String(t)); return isFinite(n) ? n : null; };
 function allHit(sets, ex) { return ex.sets.every((st, i) => { const tn = tnum(st.t); if (tn == null) return true; return sets[i] && sets[i].reps != null && sets[i].reps >= tn; }); }
 function index(sets) { const k = sets.some(r => r && r.kg != null); let t = 0; for (const r of sets) { if (!r) continue; t += k ? (r.kg || 0) * (r.reps || 0) : (r.reps || 0); } return t; }
+// ---------- forma del giorno e rientro dopo una pausa ----------
+// Fattori prudenziali (stime, non regole fisse): stanco −10%; pausa 10-20 gg −10%, 21-34 gg −15%, 35+ gg −25%.
+const READY = { top: { n: "Al top", f: 1 }, ok: { n: "Normale", f: 1 }, low: { n: "Stanco / giù", f: 0.9 } };
+function lastWorkoutBefore(date) { const l = Object.values(D.sessions).filter(s => s.date < date && hasData(s)).sort((a, b) => a.date < b.date ? -1 : 1); return l[l.length - 1] || null; }
+function pauseInfo(date) { const l = lastWorkoutBefore(date); if (!l) return { days: null, f: 1 }; const days = Math.round((new Date(date) - new Date(l.date)) / 864e5); return { days, f: days >= 35 ? 0.75 : days >= 21 ? 0.85 : days >= 10 ? 0.9 : 1 }; }
+function condition(s) {
+  const r = READY[s.readiness || "ok"] || READY.ok, p = s.ignorePause ? { days: null, f: 1 } : pauseInfo(s.date);
+  const why = [r.f < 1 ? "giornata no" : "", p.f < 1 ? `rientro dopo ${p.days} giorni` : ""].filter(Boolean).join(" + ");
+  return { r, p, f: r.f * p.f, why };
+}
+const isOffDay = s => condition(s).f < 1;
+// Riferimento per i suggerimenti: l'ultima seduta "normale" (salta fino a 2 giornate no o di rientro).
+function lastRef(k) { const l = gymSessions(S.gym).filter(s => s.date < S.date && exHas(s, k)); for (let i = l.length - 1; i >= Math.max(0, l.length - 3); i--) if (!isOffDay(l[i])) return l[i]; return l[l.length - 1] || null; }
+const roundKg = x => Math.round(x * 2) / 2;
+function suggestKg(ls, hit, f) { if (!ls || ls.kg == null) return null; let k = ls.kg; if (hit && f >= 1) k = Math.max(k * 1.025, k + 1); return roundKg(k * f); }
+const e1rm = (kg, reps) => kg * (1 + reps / 30);
 const maxKg = sets => { const k = sets.filter(r => r && r.kg != null).map(r => r.kg); return k.length ? Math.max(...k) : null; };
 const doneSets = (s, ex) => ex.sets.filter((_, i) => { const r = exSets(s, ex.key)[i]; return r && r.reps != null; }).length;
 
@@ -99,6 +115,15 @@ function renderLog() {
   const past = gymSessions(S.gym).filter(s => s.plan === p.id && s.day === S.day && s.date < S.date);
   const tot = d.ex.reduce((a, e) => a + e.sets.length, 0);
   $("herostats").innerHTML = `<span><b>${d.ex.length}</b> esercizi</span><span><b>${tot}</b> serie</span><span>Ultima volta <b>${past.length ? fmtDate(past[past.length - 1].date) : "—"}</b></span>`;
+  // forma del giorno
+  const cond = condition(sess);
+  $("ready").innerHTML = `<span>Come stai oggi?</span>` + Object.entries(READY).map(([k, v]) => `<button data-r="${k}" aria-pressed="${(sess.readiness || "ok") === k}">${v.n}</button>`).join("");
+  $("ready").querySelectorAll("button").forEach(b => b.onclick = () => setSess({ readiness: b.dataset.r }));
+  const pi = pauseInfo(S.date);
+  $("pauseNag").innerHTML = pi.f < 1 && !sess.ignorePause
+    ? `<div class="nag info"><span><b>Rientro dopo ${pi.days} giorni.</b> Carichi suggeriti ridotti del ${Math.round((1 - pi.f) * 100)}%: riprendi gradualmente.</span><button class="btn sm" id="noPause">Non è un rientro</button></div>`
+    : sess.ignorePause && pi.f < 1 ? `<div class="nag info"><span>Pausa di ${pi.days} giorni ignorata.</span><button class="btn sm" id="noPause">Riattiva</button></div>` : "";
+  if ($("noPause")) $("noPause").onclick = () => setSess({ ignorePause: !sess.ignorePause });
   // promemoria backup
   const ds = daysSince(D.prefs.lastBackup), nSess = Object.keys(D.sessions).length;
   $("backupNag").innerHTML = nSess >= 3 && (ds == null || ds >= 14) ? `<div class="nag"><span>${ds == null ? "Non hai ancora fatto un backup." : `Ultimo backup ${ds} giorni fa.`}</span><button class="btn sm" id="nagBk">Backup</button></div>` : "";
@@ -107,9 +132,11 @@ function renderLog() {
   const list = $("list"); list.textContent = "";
   d.ex.forEach((ex, idx) => {
     const last = lastBefore(ex.key), lastSets = last ? exSets(last, ex.key) : [];
+    const rs = lastRef(ex.key), refSets = rs ? exSets(rs, ex.key) : [], hit = rs ? allHit(refSets, ex) : false, cond = condition(sess);
     const ref = ex.ref && ex.ref[S.gym];
     let pills = "";
-    if (last) pills += allHit(lastSets, ex) ? `<span class="pill up">↑ Aumenta${ex.bw ? "" : " carico"}</span>` : `<span class="pill">= Stesso carico</span>`;
+    if (rs && cond.f < 1) pills += `<span class="pill near">Oggi −${Math.round((1 - cond.f) * 100)}% · ${esc(cond.why)}</span>`;
+    else if (rs) pills += hit ? `<span class="pill up">↑ Aumenta${ex.bw ? "" : " carico"}</span>` : `<span class="pill">= Stesso carico</span>`;
     else if (ref) pills += `<span class="pill">Rif. scheda prec. ${fmt(ref)} kg</span>`;
     if (ex.rest) pills += `<span class="pill">Recupero ${esc(ex.rest)}</span>`;
     if (last) pills += `<span class="pill">ultima ${fmtDate(last.date)}</span>`;
@@ -128,7 +155,7 @@ function renderLog() {
       ${(ex.flash || []).length ? `<ul class="flash" aria-label="Da ricordare">${ex.flash.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
       ${ex.setup === false ? "" : `<div class="setup"><label for="su-${ex.key}">Regolazioni</label><input id="su-${ex.key}" autocomplete="off" placeholder="es. sedile 4 · schienale 2"></div>`}
       <div class="sets"><div class="sh"><span>Serie</span><span>Ultima volta</span><span>${ex.bw ? "kg (opz.)" : "kg"}</span><span>Reps</span></div></div>
-      <div class="exfoot"><button class="btn sm" data-copy>Copia kg ultima volta</button>
+      <div class="exfoot"><button class="btn sm" data-copy>Usa kg suggeriti</button>
         <button class="more" data-more aria-expanded="${open}">Dettagli<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></div>
       <div class="panel" ${open ? "" : "hidden"}></div>`;
     const setsEl = card.querySelector(".sets"), cur = exSets(sess, ex.key);
@@ -136,15 +163,16 @@ function renderLog() {
     ex.sets.forEach((st, i) => {
       const ty = TYPES[st.type] || TYPES.std; if (!st.type || st.type === "std" || st.type === "alte" || st.type === "pausa" || st.type === "risc") sn++;
       const label = st.type === "ced" ? "RP" : st.type === "strip" ? "ST" : st.type === "super" ? "SS" : "S" + sn;
-      const r = cur[i] || {}, lr = lastSets[i], tn = tnum(st.t);
+      const r = cur[i] || {}, lr = lastSets[i], tn = tnum(st.t), rr = refSets[i];
+      const sug = ex.bw ? null : suggestKg(rr, hit, cond.f);
       const row = document.createElement("div"); row.className = "set";
       row.innerHTML = `<div class="sn" style="--tc:var(${ty.c})">${label}<small>${esc(st.t)}${ex.bw && tn != null ? "" : ""} reps</small>${ty.n || st.note ? `<em>${esc([ty.n, st.note].filter(Boolean).join(" · "))}</em>` : ""}</div>
-        <div class="prev">${lr && (lr.kg != null || lr.reps != null) ? `${lr.kg != null ? fmt(lr.kg) + " × " : ""}${lr.reps ?? "–"}` : "—"}</div>
-        <input id="kg-${ex.key}-${i}" inputmode="decimal" enterkeyhint="next" autocomplete="off" aria-label="${esc(ex.name)} serie ${i + 1} kg" placeholder="${lr && lr.kg != null ? fmt(lr.kg) : "kg"}">
+        <div class="prev">${lr && (lr.kg != null || lr.reps != null) ? `${lr.kg != null ? fmt(lr.kg) + " × " : ""}${lr.reps ?? "–"}` : "—"}${sug != null ? `<b class="sug">oggi ${fmt(sug)} kg</b>` : ""}</div>
+        <input id="kg-${ex.key}-${i}" inputmode="decimal" enterkeyhint="next" autocomplete="off" aria-label="${esc(ex.name)} serie ${i + 1} kg" placeholder="${sug != null ? fmt(sug) : lr && lr.kg != null ? fmt(lr.kg) : "kg"}">
         <input id="rp-${ex.key}-${i}" inputmode="numeric" enterkeyhint="next" autocomplete="off" aria-label="${esc(ex.name)} serie ${i + 1} ripetizioni" placeholder="${tn != null ? tn : "max"}">`;
       const [kg, rp] = row.querySelectorAll("input"); kg.value = fmt(r.kg); rp.value = r.reps ?? "";
       const fb = document.createElement("div"); fb.className = "fb"; row.appendChild(fb);
-      const upd = () => judge(kg, rp, fb, tn, lr);
+      const upd = () => judge(kg, rp, fb, tn, rr, cond);
       kg.oninput = () => { edit(ex, i, "kg", kg.value); upd(); };
       rp.oninput = () => { edit(ex, i, "reps", rp.value); upd(); };
       upd(); setsEl.appendChild(row);
@@ -152,8 +180,8 @@ function renderLog() {
     const su = card.querySelector(".setup input");
     if (su) { su.value = ((D.setup[S.gym] || {})[ex.key]) || ""; su.oninput = () => { D.setup[S.gym] = D.setup[S.gym] || {}; D.setup[S.gym][ex.key] = su.value.trim(); save(); }; }
     const cp = card.querySelector("[data-copy]");
-    if (!last || !lastSets.some(r => r && r.kg != null)) cp.hidden = true;
-    cp.onclick = () => ex.sets.forEach((_, i) => { const lr = lastSets[i]; if (lr && lr.kg != null) { const el = $(`kg-${ex.key}-${i}`); el.value = fmt(lr.kg); edit(ex, i, "kg", el.value); } });
+    if (ex.bw || !rs || !refSets.some(r => r && r.kg != null)) cp.hidden = true;
+    cp.onclick = () => ex.sets.forEach((_, i) => { const k = suggestKg(refSets[i], hit, cond.f); if (k != null) { const el = $(`kg-${ex.key}-${i}`); el.value = fmt(k); edit(ex, i, "kg", el.value); el.dispatchEvent(new Event("input")); } });
     const panel = card.querySelector(".panel"); if (open) fillPanel(panel, ex);
     card.querySelectorAll("[data-more]").forEach(b => b.onclick = () => {
       const isOpen = !panel.hidden; panel.hidden = isOpen; card.querySelector(".more").setAttribute("aria-expanded", !isOpen);
@@ -168,19 +196,20 @@ function renderLog() {
 // Valutazione della serie: non solo "target sì/no", ma quanto ti sei avvicinato e se hai alzato il carico.
 // Forza stimata (formula di Epley): kg × (1 + reps/30), confrontata con la stessa serie dell'ultima volta.
 const repsTxt = n => n === 1 ? "manca 1 rep" : `mancano ${n} reps`;
-function judge(kgEl, rpEl, fb, t, lr) {
-  const kg = num(kgEl.value), reps = num(rpEl.value);
+function judge(kgEl, rpEl, fb, t, lr, cond) {
+  const kg = num(kgEl.value), reps = num(rpEl.value), f = cond ? cond.f : 1, off = f < 1;
   let cls = "", msg = "";
   if (reps != null && t != null) {
-    const miss = t - reps, pct = reps / t;
+    const miss = t - reps, pct = reps / t, missTxt = miss === 1 ? "1 rep" : miss + " reps";
     const hasLast = lr && lr.kg != null && lr.reps != null && kg != null;
     const up = hasLast ? kg - lr.kg : 0;
-    const e1 = hasLast ? kg * (1 + reps / 30) : 0, e0 = hasLast ? lr.kg * (1 + lr.reps / 30) : 0;
-    if (reps >= t) { cls = "ok"; msg = reps > t ? `Target superato di ${reps - t}` : ""; }
-    else if (hasLast && up > 0 && e1 >= e0 * 0.99) { cls = "prog"; msg = `${miss === 1 ? "1 rep" : miss + " reps"} in meno ma +${fmt(up)} kg: forza pari o superiore all'ultima volta`; }
+    // forza attesa oggi = forza dell'ultima volta × fattore di forma/rientro
+    const e1 = hasLast ? e1rm(kg, reps) : 0, exp = hasLast ? e1rm(lr.kg, lr.reps) * f : 0;
+    if (reps >= t) { cls = "ok"; msg = reps > t ? `Target superato di ${reps - t}` : (off ? "Target pieno anche in una giornata difficile" : ""); }
+    else if (hasLast && e1 >= exp * 0.99 && (up > 0 || off)) { cls = "prog"; msg = off ? `${missTxt} in meno, ma forza in linea con oggi (${cond.why}): va bene così` : `${missTxt} in meno ma +${fmt(up)} kg: forza pari o superiore all'ultima volta`; }
     else if (hasLast && up > 0 && pct >= 0.6) { cls = "near"; msg = `Carico salito di ${fmt(up)} kg: normale perdere qualche rep (${repsTxt(miss)})`; }
-    else if (pct >= 0.8) { cls = "near"; msg = `Quasi: ${repsTxt(miss)} (${Math.round(pct * 100)}% del target)`; }
-    else { cls = "ko"; msg = `Sotto target: ${reps} su ${t}.` + (hasLast && up >= 0 ? " Se si ripete, scendi un po' di carico." : ""); }
+    else if (pct >= (off ? 0.6 : 0.8)) { cls = "near"; msg = `Quasi: ${repsTxt(miss)} (${Math.round(pct * 100)}% del target)` + (off ? " · oggi: " + cond.why : ""); }
+    else { cls = "ko"; msg = `Sotto target: ${reps} su ${t}.` + (off ? " Oggi non conta per la progressione." : hasLast && up >= 0 ? " Se si ripete, scendi un po' di carico." : ""); }
   }
   for (const c of ["ok", "prog", "near", "ko"]) rpEl.classList.toggle(c, c === cls);
   fb.textContent = msg; fb.className = "fb " + cls; fb.hidden = !msg;
@@ -206,6 +235,7 @@ function edit(ex, i, field, val) {
   s.ex[ex.key][i] = { ...s.ex[ex.key][i], [field]: num(val) };
   s.updatedAt = Date.now(); D.sessions[s.id] = s; save(); updateProgress();
 }
+function setSess(patch) { const s = JSON.parse(JSON.stringify(current())); Object.assign(s, patch); s.updatedAt = Date.now(); D.sessions[s.id] = s; save(); renderLog(); }
 let noteT;
 $("note").oninput = e => { clearTimeout(noteT); const v = e.target.value; noteT = setTimeout(() => { const s = JSON.parse(JSON.stringify(current())); s.note = v; s.updatedAt = Date.now(); D.sessions[s.id] = s; save(); }, 300); };
 $("date").onchange = e => { if (e.target.value) { S.date = e.target.value; render(); } };
@@ -266,12 +296,13 @@ function renderProg() {
   const ss = gymSessions(S.gym);
   if (!ss.length) { box.innerHTML = `<div class="empty">Ancora nessuna seduta registrata in questa palestra. Compila un allenamento e qui compaiono i grafici.</div>`; return; }
   d.ex.forEach(ex => {
-    const pts = ss.filter(s => exHas(s, ex.key)).map(s => ({ i: index(exSets(s, ex.key)), m: maxKg(exSets(s, ex.key)), hit: allHit(exSets(s, ex.key), ex) }));
+    const all = ss.filter(s => exHas(s, ex.key)).map(s => ({ i: index(exSets(s, ex.key)), m: maxKg(exSets(s, ex.key)), hit: allHit(exSets(s, ex.key), ex), off: isOffDay(s) }));
+    const pts = all.filter(x => !x.off), nOff = all.length - pts.length;
     let stat = "Nessun dato", pill = "";
     if (pts.length) {
       const a = pts[0], z = pts[pts.length - 1], q = pts[pts.length - 2];
       const dP = q && q.i ? (z.i - q.i) / q.i : null, dF = a.i ? (z.i - a.i) / a.i : null;
-      stat = `${pts.length} sedute · ${z.m != null ? "max " + fmt(z.m) + " kg · " : ""}indice ${Math.round(z.i)}${dF != null && pts.length > 1 ? ` (${dF >= 0 ? "+" : ""}${(dF * 100).toFixed(1).replace(".", ",")}% dalla 1ª)` : ""}`;
+      stat = `${pts.length} sedute${nOff ? ` (+${nOff} giornate no escluse dal trend)` : ""} · ${z.m != null ? "max " + fmt(z.m) + " kg · " : ""}indice ${Math.round(z.i)}${dF != null && pts.length > 1 ? ` (${dF >= 0 ? "+" : ""}${(dF * 100).toFixed(1).replace(".", ",")}% dalla 1ª)` : ""}`;
       if (dP != null) pill = dP > 0.03 ? `<span class="pill up">↑ in crescita</span>` : dP < -0.03 ? `<span class="pill down">↓ in calo</span>` : `<span class="pill">→ stabile</span>`;
       if (z.hit) pill += ` <span class="pill up">prossima: aumenta</span>`;
     }
