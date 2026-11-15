@@ -23,6 +23,8 @@
 | `sw.js` | Service worker: **a ogni aggiornamento cambiare `VERSION`** (es. `"2026-12-01-1"`), altrimenti i telefoni non scaricano subito i file nuovi |
 | `manifest.webmanifest`, `icons/` | Icona (manubrio) e installazione sulla Home |
 | `LEGGIMI.md` / `README.md` | Istruzioni brevi |
+| `tools/pdf_pt.py` | Genera il PDF di controllo veloce per il PT dalla scheda attiva |
+| `CLAUDE.md` | Questo contesto, letto in automatico da Claude Code |
 
 ### Formato di un esercizio in `schede.js`
 ```js
@@ -82,7 +84,7 @@ Muscoli disponibili per `m`: CHEST, FRONT_DELTOIDS, BACK_DELTOIDS, TRICEPS, BICE
    - **Errori già trovati, da non ripetere:** l'immagine "smith-machine-incline-bench-press" di Everkinetic images-web mostra un piegamento su una palla; la lat machine wide-grip di Everkinetic tira dietro la nuca (sbagliato).
    - Nota: nelle foto degli affondi in camminata l'atleta è senza manubri (`imgNote` se serve).
 7. Cambia `VERSION` in `sw.js`. Fai commit e push su `main` di `Palestra` e verifica che il workflow "pages build and deployment" sia `success`.
-8. Prepara il **PDF per il PT**: 1 tabella per giorno con esercizio + serie/tecnica, foto inizio → fine, consigli flash, errori; in alto i dubbi da confermare. **Niente spunte né caselle**: deve essere un'occhiata veloce. Foto compresse (JPEG ~360 px) per stare sotto ~1 MB.
+8. Prepara il **PDF per il PT** con `python3 tools/pdf_pt.py "Scheda_<mese>_per_PT.pdf"` (in cima allo script, la lista `DUBBI` da compilare con le domande della nuova scheda): 1 tabella per giorno con esercizio + serie/tecnica, foto inizio → fine, consigli flash, errori; in alto i dubbi da confermare. **Niente spunte né caselle**: deve essere un'occhiata veloce. Foto compresse (JPEG ~360 px) per stare sotto ~1 MB.
 
 ### Limiti tecnici noti (sessioni Claude Code nel cloud)
 - Il push funziona solo se la Claude GitHub App è installata su `Palestra` (fatto).
@@ -131,6 +133,10 @@ Muscoli disponibili per `m`: CHEST, FRONT_DELTOIDS, BACK_DELTOIDS, TRICEPS, BICE
   4. Interpretazioni: lombari = hyperextension, mezzi stacchi = stacchi rumeni, tirate corda cavo alto = face pull, affondi 10 per gamba.
 - Quando il PT risponde: applicare le correzioni in `schede.js` (e nelle immagini, se serve), poi pubblicare.
 - Le percentuali di forma e rientro sono stime prudenti: si possono cambiare se il PT preferisce altri valori.
+
+## Cose da sapere
+- Una prima versione dell'app era un artifact su claude.ai (https://claude.ai/artifact/LJ6wYZbo7izSqvqboyUWzU): **non è più in uso**, non contiene dati e si può ignorare o eliminare.
+- I file Excel e i PDF per il PT li conservo io (scaricati dalla chat): non sono nel repository.
 
 ## Storico del progetto
 - In origine c'era un file Excel creato con ChatGPT (`Scheda_Allenamento_Green_Theory_Sparta_2_0.xlsm`): fogli per giorno e palestra, sessioni in orizzontale, foglio progressione. La colonna "Tecnica esatta" descriveva lo schema delle serie: è lo stile che mi piace e che va mantenuto.
