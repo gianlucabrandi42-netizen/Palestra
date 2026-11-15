@@ -143,9 +143,11 @@ function renderLog() {
         <input id="kg-${ex.key}-${i}" inputmode="decimal" enterkeyhint="next" autocomplete="off" aria-label="${esc(ex.name)} serie ${i + 1} kg" placeholder="${lr && lr.kg != null ? fmt(lr.kg) : "kg"}">
         <input id="rp-${ex.key}-${i}" inputmode="numeric" enterkeyhint="next" autocomplete="off" aria-label="${esc(ex.name)} serie ${i + 1} ripetizioni" placeholder="${tn != null ? tn : "max"}">`;
       const [kg, rp] = row.querySelectorAll("input"); kg.value = fmt(r.kg); rp.value = r.reps ?? "";
-      kg.oninput = () => edit(ex, i, "kg", kg.value);
-      rp.oninput = () => { edit(ex, i, "reps", rp.value); paint(rp, tn); };
-      paint(rp, tn); setsEl.appendChild(row);
+      const fb = document.createElement("div"); fb.className = "fb"; row.appendChild(fb);
+      const upd = () => judge(kg, rp, fb, tn, lr);
+      kg.oninput = () => { edit(ex, i, "kg", kg.value); upd(); };
+      rp.oninput = () => { edit(ex, i, "reps", rp.value); upd(); };
+      upd(); setsEl.appendChild(row);
     });
     const su = card.querySelector(".setup input");
     if (su) { su.value = ((D.setup[S.gym] || {})[ex.key]) || ""; su.oninput = () => { D.setup[S.gym] = D.setup[S.gym] || {}; D.setup[S.gym][ex.key] = su.value.trim(); save(); }; }
@@ -163,7 +165,26 @@ function renderLog() {
   $("note").value = sess.note || "";
   updateProgress();
 }
-function paint(el, t) { const v = num(el.value); el.classList.toggle("ok", t != null && v != null && v >= t); el.classList.toggle("ko", t != null && v != null && v < t); }
+// Valutazione della serie: non solo "target sì/no", ma quanto ti sei avvicinato e se hai alzato il carico.
+// Forza stimata (formula di Epley): kg × (1 + reps/30), confrontata con la stessa serie dell'ultima volta.
+const repsTxt = n => n === 1 ? "manca 1 rep" : `mancano ${n} reps`;
+function judge(kgEl, rpEl, fb, t, lr) {
+  const kg = num(kgEl.value), reps = num(rpEl.value);
+  let cls = "", msg = "";
+  if (reps != null && t != null) {
+    const miss = t - reps, pct = reps / t;
+    const hasLast = lr && lr.kg != null && lr.reps != null && kg != null;
+    const up = hasLast ? kg - lr.kg : 0;
+    const e1 = hasLast ? kg * (1 + reps / 30) : 0, e0 = hasLast ? lr.kg * (1 + lr.reps / 30) : 0;
+    if (reps >= t) { cls = "ok"; msg = reps > t ? `Target superato di ${reps - t}` : ""; }
+    else if (hasLast && up > 0 && e1 >= e0 * 0.99) { cls = "prog"; msg = `${miss === 1 ? "1 rep" : miss + " reps"} in meno ma +${fmt(up)} kg: forza pari o superiore all'ultima volta`; }
+    else if (hasLast && up > 0 && pct >= 0.6) { cls = "near"; msg = `Carico salito di ${fmt(up)} kg: normale perdere qualche rep (${repsTxt(miss)})`; }
+    else if (pct >= 0.8) { cls = "near"; msg = `Quasi: ${repsTxt(miss)} (${Math.round(pct * 100)}% del target)`; }
+    else { cls = "ko"; msg = `Sotto target: ${reps} su ${t}.` + (hasLast && up >= 0 ? " Se si ripete, scendi un po' di carico." : ""); }
+  }
+  for (const c of ["ok", "prog", "near", "ko"]) rpEl.classList.toggle(c, c === cls);
+  fb.textContent = msg; fb.className = "fb " + cls; fb.hidden = !msg;
+}
 function fillPanel(panel, ex) {
   const a = imgs(ex);
   panel.innerHTML = `
