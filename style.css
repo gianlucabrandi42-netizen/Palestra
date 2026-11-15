@@ -266,3 +266,25 @@ textarea{width:100%;min-height:84px;padding:10px;background:var(--surface);borde
 .tmain{gap:8px;padding:0 10px}
 .tb.go{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 #tPause svg path[d^='M7']{fill:currentColor}
+/* circuito senza registrazione */
+.circlist{list-style:none;margin:0 14px 10px;padding:0;display:grid;gap:8px}
+.circlist li{background:var(--raised);border:1px solid var(--line);border-radius:12px;padding:8px}
+.circlist .panel{margin-top:8px}
+.crow{display:flex;gap:10px;align-items:center}
+.cthumb{flex:none;width:76px;height:56px;border:0;padding:0;border-radius:8px;overflow:hidden;background:var(--photo)}
+.cthumb img{width:100%;height:100%;object-fit:cover;display:block}
+.crow .t{flex:1;min-width:0}
+.crow b{display:block;font-size:15px;line-height:1.2}
+.crow small{display:block;color:var(--accent);font-weight:700;font-size:12px}
+.crow .cf{display:block;font-size:12px;color:var(--muted);line-height:1.3}
+.crow .more{margin-left:0;flex:none}
+.giri{display:flex;gap:8px;align-items:center;margin:2px 14px 10px;font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.1em}
+.giri span{margin-right:4px}
+.giro{width:42px;height:42px;border-radius:12px;border:1.5px solid var(--line);background:var(--raised);font-weight:800;font-size:16px;color:var(--muted)}
+.giro.on{background:var(--ok-bg);border-color:var(--ok);color:var(--ok)}
+.circbtns{display:flex;gap:8px;padding:0 14px 14px;border-radius:12px}
+.circbtns .btn{min-height:52px;font-size:16px}
+.circbtns .btn.primary{flex:1}
+.circbtns .btn small{font-weight:600;opacity:.75;margin-left:4px}
+.circbtns .btn[disabled]{background:var(--ok-bg);border-color:var(--ok);color:var(--ok);opacity:1}
+.circbtns.here{animation:here 2.6s ease-out}

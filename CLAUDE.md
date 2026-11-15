@@ -84,6 +84,7 @@ Muscoli disponibili per `m`: CHEST, FRONT_DELTOIDS, BACK_DELTOIDS, TRICEPS, BICE
 - **Compilazione veloce:** dopo i kg, 1,1" senza scrivere → il cursore passa da solo alle reps della stessa serie (se sono vuote). Dopo le reps la serie si conferma da sola, senza ✓: 0,4" se ci sono 2 cifre, 1,1" se 1 cifra (si può ancora aggiungere la seconda). La conferma chiude la tastiera, fa partire il timer e scorre alla serie dopo. Vale solo per ciò che si scrive a mano (`isTrusted`), non per "Usa kg suggeriti".
 - **Dopo ✓ sulla tastiera** (campo lasciato senza passare a un altro): quando la tastiera si è chiusa, scorrimento fluido alla prossima serie da fare (dopo i kg resta sulla stessa riga). Se l'esercizio cambia, mostra la sua scheda dall'alto tenendo la serie 1 sopra la barra del timer.
 - **Circuiti** (campo `circ` in `schede.js`): esercizi consecutivi con lo stesso `circ` si fanno di seguito senza pausa. Il loro `rest` parte solo dopo l'ultimo esercizio del giro. Con "Invio" dalle reps si passa all'esercizio successivo del giro, poi al giro dopo. Le serie S1/S2/S3 corrispondono ai giri.
+  - **Circuito senza registrazione** (`circ` + `"nolog": true` su tutti gli esercizi del circuito): niente kg/reps. I membri diventano **una sola scheda** "Circuito <nome>" con i 3 esercizi (miniatura → immagini, consigli, Dettagli), i quadratini dei giri (tocco = imposta/annulla), **▶ Giro fatto** (conta i giri, `sessione.circ[<nome>]`) e **⏱ <rest>** (avvia il recupero). I giri valgono come serie nella barra di avanzamento; in Progressi una riga con sedute e giri; nel CSV righe "Circuito <nome> · giri". Gli addominali della scheda di novembre sono così (scelta mia).
 
 ## Procedura di aggiornamento mensile (per Claude)
 1. Leggi la foto della scheda. Elenca esercizi e schemi e chiedimi conferma su abbreviazioni o interpretazioni dubbie, **prima** di modificare.
@@ -114,7 +115,7 @@ Muscoli disponibili per `m`: CHEST, FRONT_DELTOIDS, BACK_DELTOIDS, TRICEPS, BICE
   - French press bilanciere 3×10
   - Alzate laterali 3×10
   - Shoulder press macchina 10-8-8
-  - **Circuito addominali**: Crunch → Crunch inverso → Lombari (hyperextension), 15-20 reps ciascuno senza pausa, **30" di recupero dopo il giro completo**, 3 giri (confermato da me)
+  - **Circuito addominali**: Crunch → Crunch inverso → Lombari (hyperextension), 15-20 reps ciascuno senza pausa, **30" di recupero dopo il giro completo**, 3 giri (confermato da me). Nell'app: nessun kg/reps, solo "▶ Giro fatto" e "⏱ 0:30"
 - **G2 Dorso · Bicipiti · Posteriori:**
   - Rematore bilanciere 10-8-8
   - Pulley basso 8-8-6

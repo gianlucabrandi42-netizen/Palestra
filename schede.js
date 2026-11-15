@@ -16,6 +16,8 @@
 //    rest   = recupero (facoltativo), es. '90"'. Senza rest vale il recupero di base dell'app (1:30)
 //    circ   = circuito (facoltativo): esercizi consecutivi con lo stesso circ si fanno
 //             di seguito senza pausa; il loro rest vale solo dopo il giro completo
+//    nolog  = true (con circ): niente kg/reps, il circuito diventa una scheda unica
+//             con "▶ Giro fatto" (conta i giri) e il tasto del recupero
 //    m      = muscoli {p: principali, s: secondari}
 //    cues / errors = esecuzione / errori da evitare
 //    img    = {local: [file in img/]}  (f1,f2 = foto; d1,d2 = disegni)
@@ -454,7 +456,8 @@ window.SCHEDE = [
       "setup": false,
       "key": "crunch",
       "circ": "addominali",
-      "rest": "30\""
+      "rest": "30\"",
+      "nolog": true
      },
      {
       "name": "Crunch inverso",
@@ -507,7 +510,8 @@ window.SCHEDE = [
       "setup": false,
       "key": "crunch-inverso",
       "circ": "addominali",
-      "rest": "30\""
+      "rest": "30\"",
+      "nolog": true
      },
      {
       "name": "Lombari (hyperextension)",
@@ -561,7 +565,8 @@ window.SCHEDE = [
       "setup": true,
       "key": "lombari-hyperextension",
       "circ": "addominali",
-      "rest": "30\""
+      "rest": "30\"",
+      "nolog": true
      }
     ]
    },
@@ -976,7 +981,8 @@ window.SCHEDE = [
       "setup": false,
       "key": "crunch",
       "circ": "addominali",
-      "rest": "30\""
+      "rest": "30\"",
+      "nolog": true
      },
      {
       "name": "Crunch inverso",
@@ -1029,7 +1035,8 @@ window.SCHEDE = [
       "setup": false,
       "key": "crunch-inverso",
       "circ": "addominali",
-      "rest": "30\""
+      "rest": "30\"",
+      "nolog": true
      },
      {
       "name": "Lombari (hyperextension)",
@@ -1083,7 +1090,8 @@ window.SCHEDE = [
       "setup": true,
       "key": "lombari-hyperextension",
       "circ": "addominali",
-      "rest": "30\""
+      "rest": "30\"",
+      "nolog": true
      }
     ]
    },
@@ -1558,7 +1566,8 @@ window.SCHEDE = [
       "setup": false,
       "key": "crunch",
       "circ": "addominali",
-      "rest": "30\""
+      "rest": "30\"",
+      "nolog": true
      },
      {
       "name": "Crunch inverso",
@@ -1611,7 +1620,8 @@ window.SCHEDE = [
       "setup": false,
       "key": "crunch-inverso",
       "circ": "addominali",
-      "rest": "30\""
+      "rest": "30\"",
+      "nolog": true
      },
      {
       "name": "Lombari (hyperextension)",
@@ -1665,7 +1675,8 @@ window.SCHEDE = [
       "setup": true,
       "key": "lombari-hyperextension",
       "circ": "addominali",
-      "rest": "30\""
+      "rest": "30\"",
+      "nolog": true
      }
     ]
    }

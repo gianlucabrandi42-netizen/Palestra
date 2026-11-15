@@ -42,7 +42,19 @@ function dayObj() { const p = plan(); let d = p.days.find(x => x.id === S.day); 
 const sid = () => `${S.gym}_${plan().id}_${S.day}_${S.date}`;
 function current() { return D.sessions[sid()] || { id: sid(), gym: S.gym, plan: plan().id, day: S.day, date: S.date, ex: {}, note: "", updatedAt: 0 }; }
 const gymSessions = g => Object.values(D.sessions).filter(s => s.gym === g && hasData(s)).sort((a, b) => a.date < b.date ? -1 : 1);
-function hasData(s) { return Object.values(s.ex || {}).some(a => (a || []).some(r => r && (r.kg != null || r.reps != null))) || (s.note || "").trim() !== ""; }
+function hasData(s) { return Object.values(s.ex || {}).some(a => (a || []).some(r => r && (r.kg != null || r.reps != null))) || Object.values(s.circ || {}).some(n => n > 0) || (s.note || "").trim() !== ""; }
+// circuiti "senza registrazione" (esercizi con circ + nolog): una sola scheda, si contano solo i giri (sessione.circ[nome] = giri fatti)
+const circCount = (s, c) => (s && s.circ && s.circ[c]) || 0;
+function isCircNoLog(d, idx) { const g = circGroup(d, idx); return g && d.ex[idx].nolog ? g : null; }
+function dayUnits(d, s) {
+  let tot = 0, done = 0, nEx = 0;
+  d.ex.forEach((e, idx) => {
+    const g = isCircNoLog(d, idx);
+    if (g) { if (idx === g.start) { tot += e.sets.length; done += Math.min(e.sets.length, circCount(s, e.circ)); nEx++; } return; }
+    tot += e.sets.length; done += s ? doneSets(s, e) : 0; nEx++;
+  });
+  return { tot, done, nEx };
+}
 const exSets = (s, k) => (s.ex && s.ex[k]) || [];
 const exHas = (s, k) => exSets(s, k).some(r => r && (r.kg != null || r.reps != null));
 function lastBefore(k) { const l = gymSessions(S.gym).filter(s => s.date < S.date && exHas(s, k)); return l[l.length - 1] || null; }
@@ -101,9 +113,10 @@ function persistPrefs() { D.prefs.gym = S.gym; D.prefs.day = S.day; save(); }
 
 function updateProgress() {
   const d = dayObj(), s = current();
-  const tot = d.ex.reduce((a, e) => a + e.sets.length, 0), done = d.ex.reduce((a, e) => a + doneSets(s, e), 0);
+  const { tot, done } = dayUnits(d, s);
   $("barfill").style.width = (tot ? done / tot * 100 : 0) + "%"; $("bartxt").textContent = `${done}/${tot} serie`;
   d.ex.forEach(e => { const c = document.querySelector(`[data-ex="${e.key}"]`); if (c) c.classList.toggle("done", doneSets(s, e) === e.sets.length); });
+  document.querySelectorAll(".circ-card").forEach(c => { const e = d.ex.find(x => x.circ === c.dataset.circ); if (e) c.classList.toggle("done", circCount(s, e.circ) >= e.sets.length); });
 }
 
 function renderLog() {
@@ -113,8 +126,8 @@ function renderLog() {
   $("herok").textContent = `${d.id} · ${gname} · ${S.date === todayISO() ? "oggi" : fmtDate(S.date)}`;
   $("heroh").textContent = d.name;
   const past = gymSessions(S.gym).filter(s => s.plan === p.id && s.day === S.day && s.date < S.date);
-  const tot = d.ex.reduce((a, e) => a + e.sets.length, 0);
-  $("herostats").innerHTML = `<span><b>${d.ex.length}</b> esercizi</span><span><b>${tot}</b> serie</span><span>Ultima volta <b>${past.length ? fmtDate(past[past.length - 1].date) : "—"}</b></span>`;
+  const { tot, nEx } = dayUnits(d, null);
+  $("herostats").innerHTML = `<span><b>${nEx}</b> esercizi</span><span><b>${tot}</b> serie</span><span>Ultima volta <b>${past.length ? fmtDate(past[past.length - 1].date) : "—"}</b></span>`;
   // forma del giorno
   const cond = condition(sess);
   $("ready").innerHTML = `<span>Come stai oggi?</span>` + Object.entries(READY).map(([k, v]) => `<button data-r="${k}" aria-pressed="${(sess.readiness || "ok") === k}">${v.n}</button>`).join("");
@@ -130,7 +143,11 @@ function renderLog() {
   if ($("nagBk")) $("nagBk").onclick = exportBackup;
 
   const list = $("list"); list.textContent = "";
+  let num = 0;
   d.ex.forEach((ex, idx) => {
+    const cg0 = isCircNoLog(d, idx);
+    if (cg0) { if (idx === cg0.start) list.appendChild(circCard(d, cg0, ++num)); return; }
+    num++;
     const last = lastBefore(ex.key), lastSets = last ? exSets(last, ex.key) : [];
     const rs = lastRef(ex.key), refSets = rs ? exSets(rs, ex.key) : [], hit = rs ? allHit(refSets, ex) : false, cond = condition(sess);
     const ref = ex.ref && ex.ref[S.gym];
@@ -150,7 +167,7 @@ function renderLog() {
         ${fr.map(f => `<img src="${f.src}" alt="${esc(ex.name)} — ${esc(f.cap)}" class="${f.draw ? "draw" : ""}" loading="lazy">`).join("")}
         <span class="lbl"><i></i>Esecuzione</span><span class="zoom"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4M11 8v6M8 11h6"/></svg></span></button>` : ""}
       <div class="exhead">
-        <div class="num">${String(idx + 1).padStart(2, "0")}</div>
+        <div class="num">${String(num).padStart(2, "0")}</div>
         <div><h3 class="exname">${esc(ex.name)}</h3><div class="tec">${esc(ex.tec || "")}</div>${pills ? `<div class="pills">${pills}</div>` : ""}</div>
         <button class="mini" data-more aria-label="Muscoli di ${esc(ex.name)}">${bodySVG(ex.m || {})}</button>
       </div>
@@ -204,6 +221,39 @@ function renderLog() {
   $("note").value = sess.note || "";
   updateProgress();
 }
+// scheda unica del circuito senza registrazione: esercizi + "▶ Giro fatto" + "⏱ recupero"
+function circCard(d, g, n) {
+  const mem = d.ex.slice(g.start, g.end + 1), c = mem[0].circ, giri = mem[0].sets.length, t = mem[0].sets[0].t;
+  const rest = restFor(mem[mem.length - 1]), cnt = circCount(current(), c);
+  const mu = { p: [...new Set(mem.flatMap(e => (e.m && e.m.p) || []))], s: [...new Set(mem.flatMap(e => (e.m && e.m.s) || []))] };
+  const card = document.createElement("article"); card.className = "ex circ-card" + (cnt >= giri ? " done" : ""); card.dataset.circ = c; card.dataset.keys = mem.map(e => e.key).join(" ");
+  card.innerHTML = `
+    <div class="exhead"><div class="num">${String(n).padStart(2, "0")}</div>
+      <div><h3 class="exname">Circuito ${esc(c)}</h3><div class="tec">${giri} giri: ${mem.map(e => esc(e.name)).join(" → ")}, ${esc(t)} reps ciascuno senza pausa. ${fmtSec(rest)} di recupero dopo ogni giro.</div></div>
+      <div class="mini" aria-hidden="true">${bodySVG(mu)}</div></div>
+    <ol class="circlist">${mem.map((e, i) => { const f = execFrames(e)[0]; return `<li>
+      <div class="crow">${f ? `<button class="cthumb" data-z="${i}" aria-label="Immagini di ${esc(e.name)}"><img src="${f.src}" alt="" loading="lazy"></button>` : ""}
+        <div class="t"><b>${i + 1}. ${esc(e.name)}</b><small>${esc(t)} reps</small><span class="cf">${(e.flash || []).map(esc).join(" · ")}</span></div>
+        <button class="more" data-m="${i}" aria-expanded="${S.open.has(e.key)}">Dettagli<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></div>
+      <div class="panel" ${S.open.has(e.key) ? "" : "hidden"}></div></li>`; }).join("")}</ol>
+    <div class="giri"><span>Giri</span>${Array.from({ length: giri }, (_, k) => `<button class="giro ${k < cnt ? "on" : ""}" data-g="${k + 1}" aria-label="Giro ${k + 1}">${k + 1}</button>`).join("")}</div>
+    <div class="circbtns"><button class="btn primary" data-play ${cnt >= giri ? "disabled" : ""}>${cnt >= giri ? "✓ Circuito completato" : `▶ Giro fatto <small>${cnt + 1}/${giri}</small>`}</button>
+      <button class="btn" data-rest>⏱ ${fmtSec(rest)}</button></div>`;
+  card.querySelectorAll("[data-z]").forEach(b => b.onclick = () => openLB(mem[+b.dataset.z], 0));
+  card.querySelectorAll("[data-m]").forEach(b => { const e = mem[+b.dataset.m], panel = b.closest("li").querySelector(".panel"); if (!panel.hidden) fillPanel(panel, e);
+    b.onclick = () => { const open = panel.hidden; panel.hidden = !open; b.setAttribute("aria-expanded", open); if (open) { S.open.add(e.key); if (!panel.firstChild) fillPanel(panel, e); } else S.open.delete(e.key); }; });
+  const setCirc = k => {
+    const s2 = JSON.parse(JSON.stringify(current())); s2.circ = { ...(s2.circ || {}), [c]: Math.max(0, Math.min(giri, k)) }; s2.updatedAt = Date.now(); D.sessions[s2.id] = s2; save();
+    if (S.date === todayISO()) try { localStorage.setItem(LKEY, JSON.stringify({ gym: S.gym, day: S.day, date: S.date, key: mem[0].key, i: 0 })); } catch (e) {}
+    card.replaceWith(circCard(d, g, n)); updateProgress();
+  };
+  card.querySelector("[data-play]").onclick = () => setCirc(cnt + 1);
+  card.querySelectorAll("[data-g]").forEach(b => b.onclick = () => { const k = +b.dataset.g; setCirc(cnt === k ? k - 1 : k); });
+  card.querySelector("[data-rest]").onclick = () => startRest(rest, cnt >= giri ? "Circuito finito" : cnt ? `Giro ${cnt} fatto · poi giro ${cnt + 1}` : `Recupero ${c}`);
+  return card;
+}
+// elemento da mostrare per la serie k/i: la riga della serie, o i tasti del circuito se l'esercizio è in un circuito senza registrazione
+function rowEl(k, i) { const el = $(`rp-${k}-${i}`); if (el) return el.closest(".set"); const c = document.querySelector(`.circ-card[data-keys~="${k}"]`); return c ? c.querySelector(".circbtns") : null; }
 // Compilazione veloce: dopo i kg il cursore passa da solo alle reps; dopo le reps la serie si conferma da sola
 // (tastiera giù → parte il timer e si scorre alla serie dopo). Solo per ciò che scrivi tu, non per "Usa kg suggeriti".
 function autoKg(e, kg, rp) {
@@ -283,8 +333,8 @@ document.addEventListener("focusout", e => {
   const go = () => {
     if (done) return; done = true;
     if (document.activeElement && document.activeElement.matches("input, textarea")) return; // l'utente ha già toccato un altro campo
-    const el = $(`rp-${t.k}-${t.i}`); if (!el) return;
-    const row = el.closest(".set"), card = el.closest(".ex"), con = document.querySelector(".console");
+    const row = rowEl(t.k, t.i); if (!row) return;
+    const card = row.closest(".ex"), con = document.querySelector(".console");
     const rb = row.getBoundingClientRect(), tm = $("timer"), barTop = tm && !tm.hidden ? $("tbox").getBoundingClientRect().top : innerHeight - 70;
     // esercizio nuovo: mostra la scheda dall'alto, ma la serie da fare deve restare sopra la barra del timer
     const top = t.k !== m[2] && card
@@ -307,8 +357,8 @@ function resumeLast(force) {
   const d = dayObj(), idx = d.ex.findIndex(e => e.key === L.key); if (idx < 0) return;
   // prossima serie da fare: la stessa se mancano le reps, altrimenti la successiva (nel circuito segue l'ordine del giro)
   const { k, i } = nextSet(d, idx, L.i);
-  const el = $(`rp-${k}-${i}`); if (!el) return;
-  const row = el.closest(".set"), go = () => row.scrollIntoView({ block: "center", behavior: force ? "smooth" : "auto" });
+  const row = rowEl(k, i); if (!row) return false;
+  const go = () => row.scrollIntoView({ block: "center", behavior: force ? "smooth" : "auto" });
   go(); if (!force) setTimeout(go, 350);
   row.classList.remove("here"); void row.offsetWidth; row.classList.add("here"); setTimeout(() => row.classList.remove("here"), 2600);
   return true;
@@ -379,7 +429,12 @@ function renderProg() {
   const box = $("prog"); box.textContent = "";
   const ss = gymSessions(S.gym);
   if (!ss.length) { box.innerHTML = `<div class="empty">Ancora nessuna seduta registrata in questa palestra. Compila un allenamento e qui compaiono i grafici.</div>`; return; }
-  d.ex.forEach(ex => {
+  d.ex.forEach((ex, idx) => {
+    const cg = isCircNoLog(d, idx);
+    if (cg) { if (idx !== cg.start) return;
+      const done = ss.filter(s => circCount(s, ex.circ) > 0), l = done[done.length - 1], row = document.createElement("div"); row.className = "pr";
+      row.innerHTML = `<div><div class="n">Circuito ${esc(ex.circ)}</div><div class="s">${done.length ? `${done.length} sedute · ultima ${fmtDate(l.date)}: ${circCount(l, ex.circ)}/${ex.sets.length} giri` : "Nessun dato"}</div></div>`;
+      box.appendChild(row); return; }
     const all = ss.filter(s => exHas(s, ex.key)).map(s => ({ i: index(exSets(s, ex.key)), m: maxKg(exSets(s, ex.key)), hit: allHit(exSets(s, ex.key), ex), off: isOffDay(s) }));
     const pts = all.filter(x => !x.off), nOff = all.length - pts.length;
     let stat = "Nessun dato", pill = "";
@@ -445,6 +500,7 @@ $("csv").onclick = () => {
   const rows = [["data", "palestra", "scheda", "giorno", "esercizio", "serie", "kg", "reps"]];
   Object.values(D.sessions).sort((a, b) => a.date < b.date ? -1 : 1).forEach(s => {
     const pn = (plans.find(p => p.id === s.plan) || {}).name || s.plan, gn = (GYMS.find(g => g.id === s.gym) || {}).name || s.gym;
+    Object.entries(s.circ || {}).forEach(([c, n]) => { if (n > 0) rows.push([s.date, gn, pn, s.day, "Circuito " + c, "giri", "", n]); });
     Object.entries(s.ex || {}).forEach(([k, arr]) => (arr || []).forEach((r, i) => { if (r && (r.kg != null || r.reps != null)) rows.push([s.date, gn, pn, s.day, names[k] || k, i + 1, fmt(r.kg), r.reps ?? ""]); }));
   });
   const csv = "﻿" + rows.map(r => r.map(x => `"${String(x).replace(/"/g, '""')}"`).join(";")).join("\n");
