@@ -245,6 +245,27 @@ function edit(ex, i, field, val) {
   while (s.ex[ex.key].length < ex.sets.length) s.ex[ex.key].push({ kg: null, reps: null });
   s.ex[ex.key][i] = { ...s.ex[ex.key][i], [field]: num(val) };
   s.updatedAt = Date.now(); D.sessions[s.id] = s; save(); updateProgress();
+  if (field === "reps") try { localStorage.setItem(LKEY, JSON.stringify({ gym: S.gym, day: S.day, date: S.date, key: ex.key, i })); } catch (e) {}
+}
+// ---------- ripresa: all'apertura torna all'ultima serie compilata oggi ----------
+const LKEY = "palestra-last";
+function resumeLast() {
+  let L = null; try { L = JSON.parse(localStorage.getItem(LKEY)); } catch (e) {}
+  if (!L || L.date !== todayISO() || S.view !== "log") return;
+  if (L.gym !== S.gym || L.day !== S.day) { if (!GYMS.some(g => g.id === L.gym) || !plan().days.some(d => d.id === L.day)) return; S.gym = L.gym; S.day = L.day; S.date = L.date; render(); }
+  const d = dayObj(), idx = d.ex.findIndex(e => e.key === L.key); if (idx < 0) return;
+  // prossima serie da fare: la stessa se mancano le reps, altrimenti la successiva (nel circuito segue l'ordine del giro)
+  const ex = d.ex[idx], r = exSets(current(), ex.key)[L.i], g = circGroup(d, idx);
+  let k = ex.key, i = L.i;
+  if (r && r.reps != null) {
+    if (g) { if (!g.last) k = d.ex[idx + 1].key; else { k = d.ex[g.start].key; i++; } if (!$(`rp-${k}-${i}`)) { k = (d.ex[g.end + 1] || ex).key; i = 0; } }
+    else if (i < ex.sets.length - 1) i++;
+    else if (d.ex[idx + 1]) { k = d.ex[idx + 1].key; i = 0; }
+  }
+  const el = $(`rp-${k}-${i}`); if (!el) return;
+  const row = el.closest(".set"), go = () => row.scrollIntoView({ block: "center" });
+  go(); setTimeout(go, 350);
+  row.classList.add("here"); setTimeout(() => row.classList.remove("here"), 2600);
 }
 function setSess(patch) { const s = JSON.parse(JSON.stringify(current())); Object.assign(s, patch); s.updatedAt = Date.now(); D.sessions[s.id] = s; save(); renderLog(); }
 let noteT;
@@ -580,5 +601,7 @@ function renderTimerSet() {
 let toastT;
 function toast(t) { const el = $("toast"); el.textContent = t; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => el.hidden = true, 2200); }
 
+if ("scrollRestoration" in history) history.scrollRestoration = "manual";
 render();
+resumeLast();
 if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
