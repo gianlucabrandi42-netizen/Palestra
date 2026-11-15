@@ -288,3 +288,10 @@ textarea{width:100%;min-height:84px;padding:10px;background:var(--surface);borde
 .circbtns .btn small{font-weight:600;opacity:.75;margin-left:4px}
 .circbtns .btn[disabled]{background:var(--ok-bg);border-color:var(--ok);color:var(--ok);opacity:1}
 .circbtns.here{animation:here 2.6s ease-out}
+/* serie dimenticate */
+.misschip{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(126px + env(safe-area-inset-bottom,0px));z-index:19;display:flex;align-items:center;background:var(--near-bg);border:1px solid var(--near);border-radius:999px;box-shadow:0 6px 18px rgba(0,0,0,.45);max-width:92vw}
+.misschip button{border:0;background:none;color:var(--near);font-weight:700;font-size:13px;padding:8px 6px 8px 14px;white-space:nowrap}
+.misschip #missX{padding:8px 12px 8px 6px;opacity:.75}
+.set.miss input:placeholder-shown{border-color:var(--near);border-style:dashed;background:color-mix(in srgb,var(--near) 8%,var(--raised))}
+.set.miss .sn{color:var(--near)}
+.circbtns.miss .btn.primary{box-shadow:0 0 0 2px var(--near)}

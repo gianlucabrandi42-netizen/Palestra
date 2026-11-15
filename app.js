@@ -117,6 +117,7 @@ function updateProgress() {
   $("barfill").style.width = (tot ? done / tot * 100 : 0) + "%"; $("bartxt").textContent = `${done}/${tot} serie`;
   d.ex.forEach(e => { const c = document.querySelector(`[data-ex="${e.key}"]`); if (c) c.classList.toggle("done", doneSets(s, e) === e.sets.length); });
   document.querySelectorAll(".circ-card").forEach(c => { const e = d.ex.find(x => x.circ === c.dataset.circ); if (e) c.classList.toggle("done", circCount(s, e.circ) >= e.sets.length); });
+  checkMissing();
 }
 
 function renderLog() {
@@ -143,11 +144,11 @@ function renderLog() {
   if ($("nagBk")) $("nagBk").onclick = exportBackup;
 
   const list = $("list"); list.textContent = "";
-  let num = 0;
+  let exN = 0;
   d.ex.forEach((ex, idx) => {
     const cg0 = isCircNoLog(d, idx);
-    if (cg0) { if (idx === cg0.start) list.appendChild(circCard(d, cg0, ++num)); return; }
-    num++;
+    if (cg0) { if (idx === cg0.start) list.appendChild(circCard(d, cg0, ++exN)); return; }
+    exN++;
     const last = lastBefore(ex.key), lastSets = last ? exSets(last, ex.key) : [];
     const rs = lastRef(ex.key), refSets = rs ? exSets(rs, ex.key) : [], hit = rs ? allHit(refSets, ex) : false, cond = condition(sess);
     const ref = ex.ref && ex.ref[S.gym];
@@ -167,7 +168,7 @@ function renderLog() {
         ${fr.map(f => `<img src="${f.src}" alt="${esc(ex.name)} — ${esc(f.cap)}" class="${f.draw ? "draw" : ""}" loading="lazy">`).join("")}
         <span class="lbl"><i></i>Esecuzione</span><span class="zoom"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4M11 8v6M8 11h6"/></svg></span></button>` : ""}
       <div class="exhead">
-        <div class="num">${String(num).padStart(2, "0")}</div>
+        <div class="num">${String(exN).padStart(2, "0")}</div>
         <div><h3 class="exname">${esc(ex.name)}</h3><div class="tec">${esc(ex.tec || "")}</div>${pills ? `<div class="pills">${pills}</div>` : ""}</div>
         <button class="mini" data-more aria-label="Muscoli di ${esc(ex.name)}">${bodySVG(ex.m || {})}</button>
       </div>
@@ -221,6 +222,42 @@ function renderLog() {
   $("note").value = sess.note || "";
   updateProgress();
 }
+// ---------- campi dimenticati ----------
+// Se hai già compilato una serie più avanti nella giornata, le serie precedenti senza reps (o con reps ma senza kg)
+// sono "da completare": righe segnate in arancione + avviso sopra il timer che porta alla prima.
+function missingSlots(d, s) {
+  const slots = [];
+  d.ex.forEach((e, idx) => { const g = isCircNoLog(d, idx); if (g) { if (idx === g.start) slots.push({ circ: e.circ, giri: e.sets.length, k: e.key }); return; } e.sets.forEach((_, i) => slots.push({ e, i, k: e.key })); });
+  const rOf = sl => exSets(s, sl.e.key)[sl.i];
+  const filled = sl => sl.circ ? circCount(s, sl.circ) > 0 : (r => r && (r.kg != null || r.reps != null))(rOf(sl));
+  let last = -1; slots.forEach((sl, j) => { if (filled(sl)) last = j; });
+  const miss = [];
+  slots.forEach((sl, j) => {
+    if (j > last) return;
+    if (sl.circ) { if (j < last && circCount(s, sl.circ) < sl.giri) miss.push({ k: sl.k, i: 0, what: "giri" }); return; }
+    const r = rOf(sl);
+    if (j < last && (!r || r.reps == null)) miss.push({ k: sl.k, i: sl.i, what: "reps" });
+    else if (r && r.reps != null && r.kg == null && !sl.e.bw) miss.push({ k: sl.k, i: sl.i, what: "kg" });
+  });
+  return miss;
+}
+let missT;
+function checkMissing() { clearTimeout(missT); missT = setTimeout(drawMissing, 150); }
+function drawMissing() {
+  const chip = $("miss"); document.querySelectorAll(".miss").forEach(x => x.classList.remove("miss"));
+  if (S.view !== "log") { chip.hidden = true; return; }
+  const s = current(), act = document.activeElement;
+  const miss = s.ignoreMiss ? [] : missingSlots(dayObj(), s).filter(m => { const row = rowEl(m.k, m.i); return row && !(act && row.contains(act)); });
+  miss.forEach(m => rowEl(m.k, m.i).classList.add("miss"));
+  chip.hidden = !miss.length;
+  if (!miss.length) return;
+  const n = miss.length, kgOnly = miss.every(m => m.what === "kg");
+  $("missGo").textContent = `⚠ ${n} ${n === 1 ? "serie" : "serie"} da completare${kgOnly ? " (kg)" : ""}`;
+  $("missGo").onclick = () => { const m = missingSlots(dayObj(), current())[0]; if (!m) return drawMissing(); const row = rowEl(m.k, m.i);
+    row.scrollIntoView({ block: "center", behavior: "smooth" }); row.classList.remove("here"); void row.offsetWidth; row.classList.add("here"); setTimeout(() => row.classList.remove("here"), 2600); };
+  $("missX").onclick = () => { const s2 = JSON.parse(JSON.stringify(current())); s2.ignoreMiss = true; s2.updatedAt = Date.now(); D.sessions[s2.id] = s2; save(); drawMissing(); toast("Avviso nascosto per questa seduta"); };
+}
+document.addEventListener("focusin", e => { if (e.target.matches && e.target.matches(".set input")) checkMissing(); });
 // scheda unica del circuito senza registrazione: esercizi + "▶ Giro fatto" + "⏱ recupero"
 function circCard(d, g, n) {
   const mem = d.ex.slice(g.start, g.end + 1), c = mem[0].circ, giri = mem[0].sets.length, t = mem[0].sets[0].t;
@@ -325,6 +362,7 @@ function nextSet(d, idx, i) {
 // con uno scorrimento fluido alla prossima serie da fare (se l'esercizio cambia, mostriamo la sua scheda dall'inizio).
 document.addEventListener("focusout", e => {
   const inp = e.target; if (!inp.matches || !inp.matches(".set input")) return;
+  checkMissing();
   if (e.relatedTarget && e.relatedTarget.matches("input, textarea, select")) return; // passa a un altro campo: tastiera resta su
   const m = inp.id.match(/^(kg|rp)-(.+)-(\d+)$/); if (!m) return;
   const d = dayObj(), idx = d.ex.findIndex(x => x.key === m[2]); if (idx < 0) return;
@@ -520,7 +558,7 @@ function render() {
   document.querySelectorAll(".tabbar button[aria-current]").forEach(b => b.setAttribute("aria-current", "page"));
   for (const v of ["log", "prog", "plan", "more"]) $("v-" + v).hidden = S.view !== v;
   if (S.view === "log") renderLog(); else if (S.view === "prog") renderProg(); else if (S.view === "plan") renderPlans(); else renderMore();
-  drawTimer();
+  drawTimer(); drawMissing();
 }
 
 // ---------- timer di recupero ----------
