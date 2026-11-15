@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Palestra</title>
+<meta name="theme-color" content="#0B0E12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Palestra">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,800;1,800&family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <!-- ALLENAMENTO -->
+  <section id="v-log" class="view">
+    <header class="console">
+      <div class="top">
+        <div class="brand">Scheda<span>.</span></div>
+        <div class="gym" id="gyms" role="group" aria-label="Palestra"></div>
+      </div>
+      <div class="days" id="days" role="group" aria-label="Giorno"></div>
+      <div class="when">
+        <input type="date" id="date" aria-label="Data seduta">
+        <div class="chips" id="sessions"></div>
+      </div>
+      <div class="prog"><div class="bar"><i id="barfill"></i></div><div class="n" id="bartxt">0/0 serie</div></div>
+    </header>
+    <div id="backupNag"></div>
+    <section class="hero">
+      <div class="k" id="herok"></div>
+      <h1 id="heroh"></h1>
+      <div class="stats" id="herostats"></div>
+    </section>
+    <div class="list" id="list"></div>
+    <h2>Note seduta</h2>
+    <textarea id="note" placeholder="Es. panca occupata, dolore alla spalla, poco sonno…"></textarea>
+  </section>
+
+  <!-- PROGRESSI -->
+  <section id="v-prog" class="view" hidden>
+    <section class="hero">
+      <div class="k" id="pk"></div>
+      <h1>Progressi</h1>
+      <div class="stats"><span>Indice = Σ kg × reps della seduta (a corpo libero: totale reps)</span></div>
+    </section>
+    <div class="days" id="pdays"></div>
+    <div class="prlist" id="prog"></div>
+  </section>
+
+  <!-- SCHEDE -->
+  <section id="v-plan" class="view" hidden>
+    <section class="hero">
+      <div class="k">Schede del personal trainer</div>
+      <h1>Schede</h1>
+      <div class="stats"><span>La scheda attiva e l'archivio delle precedenti. Lo storico dei carichi resta collegato anche quando cambia la scheda.</span></div>
+    </section>
+    <div id="plans" class="plist"></div>
+  </section>
+
+  <!-- ALTRO -->
+  <section id="v-more" class="view" hidden>
+    <section class="hero"><div class="k">Dati e impostazioni</div><h1>Backup</h1>
+      <div class="stats"><span id="backupInfo"></span></div></section>
+    <div class="card stack">
+      <p>I tuoi dati restano <b>solo su questo telefono</b>. Fai un backup ogni tanto e salvalo su Drive, iCloud o inviatelo per email: se cambi o perdi il telefono lo ricarichi da qui.</p>
+      <div class="row"><button class="btn primary" id="bkExport">Salva backup</button>
+        <label class="btn" for="bkFile">Ripristina backup</label><input type="file" id="bkFile" accept=".json,application/json" hidden></div>
+      <div class="row"><button class="btn" id="csv">Esporta CSV per Excel</button></div>
+      <p class="note" id="bkMsg"></p>
+    </div>
+    <h2>Palestre</h2>
+    <div class="card stack" id="gymEdit"></div>
+    <p class="credits">Foto: Free Exercise DB (pubblico dominio). Illustrazioni: Everkinetic (CC BY-SA 4.0). Mappa muscoli: react-body-highlighter (MIT).</p>
+  </section>
+</div>
+
+<nav class="tabbar" aria-label="Sezioni">
+  <button data-view="log" aria-current="page"><svg viewBox="0 0 24 24"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/></svg>Allenamento</button>
+  <button data-view="prog"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>Progressi</button>
+  <button data-view="plan"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>Schede</button>
+  <button data-view="more"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>Backup</button>
+</nav>
+
+<!-- visore immagini con zoom -->
+<div class="lb" id="lb" hidden>
+  <header><span id="lbt"></span><button id="lbclose" aria-label="Chiudi">✕</button></header>
+  <div class="lbtrack" id="lbtrack"></div>
+  <footer id="lbf">Pizzica o tocca due volte per ingrandire · scorri per le altre</footer>
+</div>
+
+<!-- foglio di modifica -->
+<div class="sheet" id="sheet" hidden>
+  <header><button class="btn ghost" id="sheetBack">‹ Indietro</button><b id="sheetTitle"></b><span></span></header>
+  <div class="sheetbody" id="sheetBody"></div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="data.js"></script>
+<script src="schede.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
