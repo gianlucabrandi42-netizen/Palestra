@@ -72,7 +72,7 @@ Muscoli disponibili per `m`: CHEST, FRONT_DELTOIDS, BACK_DELTOIDS, TRICEPS, BICE
 - **Storico collegato per `key`** tra schede diverse e per palestra.
 - **Timer di recupero** (barra sopra il menu in basso):
   - base **1:30** per tutti gli esercizi, regolabile (±15" dalla barra o da Backup → Timer di recupero); se un esercizio ha `rest` in `schede.js`, vale quello (formati accettati: `90"`, `1'30`, `1:30`, `2'`);
-  - parte da solo quando inserisci le reps di una serie (solo per la seduta di oggi); si può anche avviare a mano (tocco sul tempo a timer fermo), mettere in pausa (tasto ⏸/▶), fermare (✕), ±15";
+  - parte da solo quando inserisci le reps di una serie (solo per la seduta di oggi); si può anche avviare a mano (tasto ▶ blu sempre visibile, o tocco sul tempo a timer fermo; usa il recupero di base), mettere in pausa (stesso tasto, ⏸/▶), fermare (✕), ±15";
   - **tocco sul tempo durante il recupero → porta alla prossima serie da fare** (stessa logica della ripresa all'apertura, anche da un'altra sezione);
   - iPhone sospende l'audio delle app web silenziose: durante il recupero l'app tiene acceso un tono inudibile (40 Hz, volume minimo) perché i bip di fine timer suonino; si spegne in pausa/stop/fine;
   - a fine recupero: vibrazione (Android), 3 bip, "VIA!" verde; avviso breve a 5" dalla fine. Ogni avviso si può disattivare;

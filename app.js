@@ -470,9 +470,10 @@ function drawTimer() {
   const run = running(), paused = T.left != null, done = Date.now() - tDone < 6000;
   box.hidden = !(run || paused || done || S.view === "log");
   tb.classList.toggle("run", run); tb.classList.toggle("paused", paused); tb.classList.toggle("done", done && !run && !paused);
-  $("tStop").hidden = $("tPause").hidden = !(run || paused);
-  $("tPause").innerHTML = paused ? `<svg viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z"/></svg>` : `<svg viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg>`;
-  $("tPause").setAttribute("aria-label", paused ? "Riprendi" : "Pausa");
+  $("tStop").hidden = !(run || paused);
+  $("tPause").innerHTML = run ? `<svg viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg>` : `<svg viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z"/></svg>`;
+  $("tPause").setAttribute("aria-label", run ? "Pausa" : paused ? "Riprendi" : "Avvia il recupero");
+  $("tPause").classList.toggle("go", !run);
   if (run || paused) {
     const r = remaining();
     $("tTime").textContent = fmtSec(r);
@@ -495,6 +496,7 @@ $("tPause").onclick = () => {
   unlockAudio();
   if (running()) { notifCancel(); T.left = remaining(); T.end = null; tSave(); clearInterval(tIv); keepAwake(false); audioKeep(false); }
   else if (T.left != null) { T.end = Date.now() + T.left * 1000; delete T.left; tSave(); notifSchedule(); keepAwake(true); audioKeep(true); tickLoop(); }
+  else { tDone = 0; startRest(tPrefs().sec, "Recupero"); return; }
   drawTimer();
 };
 let nudgeT;

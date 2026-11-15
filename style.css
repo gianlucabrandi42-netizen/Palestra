@@ -264,3 +264,5 @@ textarea{width:100%;min-height:84px;padding:10px;background:var(--surface);borde
 .tb svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle}
 #tPause svg path[d^='M7']{fill:currentColor;stroke-width:1.5}
 .tmain{gap:8px;padding:0 10px}
+.tb.go{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+#tPause svg path[d^='M7']{fill:currentColor}
