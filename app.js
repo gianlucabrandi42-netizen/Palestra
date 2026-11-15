@@ -247,6 +247,44 @@ function edit(ex, i, field, val) {
   s.updatedAt = Date.now(); D.sessions[s.id] = s; save(); updateProgress();
   if (field === "reps") try { localStorage.setItem(LKEY, JSON.stringify({ gym: S.gym, day: S.day, date: S.date, key: ex.key, i })); } catch (e) {}
 }
+// prossima serie da fare dopo (esercizio idx, serie i): la stessa se mancano le reps, altrimenti la successiva
+// (nel circuito segue l'ordine del giro; dopo l'ultima serie passa al primo set dell'esercizio dopo)
+function nextSet(d, idx, i) {
+  const ex = d.ex[idx], r = exSets(current(), ex.key)[i], g = circGroup(d, idx);
+  let k = ex.key;
+  if (r && r.reps != null) {
+    if (g) { if (!g.last) k = d.ex[idx + 1].key; else { k = d.ex[g.start].key; i++; } if (!$(`rp-${k}-${i}`)) { k = (d.ex[g.end + 1] || ex).key; i = 0; } }
+    else if (i < ex.sets.length - 1) i++;
+    else if (d.ex[idx + 1]) { k = d.ex[idx + 1].key; i = 0; }
+  }
+  return { k, i };
+}
+// Dopo ✓ (tastiera chiusa) iPhone riposiziona la pagina: aspettiamo che la tastiera sia giù e portiamo
+// con uno scorrimento fluido alla prossima serie da fare (se l'esercizio cambia, mostriamo la sua scheda dall'inizio).
+document.addEventListener("focusout", e => {
+  const inp = e.target; if (!inp.matches || !inp.matches(".set input")) return;
+  if (e.relatedTarget && e.relatedTarget.matches("input, textarea, select")) return; // passa a un altro campo: tastiera resta su
+  const m = inp.id.match(/^(kg|rp)-(.+)-(\d+)$/); if (!m) return;
+  const d = dayObj(), idx = d.ex.findIndex(x => x.key === m[2]); if (idx < 0) return;
+  const t = m[1] === "rp" ? nextSet(d, idx, +m[3]) : { k: m[2], i: +m[3] };
+  let done = false;
+  const go = () => {
+    if (done) return; done = true;
+    if (document.activeElement && document.activeElement.matches("input, textarea")) return; // l'utente ha già toccato un altro campo
+    const el = $(`rp-${t.k}-${t.i}`); if (!el) return;
+    const row = el.closest(".set"), card = el.closest(".ex"), con = document.querySelector(".console");
+    const rb = row.getBoundingClientRect(), tm = $("timer"), barTop = tm && !tm.hidden ? $("tbox").getBoundingClientRect().top : innerHeight - 70;
+    // esercizio nuovo: mostra la scheda dall'alto, ma la serie da fare deve restare sopra la barra del timer
+    const top = t.k !== m[2] && card
+      ? Math.max(card.getBoundingClientRect().top + scrollY - (con ? con.getBoundingClientRect().bottom : 0) - 10, rb.bottom + scrollY - (barTop - 12))
+      : rb.top + scrollY - (innerHeight - row.offsetHeight) / 2;
+    scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+    if (t.k !== m[2] || t.i !== +m[3]) { row.classList.remove("here"); void row.offsetWidth; row.classList.add("here"); setTimeout(() => row.classList.remove("here"), 2600); }
+  };
+  const vv = window.visualViewport;
+  if (vv) vv.addEventListener("resize", () => setTimeout(go, 60), { once: true });
+  setTimeout(go, 450);
+});
 // ---------- ripresa: all'apertura torna all'ultima serie compilata oggi ----------
 const LKEY = "palestra-last";
 function resumeLast(force) {
@@ -256,13 +294,7 @@ function resumeLast(force) {
   if (L.gym !== S.gym || L.day !== S.day || S.date !== L.date) { if (!GYMS.some(g => g.id === L.gym) || !plan().days.some(d => d.id === L.day)) return; S.gym = L.gym; S.day = L.day; S.date = L.date; render(); }
   const d = dayObj(), idx = d.ex.findIndex(e => e.key === L.key); if (idx < 0) return;
   // prossima serie da fare: la stessa se mancano le reps, altrimenti la successiva (nel circuito segue l'ordine del giro)
-  const ex = d.ex[idx], r = exSets(current(), ex.key)[L.i], g = circGroup(d, idx);
-  let k = ex.key, i = L.i;
-  if (r && r.reps != null) {
-    if (g) { if (!g.last) k = d.ex[idx + 1].key; else { k = d.ex[g.start].key; i++; } if (!$(`rp-${k}-${i}`)) { k = (d.ex[g.end + 1] || ex).key; i = 0; } }
-    else if (i < ex.sets.length - 1) i++;
-    else if (d.ex[idx + 1]) { k = d.ex[idx + 1].key; i = 0; }
-  }
+  const { k, i } = nextSet(d, idx, L.i);
   const el = $(`rp-${k}-${i}`); if (!el) return;
   const row = el.closest(".set"), go = () => row.scrollIntoView({ block: "center", behavior: force ? "smooth" : "auto" });
   go(); if (!force) setTimeout(go, 350);
