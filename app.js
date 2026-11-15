@@ -125,6 +125,7 @@ function renderLog() {
         <div><h3 class="exname">${esc(ex.name)}</h3><div class="tec">${esc(ex.tec || "")}</div>${pills ? `<div class="pills">${pills}</div>` : ""}</div>
         <button class="mini" data-more aria-label="Muscoli di ${esc(ex.name)}">${bodySVG(ex.m || {})}</button>
       </div>
+      ${(ex.flash || []).length ? `<ul class="flash" aria-label="Da ricordare">${ex.flash.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
       ${ex.setup === false ? "" : `<div class="setup"><label for="su-${ex.key}">Regolazioni</label><input id="su-${ex.key}" autocomplete="off" placeholder="es. sedile 4 · schienale 2"></div>`}
       <div class="sets"><div class="sh"><span>Serie</span><span>Ultima volta</span><span>${ex.bw ? "kg (opz.)" : "kg"}</span><span>Reps</span></div></div>
       <div class="exfoot"><button class="btn sm" data-copy>Copia kg ultima volta</button>
