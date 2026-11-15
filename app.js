@@ -249,10 +249,11 @@ function edit(ex, i, field, val) {
 }
 // ---------- ripresa: all'apertura torna all'ultima serie compilata oggi ----------
 const LKEY = "palestra-last";
-function resumeLast() {
+function resumeLast(force) {
   let L = null; try { L = JSON.parse(localStorage.getItem(LKEY)); } catch (e) {}
-  if (!L || L.date !== todayISO() || S.view !== "log") return;
-  if (L.gym !== S.gym || L.day !== S.day) { if (!GYMS.some(g => g.id === L.gym) || !plan().days.some(d => d.id === L.day)) return; S.gym = L.gym; S.day = L.day; S.date = L.date; render(); }
+  if (!L || L.date !== todayISO()) return false;
+  if (S.view !== "log") { if (!force) return false; S.view = "log"; render(); }
+  if (L.gym !== S.gym || L.day !== S.day || S.date !== L.date) { if (!GYMS.some(g => g.id === L.gym) || !plan().days.some(d => d.id === L.day)) return; S.gym = L.gym; S.day = L.day; S.date = L.date; render(); }
   const d = dayObj(), idx = d.ex.findIndex(e => e.key === L.key); if (idx < 0) return;
   // prossima serie da fare: la stessa se mancano le reps, altrimenti la successiva (nel circuito segue l'ordine del giro)
   const ex = d.ex[idx], r = exSets(current(), ex.key)[L.i], g = circGroup(d, idx);
@@ -263,9 +264,10 @@ function resumeLast() {
     else if (d.ex[idx + 1]) { k = d.ex[idx + 1].key; i = 0; }
   }
   const el = $(`rp-${k}-${i}`); if (!el) return;
-  const row = el.closest(".set"), go = () => row.scrollIntoView({ block: "center" });
-  go(); setTimeout(go, 350);
-  row.classList.add("here"); setTimeout(() => row.classList.remove("here"), 2600);
+  const row = el.closest(".set"), go = () => row.scrollIntoView({ block: "center", behavior: force ? "smooth" : "auto" });
+  go(); if (!force) setTimeout(go, 350);
+  row.classList.remove("here"); void row.offsetWidth; row.classList.add("here"); setTimeout(() => row.classList.remove("here"), 2600);
+  return true;
 }
 function setSess(patch) { const s = JSON.parse(JSON.stringify(current())); Object.assign(s, patch); s.updatedAt = Date.now(); D.sessions[s.id] = s; save(); renderLog(); }
 let noteT;
@@ -452,15 +454,15 @@ const remaining = () => T.left != null ? T.left : T.end ? (T.end - Date.now()) /
 function startRest(sec, label) {
   unlockAudio(); notifCancel();
   T = { end: Date.now() + sec * 1000, dur: sec, label: label || "Recupero" }; tDone = 0; tWarned = sec <= 6; tSave();
-  notifSchedule(); keepAwake(true); tickLoop(); drawTimer();
+  notifSchedule(); keepAwake(true); audioKeep(true); tickLoop(); drawTimer();
 }
-function stopRest() { notifCancel(); T = {}; tSave(); keepAwake(false); clearInterval(tIv); tIv = null; drawTimer(); }
+function stopRest() { notifCancel(); T = {}; tSave(); keepAwake(false); audioKeep(false); clearInterval(tIv); tIv = null; drawTimer(); }
 function tickLoop() { clearInterval(tIv); tIv = setInterval(tick, 250); tick(); }
 function tick() {
   if (!running()) { clearInterval(tIv); tIv = null; return; }
   const r = remaining();
   if (r <= 5 && !tWarned && tPrefs().warn) { tWarned = true; alarm(true); }
-  if (r <= 0) { T = {}; tSave(); clearInterval(tIv); tIv = null; keepAwake(false); tDone = Date.now(); alarm(false); drawTimer(); setTimeout(drawTimer, 6100); return; }
+  if (r <= 0) { T = {}; tSave(); clearInterval(tIv); tIv = null; keepAwake(false); tDone = Date.now(); alarm(false); setTimeout(() => { if (!running()) audioKeep(false); }, 3000); drawTimer(); setTimeout(drawTimer, 6100); return; }
   drawTimer();
 }
 function drawTimer() {
@@ -468,11 +470,13 @@ function drawTimer() {
   const run = running(), paused = T.left != null, done = Date.now() - tDone < 6000;
   box.hidden = !(run || paused || done || S.view === "log");
   tb.classList.toggle("run", run); tb.classList.toggle("paused", paused); tb.classList.toggle("done", done && !run && !paused);
-  $("tStop").hidden = !(run || paused);
+  $("tStop").hidden = $("tPause").hidden = !(run || paused);
+  $("tPause").innerHTML = paused ? `<svg viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z"/></svg>` : `<svg viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg>`;
+  $("tPause").setAttribute("aria-label", paused ? "Riprendi" : "Pausa");
   if (run || paused) {
     const r = remaining();
     $("tTime").textContent = fmtSec(r);
-    $("tLabel").textContent = paused ? "In pausa · tocca per riprendere" : T.label;
+    $("tLabel").textContent = paused ? "In pausa" : T.label;
     $("tFill").style.width = Math.max(0, Math.min(100, (1 - r / (T.dur || 1)) * 100)) + "%";
     tb.classList.toggle("last", run && r <= 5);
   } else {
@@ -482,10 +486,15 @@ function drawTimer() {
     $("tFill").style.width = "0";
   }
 }
+// tocco sul tempo: porta alla serie da fare (se il timer è fermo e non c'è una seduta in corso oggi, lo avvia)
 $("tMain").onclick = () => {
-  if (running()) { notifCancel(); T.left = remaining(); T.end = null; tSave(); clearInterval(tIv); keepAwake(false); }
-  else if (T.left != null) { T.end = Date.now() + T.left * 1000; delete T.left; tSave(); notifSchedule(); keepAwake(true); tickLoop(); }
+  if (running() || T.left != null || Date.now() - tDone < 6000) { if (!resumeLast(true)) toast("Nessuna serie registrata oggi"); }
   else { tDone = 0; startRest(tPrefs().sec, "Recupero"); }
+};
+$("tPause").onclick = () => {
+  unlockAudio();
+  if (running()) { notifCancel(); T.left = remaining(); T.end = null; tSave(); clearInterval(tIv); keepAwake(false); audioKeep(false); }
+  else if (T.left != null) { T.end = Date.now() + T.left * 1000; delete T.left; tSave(); notifSchedule(); keepAwake(true); audioKeep(true); tickLoop(); }
   drawTimer();
 };
 let nudgeT;
@@ -508,7 +517,16 @@ function unlockAudio() {
     const b = AC.createBuffer(1, 1, 22050), s = AC.createBufferSource(); s.buffer = b; s.connect(AC.destination); s.start(0);
   } catch (e) {}
 }
-["pointerdown", "touchend", "keydown"].forEach(ev => document.addEventListener(ev, () => { if (!AC || AC.state !== "running") unlockAudio(); }, { passive: true }));
+["pointerdown", "touchend", "keydown"].forEach(ev => document.addEventListener(ev, () => { if (!AC || AC.state !== "running") unlockAudio(); if (running()) audioKeep(true); }, { passive: true }));
+// iPhone sospende l'audio di un'app web che resta in silenzio: durante il recupero tiene acceso un tono inudibile,
+// così a fine timer i bip suonano anche senza toccare lo schermo.
+let keep = null;
+function audioKeep(on) {
+  try {
+    if (on && AC && !keep) { const o = AC.createOscillator(), g = AC.createGain(); o.frequency.value = 40; g.gain.value = 0.0006; o.connect(g); g.connect(AC.destination); o.start(); keep = { o, g }; }
+    else if (!on && keep) { keep.o.stop(); keep.o.disconnect(); keep.g.disconnect(); keep = null; }
+  } catch (e) { keep = null; }
+}
 function beep(at, freq, len, vol) {
   const o = AC.createOscillator(), g = AC.createGain(); o.type = "sine"; o.frequency.value = freq;
   g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(vol, at + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, at + len);
@@ -524,9 +542,9 @@ function alarm(soft) {
     else { iosTap(); if (!soft) { setTimeout(iosTap, 250); setTimeout(iosTap, 500); setTimeout(iosTap, 750); } }
   }
   if (p.snd && AC) {
-    try { if (AC.state !== "running") AC.resume(); const t = AC.currentTime + 0.03;
-      if (soft) beep(t, 660, 0.15, 0.25); else { beep(t, 880, 0.22, 0.5); beep(t + 0.3, 880, 0.22, 0.5); beep(t + 0.6, 1175, 0.45, 0.6); }
-    } catch (e) {}
+    const play = () => { try { const t = AC.currentTime + 0.03;
+      if (soft) beep(t, 660, 0.15, 0.25); else { beep(t, 880, 0.22, 0.5); beep(t + 0.3, 880, 0.22, 0.5); beep(t + 0.6, 1175, 0.45, 0.6); } } catch (e) {} };
+    if (AC.state === "running") play(); else { try { AC.resume().then(play, play); } catch (e) { play(); } }
   }
 }
 // notifica a schermo spento / altra app: tramite ntfy.sh (servizio gratuito) + app "ntfy" sul telefono.
@@ -558,7 +576,7 @@ async function keepAwake(on) {
 }
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState !== "visible") return;
-  if (running()) { keepAwake(true); tick(); if (!tIv && running()) tickLoop(); }
+  if (running()) { keepAwake(true); if (AC && AC.state !== "running") AC.resume().catch(() => {}); tick(); if (!tIv && running()) tickLoop(); }
 });
 if (running()) { keepAwake(true); tickLoop(); }
 

@@ -232,7 +232,7 @@ textarea{width:100%;min-height:84px;padding:10px;background:var(--surface);borde
 /* timer di recupero */
 .timer{position:fixed;left:0;right:0;bottom:calc(61px + env(safe-area-inset-bottom,0px));z-index:19;display:flex;justify-content:center;pointer-events:none;padding:0 max(12px,env(safe-area-inset-right,0px)) 8px max(12px,env(safe-area-inset-left,0px))}
 .tbox{pointer-events:auto;display:flex;align-items:center;gap:6px;width:100%;max-width:640px;background:var(--raised);border:1px solid var(--line);border-radius:999px;padding:5px;box-shadow:0 6px 22px rgba(0,0,0,.5)}
-.tb{flex:none;width:46px;height:46px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-weight:700;font-size:14px;font-variant-numeric:tabular-nums}
+.tb{flex:none;width:42px;height:46px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-weight:700;font-size:14px;font-variant-numeric:tabular-nums}
 .tb.x{color:var(--muted);font-size:16px}
 .tmain{flex:1;min-width:0;height:46px;position:relative;overflow:hidden;border:0;border-radius:999px;background:var(--surface);display:flex;align-items:center;justify-content:center;gap:10px;padding:0 12px}
 .tmain b{font-family:var(--display);font-weight:800;font-size:28px;line-height:1;font-variant-numeric:tabular-nums;position:relative;z-index:1}
@@ -261,3 +261,6 @@ textarea{width:100%;min-height:84px;padding:10px;background:var(--surface);borde
 .ntfy code{flex:1;min-width:0;font-size:14px;font-weight:700;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 9px;overflow-wrap:anywhere;user-select:all;-webkit-user-select:all}
 .set.here{border-radius:12px;animation:here 2.6s ease-out}
 @keyframes here{0%,60%{background:color-mix(in srgb,var(--accent) 22%,transparent);box-shadow:0 0 0 2px var(--accent)}100%{background:transparent;box-shadow:0 0 0 2px transparent}}
+.tb svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle}
+#tPause svg path[d^='M7']{fill:currentColor;stroke-width:1.5}
+.tmain{gap:8px;padding:0 10px}
