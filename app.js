@@ -138,7 +138,7 @@ function renderLog() {
     if (rs && cond.f < 1) pills += `<span class="pill near">Oggi −${Math.round((1 - cond.f) * 100)}% · ${esc(cond.why)}</span>`;
     else if (rs) pills += hit ? `<span class="pill up">↑ Aumenta${ex.bw ? "" : " carico"}</span>` : `<span class="pill">= Stesso carico</span>`;
     else if (ref) pills += `<span class="pill">Rif. scheda prec. ${fmt(ref)} kg</span>`;
-    if (ex.rest) pills += `<span class="pill">Recupero ${esc(ex.rest)}</span>`;
+    pills += `<span class="pill">Recupero ${fmtSec(restFor(ex))}</span>`;
     if (last) pills += `<span class="pill">ultima ${fmtDate(last.date)}</span>`;
     const fr = execFrames(ex);
     const card = document.createElement("article"); card.className = "ex"; card.dataset.ex = ex.key;
@@ -175,6 +175,12 @@ function renderLog() {
       const upd = () => judge(kg, rp, fb, tn, rr, cond);
       kg.oninput = () => { edit(ex, i, "kg", kg.value); upd(); };
       rp.oninput = () => { edit(ex, i, "reps", rp.value); upd(); };
+      // serie completata (reps inserite e campo lasciato) → parte il recupero
+      rp.addEventListener("change", () => {
+        if (num(rp.value) == null || S.date !== todayISO() || !tPrefs().auto) return;
+        const nx = i < ex.sets.length - 1 ? `${ex.name} · poi serie ${i + 2}` : (d.ex[idx + 1] ? `Poi: ${d.ex[idx + 1].name}` : "Ultima serie del giorno");
+        startRest(restFor(ex), nx);
+      });
       upd(); setsEl.appendChild(row);
     });
     const su = card.querySelector(".setup input");
@@ -369,7 +375,8 @@ $("csv").onclick = () => {
 function renderMore() {
   const ds = daysSince(D.prefs.lastBackup);
   $("backupInfo").textContent = `${Object.values(D.sessions).filter(hasData).length} sedute salvate · ultimo backup: ${ds == null ? "mai" : ds === 0 ? "oggi" : ds + " giorni fa"}`;
-  $("gymEdit").innerHTML = GYMS.map(g => `<div class="lrow"><div class="t"><b>${esc(g.name)}</b><small>${gymSessions(g.id).length} sedute · carichi e regolazioni separati</small></div></div>`).join("");
+  renderTimerSet();
+  $("gymEdit").innerHTML =GYMS.map(g => `<div class="lrow"><div class="t"><b>${esc(g.name)}</b><small>${gymSessions(g.id).length} sedute · carichi e regolazioni separati</small></div></div>`).join("");
 }
 
 // ---------- navigazione ----------
@@ -379,6 +386,138 @@ function render() {
   document.querySelectorAll(".tabbar button[aria-current]").forEach(b => b.setAttribute("aria-current", "page"));
   for (const v of ["log", "prog", "plan", "more"]) $("v-" + v).hidden = S.view !== v;
   if (S.view === "log") renderLog(); else if (S.view === "prog") renderProg(); else if (S.view === "plan") renderPlans(); else renderMore();
+  drawTimer();
+}
+
+// ---------- timer di recupero ----------
+// Recupero di base 1:30 (regolabile); se l'esercizio ha "rest" nella scheda, vale quello.
+// A fine recupero: vibrazione (Android), suono e tocco aptico (iPhone, dove possibile). Lo schermo resta acceso mentre conta.
+const TKEY = "palestra-timer";
+const tPrefs = () => { const t = D.prefs.timer = D.prefs.timer || {}; return { sec: t.sec ?? 90, auto: t.auto ?? true, vib: t.vib ?? true, snd: t.snd ?? true, warn: t.warn ?? true }; };
+const setTPref = (k, v) => { D.prefs.timer = D.prefs.timer || {}; D.prefs.timer[k] = v; save(); };
+const fmtSec = s => { s = Math.max(0, Math.ceil(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
+function parseRest(r) {
+  if (r == null || r === "") return null; if (typeof r === "number") return r;
+  const s = String(r).trim(); let m;
+  if ((m = s.match(/^(\d+)\s*[:'’]\s*(\d{1,2})?/))) return +m[1] * 60 + (+m[2] || 0); // 1:30 · 1'30 · 2'
+  if ((m = s.match(/^(\d+)/))) return +m[1];                                         // 90" · 90
+  return null;
+}
+const restFor = ex => parseRest(ex && ex.rest) || tPrefs().sec;
+let T = (() => { try { return JSON.parse(localStorage.getItem(TKEY)) || {}; } catch (e) { return {}; } })(); // {end, dur, left (se in pausa), label}
+if (T.end && T.end < Date.now() - 60000) T = {}; // scaduto da tempo: ignora
+let tIv = null, tDone = 0, tWarned = false, wake = null;
+const tSave = () => { try { localStorage.setItem(TKEY, JSON.stringify(T)); } catch (e) {} };
+const running = () => !!T.end && T.left == null;
+const remaining = () => T.left != null ? T.left : T.end ? (T.end - Date.now()) / 1000 : 0;
+
+function startRest(sec, label) {
+  unlockAudio();
+  T = { end: Date.now() + sec * 1000, dur: sec, label: label || "Recupero" }; tDone = 0; tWarned = sec <= 6; tSave();
+  keepAwake(true); tickLoop(); drawTimer();
+}
+function stopRest() { T = {}; tSave(); keepAwake(false); clearInterval(tIv); tIv = null; drawTimer(); }
+function tickLoop() { clearInterval(tIv); tIv = setInterval(tick, 250); tick(); }
+function tick() {
+  if (!running()) { clearInterval(tIv); tIv = null; return; }
+  const r = remaining();
+  if (r <= 5 && !tWarned && tPrefs().warn) { tWarned = true; alarm(true); }
+  if (r <= 0) { T = {}; tSave(); clearInterval(tIv); tIv = null; keepAwake(false); tDone = Date.now(); alarm(false); drawTimer(); setTimeout(drawTimer, 6100); return; }
+  drawTimer();
+}
+function drawTimer() {
+  const box = $("timer"), tb = $("tbox");
+  const run = running(), paused = T.left != null, done = Date.now() - tDone < 6000;
+  box.hidden = !(run || paused || done || S.view === "log");
+  tb.classList.toggle("run", run); tb.classList.toggle("paused", paused); tb.classList.toggle("done", done && !run && !paused);
+  $("tStop").hidden = !(run || paused);
+  if (run || paused) {
+    const r = remaining();
+    $("tTime").textContent = fmtSec(r);
+    $("tLabel").textContent = paused ? "In pausa · tocca per riprendere" : T.label;
+    $("tFill").style.width = Math.max(0, Math.min(100, (1 - r / (T.dur || 1)) * 100)) + "%";
+    tb.classList.toggle("last", run && r <= 5);
+  } else {
+    tb.classList.remove("last");
+    $("tTime").textContent = done ? "VIA!" : fmtSec(tPrefs().sec);
+    $("tLabel").textContent = done ? "Recupero finito" : "Avvia recupero";
+    $("tFill").style.width = "0";
+  }
+}
+$("tMain").onclick = () => {
+  if (running()) { T.left = remaining(); T.end = null; tSave(); clearInterval(tIv); keepAwake(false); }
+  else if (T.left != null) { T.end = Date.now() + T.left * 1000; delete T.left; tSave(); keepAwake(true); tickLoop(); }
+  else { tDone = 0; startRest(tPrefs().sec, "Recupero"); }
+  drawTimer();
+};
+const nudge = d => {
+  if (running()) { T.end = Math.max(Date.now() + 1000, T.end + d * 1000); T.dur = Math.max(T.dur + d, remaining()); if (remaining() > 5) tWarned = false; tSave(); }
+  else if (T.left != null) { T.left = Math.max(1, T.left + d); T.dur = Math.max(T.dur + d, T.left); tSave(); }
+  else { setTPref("sec", Math.max(15, Math.min(600, tPrefs().sec + d))); tDone = 0; if (S.view === "more") renderMore(); }
+  drawTimer();
+};
+$("tMinus").onclick = () => nudge(-15);
+$("tPlus").onclick = () => nudge(15);
+$("tStop").onclick = stopRest;
+
+// avvisi: vibrazione, suono, tocco aptico
+let AC = null;
+function unlockAudio() {
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state !== "running") AC.resume();
+    const b = AC.createBuffer(1, 1, 22050), s = AC.createBufferSource(); s.buffer = b; s.connect(AC.destination); s.start(0);
+  } catch (e) {}
+}
+["pointerdown", "touchend", "keydown"].forEach(ev => document.addEventListener(ev, () => { if (!AC || AC.state !== "running") unlockAudio(); }, { passive: true }));
+function beep(at, freq, len, vol) {
+  const o = AC.createOscillator(), g = AC.createGain(); o.type = "sine"; o.frequency.value = freq;
+  g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(vol, at + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, at + len);
+  o.connect(g); g.connect(AC.destination); o.start(at); o.stop(at + len + 0.05);
+}
+function iosTap() { // iPhone: Safari non ha la vibrazione per le app web; un interruttore nativo dà un piccolo tocco aptico (iOS 18+)
+  try { const l = document.createElement("label"), i = document.createElement("input"); i.type = "checkbox"; i.setAttribute("switch", ""); l.appendChild(i); l.style.cssText = "position:fixed;opacity:0;pointer-events:none"; document.body.appendChild(l); l.click(); setTimeout(() => l.remove(), 50); } catch (e) {}
+}
+function alarm(soft) {
+  const p = tPrefs();
+  if (p.vib) {
+    if (navigator.vibrate) navigator.vibrate(soft ? 150 : [500, 200, 500, 200, 700]);
+    else { iosTap(); if (!soft) { setTimeout(iosTap, 250); setTimeout(iosTap, 500); setTimeout(iosTap, 750); } }
+  }
+  if (p.snd && AC) {
+    try { if (AC.state !== "running") AC.resume(); const t = AC.currentTime + 0.03;
+      if (soft) beep(t, 660, 0.15, 0.25); else { beep(t, 880, 0.22, 0.5); beep(t + 0.3, 880, 0.22, 0.5); beep(t + 0.6, 1175, 0.45, 0.6); }
+    } catch (e) {}
+  }
+}
+// schermo acceso mentre il timer conta (a schermo bloccato il telefono sospende l'app)
+async function keepAwake(on) {
+  try {
+    if (on && "wakeLock" in navigator && !wake && document.visibilityState === "visible") { wake = await navigator.wakeLock.request("screen"); wake.addEventListener("release", () => { wake = null; }); }
+    else if (!on && wake) { await wake.release(); wake = null; }
+  } catch (e) { wake = null; }
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") return;
+  if (running()) { keepAwake(true); tick(); if (!tIv && running()) tickLoop(); }
+});
+if (running()) { keepAwake(true); tickLoop(); }
+
+function renderTimerSet() {
+  const p = tPrefs(), canVib = !!navigator.vibrate;
+  const tg = (k, label, sub) => `<label class="tgl"><span><b>${label}</b>${sub ? `<small>${sub}</small>` : ""}</span><input type="checkbox" data-k="${k}" ${p[k] ? "checked" : ""}></label>`;
+  $("timerSet").innerHTML = `
+    <div class="row tdur"><span>Recupero di base</span><button class="btn sm" data-d="-15">−15"</button><b>${fmtSec(p.sec)}</b><button class="btn sm" data-d="15">+15"</button></div>
+    <p class="note">Vale per tutti gli esercizi, tranne quelli per cui la scheda indica un recupero diverso. Durante il recupero puoi aggiungere o togliere 15" dalla barra in basso.</p>
+    ${tg("auto", "Parte da solo", "quando inserisci le ripetizioni di una serie")}
+    ${tg("vib", "Vibrazione", canVib ? "" : "su iPhone le app web non possono vibrare: solo un leggero tocco, dove supportato")}
+    ${tg("snd", "Suono", "con il telefono in silenzioso potrebbe non sentirsi")}
+    ${tg("warn", "Avviso 5 secondi prima", "una vibrazione/bip breve")}
+    <div class="row"><button class="btn" id="tTest">Prova l'avviso</button></div>
+    <p class="note">Tieni l'app aperta: durante il recupero lo schermo resta acceso da solo. Se blocchi il telefono, l'avviso arriva quando lo riapri.</p>`;
+  $("timerSet").querySelectorAll("[data-d]").forEach(b => b.onclick = () => { setTPref("sec", Math.max(15, Math.min(600, p.sec + +b.dataset.d))); renderTimerSet(); drawTimer(); });
+  $("timerSet").querySelectorAll("input[data-k]").forEach(i => i.onchange = () => { setTPref(i.dataset.k, i.checked); });
+  $("tTest").onclick = () => { unlockAudio(); setTimeout(() => alarm(false), 60); };
 }
 let toastT;
 function toast(t) { const el = $("toast"); el.textContent = t; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => el.hidden = true, 2200); }

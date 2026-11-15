@@ -70,6 +70,13 @@ Muscoli disponibili per `m`: CHEST, FRONT_DELTOIDS, BACK_DELTOIDS, TRICEPS, BICE
   - poi × fattore forma/pausa, arrotondato a 0,5 kg.
 - **Progressi:** per ogni esercizio un indice per seduta (Σ kg×reps, o totale reps a corpo libero), più grafico e trend. Le giornate no e i rientri sono **esclusi dal trend**.
 - **Storico collegato per `key`** tra schede diverse e per palestra.
+- **Timer di recupero** (barra sopra il menu in basso):
+  - base **1:30** per tutti gli esercizi, regolabile (±15" dalla barra o da Backup → Timer di recupero); se un esercizio ha `rest` in `schede.js`, vale quello (formati accettati: `90"`, `1'30`, `1:30`, `2'`);
+  - parte da solo quando inserisci le reps di una serie (solo per la seduta di oggi); si può anche avviare a mano, mettere in pausa, fermare, ±15";
+  - a fine recupero: vibrazione (Android), 3 bip, "VIA!" verde; avviso breve a 5" dalla fine. Ogni avviso si può disattivare;
+  - iPhone: le app web non possono vibrare → solo un leggero tocco aptico (iOS 18+, trucco dell'interruttore) + suono, che con il telefono in silenzioso potrebbe non sentirsi;
+  - mentre conta, lo schermo resta acceso (Wake Lock); a telefono bloccato l'app è sospesa e l'avviso arriva alla riapertura;
+  - impostazioni in `D.prefs.timer`, timer in corso in localStorage `palestra-timer` (non nel backup).
 
 ## Procedura di aggiornamento mensile (per Claude)
 1. Leggi la foto della scheda. Elenca esercizi e schemi e chiedimi conferma su abbreviazioni o interpretazioni dubbie, **prima** di modificare.

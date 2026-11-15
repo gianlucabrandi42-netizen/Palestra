@@ -77,10 +77,22 @@
       <div class="row"><button class="btn" id="csv">Esporta CSV per Excel</button></div>
       <p class="note" id="bkMsg"></p>
     </div>
+    <h2>Timer di recupero</h2>
+    <div class="card stack" id="timerSet"></div>
     <h2>Palestre</h2>
     <div class="card stack" id="gymEdit"></div>
     <p class="credits">Foto: Free Exercise DB (pubblico dominio). Illustrazioni: Everkinetic (CC BY-SA 4.0). Mappa muscoli: react-body-highlighter (MIT).</p>
   </section>
+</div>
+
+<!-- timer di recupero -->
+<div class="timer" id="timer" hidden>
+  <div class="tbox" id="tbox">
+    <button class="tb" id="tMinus" aria-label="Meno 15 secondi">−15</button>
+    <button class="tmain" id="tMain" aria-label="Avvia o metti in pausa il recupero"><b id="tTime">1:30</b><small id="tLabel">Avvia recupero</small><i id="tFill"></i></button>
+    <button class="tb" id="tPlus" aria-label="Più 15 secondi">+15</button>
+    <button class="tb x" id="tStop" aria-label="Ferma il timer" hidden>✕</button>
+  </div>
 </div>
 
 <nav class="tabbar" aria-label="Sezioni">
