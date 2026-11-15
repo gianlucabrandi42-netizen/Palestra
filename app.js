@@ -175,8 +175,8 @@ function renderLog() {
       const [kg, rp] = row.querySelectorAll("input"); kg.value = fmt(r.kg); rp.value = r.reps ?? "";
       const fb = document.createElement("div"); fb.className = "fb"; row.appendChild(fb);
       const upd = () => judge(kg, rp, fb, tn, rr, cond);
-      kg.oninput = () => { edit(ex, i, "kg", kg.value); upd(); };
-      rp.oninput = () => { edit(ex, i, "reps", rp.value); upd(); };
+      kg.oninput = e => { edit(ex, i, "kg", kg.value); upd(); autoKg(e, kg, rp); };
+      rp.oninput = e => { edit(ex, i, "reps", rp.value); upd(); autoReps(e, rp); };
       // serie completata (reps inserite e campo lasciato) → parte il recupero
       rp.addEventListener("change", () => {
         if (num(rp.value) == null || S.date !== todayISO() || !tPrefs().auto) return;
@@ -203,6 +203,18 @@ function renderLog() {
   });
   $("note").value = sess.note || "";
   updateProgress();
+}
+// Compilazione veloce: dopo i kg il cursore passa da solo alle reps; dopo le reps la serie si conferma da sola
+// (tastiera giù → parte il timer e si scorre alla serie dopo). Solo per ciò che scrivi tu, non per "Usa kg suggeriti".
+function autoKg(e, kg, rp) {
+  if (!e || !e.isTrusted) return; clearTimeout(kg._t);
+  const v = kg.value.trim(); if (!v || /[.,]$/.test(v) || num(v) == null) return;
+  kg._t = setTimeout(() => { if (document.activeElement === kg && rp.value === "") rp.focus(); }, 1100);
+}
+function autoReps(e, rp) {
+  if (!e || !e.isTrusted) return; clearTimeout(rp._t);
+  const v = rp.value.trim(); if (num(v) == null) return;
+  rp._t = setTimeout(() => { if (document.activeElement === rp) rp.blur(); }, v.replace(/\D/g, "").length >= 2 ? 400 : 1100);
 }
 // Valutazione della serie: non solo "target sì/no", ma quanto ti sei avvicinato e se hai alzato il carico.
 // Forza stimata (formula di Epley): kg × (1 + reps/30), confrontata con la stessa serie dell'ultima volta.
