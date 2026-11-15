@@ -77,6 +77,7 @@ Muscoli disponibili per `m`: CHEST, FRONT_DELTOIDS, BACK_DELTOIDS, TRICEPS, BICE
   - iPhone: le app web non possono vibrare → solo un leggero tocco aptico (iOS 18+, trucco dell'interruttore) + suono, che con il telefono in silenzioso potrebbe non sentirsi;
   - mentre conta, lo schermo resta acceso (Wake Lock); a telefono bloccato l'app è sospesa e l'avviso arriva alla riapertura;
   - impostazioni in `D.prefs.timer`, timer in corso in localStorage `palestra-timer` (non nel backup).
+- **Circuiti** (campo `circ` in `schede.js`): esercizi consecutivi con lo stesso `circ` si fanno di seguito senza pausa. Il loro `rest` parte solo dopo l'ultimo esercizio del giro. Con "Invio" dalle reps si passa all'esercizio successivo del giro, poi al giro dopo. Le serie S1/S2/S3 corrispondono ai giri.
 
 ## Procedura di aggiornamento mensile (per Claude)
 1. Leggi la foto della scheda. Elenca esercizi e schemi e chiedimi conferma su abbreviazioni o interpretazioni dubbie, **prima** di modificare.
@@ -107,7 +108,7 @@ Muscoli disponibili per `m`: CHEST, FRONT_DELTOIDS, BACK_DELTOIDS, TRICEPS, BICE
   - French press bilanciere 3×10
   - Alzate laterali 3×10
   - Shoulder press macchina 10-8-8
-  - Crunch, Crunch inverso, Lombari (hyperextension) 3×15-20
+  - **Circuito addominali**: Crunch → Crunch inverso → Lombari (hyperextension), 15-20 reps ciascuno senza pausa, **30" di recupero dopo il giro completo**, 3 giri (confermato da me)
 - **G2 Dorso · Bicipiti · Posteriori:**
   - Rematore bilanciere 10-8-8
   - Pulley basso 8-8-6
@@ -136,7 +137,7 @@ Muscoli disponibili per `m`: CHEST, FRONT_DELTOIDS, BACK_DELTOIDS, TRICEPS, BICE
 - **Ho mandato al PT il PDF di controllo** (`Scheda_novembre_2026_per_PT.pdf`) con 4 dubbi:
   1. 10-8-8 / 8-8-6 / 10-10-8-8 intesi come piramidali (sali di carico quando scendono le reps)?
   2. Addominali dei giorni 2 e 3 uguali al giorno 1?
-  3. **Recupero tra le serie** (non indicato): quanto? → da inserire in `rest`.
+  3. **Recupero tra le serie** (non indicato): quanto? → da inserire in `rest`. Per ora l'app usa 1:30 di base; addominali già definiti: 30" a fine circuito.
   4. Interpretazioni: lombari = hyperextension, mezzi stacchi = stacchi rumeni, tirate corda cavo alto = face pull, affondi 10 per gamba.
 - Quando il PT risponde: applicare le correzioni in `schede.js` (e nelle immagini, se serve), poi pubblicare.
 - Le percentuali di forma e rientro sono stime prudenti: si possono cambiare se il PT preferisce altri valori.

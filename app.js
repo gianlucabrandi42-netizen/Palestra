@@ -138,7 +138,9 @@ function renderLog() {
     if (rs && cond.f < 1) pills += `<span class="pill near">Oggi −${Math.round((1 - cond.f) * 100)}% · ${esc(cond.why)}</span>`;
     else if (rs) pills += hit ? `<span class="pill up">↑ Aumenta${ex.bw ? "" : " carico"}</span>` : `<span class="pill">= Stesso carico</span>`;
     else if (ref) pills += `<span class="pill">Rif. scheda prec. ${fmt(ref)} kg</span>`;
-    pills += `<span class="pill">Recupero ${fmtSec(restFor(ex))}</span>`;
+    const cg = circGroup(d, idx);
+    if (cg) pills += cg.last ? `<span class="pill circ">Circuito · recupero ${fmtSec(restFor(ex))} a fine giro</span>` : `<span class="pill circ">Circuito · subito il prossimo</span>`;
+    else pills += `<span class="pill">Recupero ${fmtSec(restFor(ex))}</span>`;
     if (last) pills += `<span class="pill">ultima ${fmtDate(last.date)}</span>`;
     const fr = execFrames(ex);
     const card = document.createElement("article"); card.className = "ex"; card.dataset.ex = ex.key;
@@ -178,7 +180,10 @@ function renderLog() {
       // serie completata (reps inserite e campo lasciato) → parte il recupero
       rp.addEventListener("change", () => {
         if (num(rp.value) == null || S.date !== todayISO() || !tPrefs().auto) return;
-        const nx = i < ex.sets.length - 1 ? `${ex.name} · poi serie ${i + 2}` : (d.ex[idx + 1] ? `Poi: ${d.ex[idx + 1].name}` : "Ultima serie del giorno");
+        const g = circGroup(d, idx);
+        if (g && !g.last) { toast(`Subito: ${d.ex[idx + 1].name}`); return; } // circuito: niente recupero tra gli esercizi
+        if (g) { const after = d.ex[g.end + 1]; startRest(restFor(ex), i < ex.sets.length - 1 ? `Giro ${i + 1} finito · poi giro ${i + 2}` : after ? `Circuito finito · poi ${after.name}` : "Circuito finito"); return; }
+        const nx =i < ex.sets.length - 1 ? `${ex.name} · poi serie ${i + 2}` : (d.ex[idx + 1] ? `Poi: ${d.ex[idx + 1].name}` : "Ultima serie del giorno");
         startRest(restFor(ex), nx);
       });
       upd(); setsEl.appendChild(row);
@@ -246,6 +251,12 @@ let noteT;
 $("note").oninput = e => { clearTimeout(noteT); const v = e.target.value; noteT = setTimeout(() => { const s = JSON.parse(JSON.stringify(current())); s.note = v; s.updatedAt = Date.now(); D.sessions[s.id] = s; save(); }, 300); };
 $("date").onchange = e => { if (e.target.value) { S.date = e.target.value; render(); } };
 document.addEventListener("keydown", e => {
+  if (e.key === "Enter" && e.target.matches(".set input")) {
+    // circuito: dalle reps passa all'esercizio successivo del giro (o al giro dopo dal primo esercizio)
+    const m = e.target.id.match(/^rp-(.+)-(\d+)$/), d = dayObj(), idx = m ? d.ex.findIndex(x => x.key === m[1]) : -1, g = idx >= 0 ? circGroup(d, idx) : null;
+    if (g) { const i = +m[2], tgt = !g.last ? $(`rp-${d.ex[idx + 1].key}-${i}`) : $(`rp-${d.ex[g.start].key}-${i + 1}`);
+      if (tgt) { e.preventDefault(); tgt.focus(); tgt.scrollIntoView({ block: "center", behavior: "smooth" }); return; } }
+  }
   if (e.key === "Enter" && e.target.matches(".set input")) { e.preventDefault(); const all = [...document.querySelectorAll(".set input")]; const n = all[all.indexOf(e.target) + 1]; if (n) n.focus(); else e.target.blur(); }
   if (e.key === "Escape" && !$("lb").hidden) closeLB();
 });
@@ -404,6 +415,12 @@ function parseRest(r) {
   return null;
 }
 const restFor = ex => parseRest(ex && ex.rest) || tPrefs().sec;
+// circuito: esercizi consecutivi con lo stesso "circ" → {start, end, last}
+function circGroup(d, idx) {
+  const c = d.ex[idx] && d.ex[idx].circ; if (!c) return null;
+  let a = idx, b = idx; while (a > 0 && d.ex[a - 1].circ === c) a--; while (b < d.ex.length - 1 && d.ex[b + 1].circ === c) b++;
+  return { start: a, end: b, last: idx === b };
+}
 let T = (() => { try { return JSON.parse(localStorage.getItem(TKEY)) || {}; } catch (e) { return {}; } })(); // {end, dur, left (se in pausa), label}
 if (T.end && T.end < Date.now() - 60000) T = {}; // scaduto da tempo: ignora
 let tIv = null, tDone = 0, tWarned = false, wake = null;

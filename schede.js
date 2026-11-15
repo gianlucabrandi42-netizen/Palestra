@@ -13,7 +13,9 @@
 //             "alte" alte ripetizioni, "pausa" pausa programmata,
 //             "super" superserie, "risc" riscaldamento. Senza type = normale.
 //             note (facoltativo): es. 'dopo 15"'
-//    rest   = recupero (facoltativo), es. '90"'
+//    rest   = recupero (facoltativo), es. '90"'. Senza rest vale il recupero di base dell'app (1:30)
+//    circ   = circuito (facoltativo): esercizi consecutivi con lo stesso circ si fanno
+//             di seguito senza pausa; il loro rest vale solo dopo il giro completo
 //    m      = muscoli {p: principali, s: secondari}
 //    cues / errors = esecuzione / errori da evitare
 //    img    = {local: [file in img/]}  (f1,f2 = foto; d1,d2 = disegni)
@@ -405,7 +407,7 @@ window.SCHEDE = [
      },
      {
       "name": "Crunch",
-      "tec": "3 serie da 15–20 reps a corpo libero. Quando arrivi a 20 su tutte, rendilo più difficile.",
+      "tec": "Circuito addominali, 3 giri: 15–20 crunch, poi subito crunch inverso e lombari senza pausa. 30\" di recupero dopo ogni giro completo. A 20 reps su tutti i giri, rendilo più difficile.",
       "flash": [
        "Lombari a terra",
        "Espira salendo",
@@ -450,11 +452,13 @@ window.SCHEDE = [
       },
       "ref": {},
       "setup": false,
-      "key": "crunch"
+      "key": "crunch",
+      "circ": "addominali",
+      "rest": "30\""
      },
      {
       "name": "Crunch inverso",
-      "tec": "3 serie da 15–20 reps a corpo libero. Quando arrivi a 20 su tutte, rendilo più difficile.",
+      "tec": "Circuito addominali, 2° esercizio: 15–20 reps subito dopo il crunch, poi passa ai lombari. Nessun recupero: i 30\" sono a fine giro.",
       "flash": [
        "Stacca il bacino",
        "Niente slancio",
@@ -501,11 +505,13 @@ window.SCHEDE = [
       },
       "ref": {},
       "setup": false,
-      "key": "crunch-inverso"
+      "key": "crunch-inverso",
+      "circ": "addominali",
+      "rest": "30\""
      },
      {
       "name": "Lombari (hyperextension)",
-      "tec": "3 serie da 15–20 reps a corpo libero. Quando arrivi a 20 su tutte, rendilo più difficile.",
+      "tec": "Circuito addominali, ultimo esercizio: 15–20 reps, poi 30\" di recupero e riparti dal crunch. 3 giri.",
       "flash": [
        "Piega dalle anche",
        "Sali fino in linea",
@@ -553,7 +559,9 @@ window.SCHEDE = [
       },
       "ref": {},
       "setup": true,
-      "key": "lombari-hyperextension"
+      "key": "lombari-hyperextension",
+      "circ": "addominali",
+      "rest": "30\""
      }
     ]
    },
@@ -921,7 +929,7 @@ window.SCHEDE = [
      },
      {
       "name": "Crunch",
-      "tec": "3 serie da 15–20 reps a corpo libero. Quando arrivi a 20 su tutte, rendilo più difficile.",
+      "tec": "Circuito addominali, 3 giri: 15–20 crunch, poi subito crunch inverso e lombari senza pausa. 30\" di recupero dopo ogni giro completo. A 20 reps su tutti i giri, rendilo più difficile.",
       "flash": [
        "Lombari a terra",
        "Espira salendo",
@@ -966,11 +974,13 @@ window.SCHEDE = [
       },
       "ref": {},
       "setup": false,
-      "key": "crunch"
+      "key": "crunch",
+      "circ": "addominali",
+      "rest": "30\""
      },
      {
       "name": "Crunch inverso",
-      "tec": "3 serie da 15–20 reps a corpo libero. Quando arrivi a 20 su tutte, rendilo più difficile.",
+      "tec": "Circuito addominali, 2° esercizio: 15–20 reps subito dopo il crunch, poi passa ai lombari. Nessun recupero: i 30\" sono a fine giro.",
       "flash": [
        "Stacca il bacino",
        "Niente slancio",
@@ -1017,11 +1027,13 @@ window.SCHEDE = [
       },
       "ref": {},
       "setup": false,
-      "key": "crunch-inverso"
+      "key": "crunch-inverso",
+      "circ": "addominali",
+      "rest": "30\""
      },
      {
       "name": "Lombari (hyperextension)",
-      "tec": "3 serie da 15–20 reps a corpo libero. Quando arrivi a 20 su tutte, rendilo più difficile.",
+      "tec": "Circuito addominali, ultimo esercizio: 15–20 reps, poi 30\" di recupero e riparti dal crunch. 3 giri.",
       "flash": [
        "Piega dalle anche",
        "Sali fino in linea",
@@ -1069,7 +1081,9 @@ window.SCHEDE = [
       },
       "ref": {},
       "setup": true,
-      "key": "lombari-hyperextension"
+      "key": "lombari-hyperextension",
+      "circ": "addominali",
+      "rest": "30\""
      }
     ]
    },
@@ -1497,7 +1511,7 @@ window.SCHEDE = [
      },
      {
       "name": "Crunch",
-      "tec": "3 serie da 15–20 reps a corpo libero. Quando arrivi a 20 su tutte, rendilo più difficile.",
+      "tec": "Circuito addominali, 3 giri: 15–20 crunch, poi subito crunch inverso e lombari senza pausa. 30\" di recupero dopo ogni giro completo. A 20 reps su tutti i giri, rendilo più difficile.",
       "flash": [
        "Lombari a terra",
        "Espira salendo",
@@ -1542,11 +1556,13 @@ window.SCHEDE = [
       },
       "ref": {},
       "setup": false,
-      "key": "crunch"
+      "key": "crunch",
+      "circ": "addominali",
+      "rest": "30\""
      },
      {
       "name": "Crunch inverso",
-      "tec": "3 serie da 15–20 reps a corpo libero. Quando arrivi a 20 su tutte, rendilo più difficile.",
+      "tec": "Circuito addominali, 2° esercizio: 15–20 reps subito dopo il crunch, poi passa ai lombari. Nessun recupero: i 30\" sono a fine giro.",
       "flash": [
        "Stacca il bacino",
        "Niente slancio",
@@ -1593,11 +1609,13 @@ window.SCHEDE = [
       },
       "ref": {},
       "setup": false,
-      "key": "crunch-inverso"
+      "key": "crunch-inverso",
+      "circ": "addominali",
+      "rest": "30\""
      },
      {
       "name": "Lombari (hyperextension)",
-      "tec": "3 serie da 15–20 reps a corpo libero. Quando arrivi a 20 su tutte, rendilo più difficile.",
+      "tec": "Circuito addominali, ultimo esercizio: 15–20 reps, poi 30\" di recupero e riparti dal crunch. 3 giri.",
       "flash": [
        "Piega dalle anche",
        "Sali fino in linea",
@@ -1645,7 +1663,9 @@ window.SCHEDE = [
       },
       "ref": {},
       "setup": true,
-      "key": "lombari-hyperextension"
+      "key": "lombari-hyperextension",
+      "circ": "addominali",
+      "rest": "30\""
      }
     ]
    }
