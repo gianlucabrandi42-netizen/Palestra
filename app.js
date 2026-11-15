@@ -404,7 +404,7 @@ function render() {
 // Recupero di base 1:30 (regolabile); se l'esercizio ha "rest" nella scheda, vale quello.
 // A fine recupero: vibrazione (Android), suono e tocco aptico (iPhone, dove possibile). Lo schermo resta acceso mentre conta.
 const TKEY = "palestra-timer";
-const tPrefs = () => { const t = D.prefs.timer = D.prefs.timer || {}; return { sec: t.sec ?? 90, auto: t.auto ?? true, vib: t.vib ?? true, snd: t.snd ?? true, warn: t.warn ?? true }; };
+const tPrefs = () => { const t = D.prefs.timer = D.prefs.timer || {}; return { sec: t.sec ?? 90, auto: t.auto ?? true, vib: t.vib ?? true, snd: t.snd ?? true, warn: t.warn ?? true, ntfy: t.ntfy ?? false, topic: t.topic || "" }; };
 const setTPref = (k, v) => { D.prefs.timer = D.prefs.timer || {}; D.prefs.timer[k] = v; save(); };
 const fmtSec = s => { s = Math.max(0, Math.ceil(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 function parseRest(r) {
@@ -429,11 +429,11 @@ const running = () => !!T.end && T.left == null;
 const remaining = () => T.left != null ? T.left : T.end ? (T.end - Date.now()) / 1000 : 0;
 
 function startRest(sec, label) {
-  unlockAudio();
+  unlockAudio(); notifCancel();
   T = { end: Date.now() + sec * 1000, dur: sec, label: label || "Recupero" }; tDone = 0; tWarned = sec <= 6; tSave();
-  keepAwake(true); tickLoop(); drawTimer();
+  notifSchedule(); keepAwake(true); tickLoop(); drawTimer();
 }
-function stopRest() { T = {}; tSave(); keepAwake(false); clearInterval(tIv); tIv = null; drawTimer(); }
+function stopRest() { notifCancel(); T = {}; tSave(); keepAwake(false); clearInterval(tIv); tIv = null; drawTimer(); }
 function tickLoop() { clearInterval(tIv); tIv = setInterval(tick, 250); tick(); }
 function tick() {
   if (!running()) { clearInterval(tIv); tIv = null; return; }
@@ -462,13 +462,14 @@ function drawTimer() {
   }
 }
 $("tMain").onclick = () => {
-  if (running()) { T.left = remaining(); T.end = null; tSave(); clearInterval(tIv); keepAwake(false); }
-  else if (T.left != null) { T.end = Date.now() + T.left * 1000; delete T.left; tSave(); keepAwake(true); tickLoop(); }
+  if (running()) { notifCancel(); T.left = remaining(); T.end = null; tSave(); clearInterval(tIv); keepAwake(false); }
+  else if (T.left != null) { T.end = Date.now() + T.left * 1000; delete T.left; tSave(); notifSchedule(); keepAwake(true); tickLoop(); }
   else { tDone = 0; startRest(tPrefs().sec, "Recupero"); }
   drawTimer();
 };
+let nudgeT;
 const nudge = d => {
-  if (running()) { T.end = Math.max(Date.now() + 1000, T.end + d * 1000); T.dur = Math.max(T.dur + d, remaining()); if (remaining() > 5) tWarned = false; tSave(); }
+  if (running()) { T.end = Math.max(Date.now() + 1000, T.end + d * 1000); T.dur = Math.max(T.dur + d, remaining()); if (remaining() > 5) tWarned = false; tSave(); clearTimeout(nudgeT); nudgeT = setTimeout(notifSchedule, 700); }
   else if (T.left != null) { T.left = Math.max(1, T.left + d); T.dur = Math.max(T.dur + d, T.left); tSave(); }
   else { setTPref("sec", Math.max(15, Math.min(600, tPrefs().sec + d))); tDone = 0; if (S.view === "more") renderMore(); }
   drawTimer();
@@ -507,6 +508,26 @@ function alarm(soft) {
     } catch (e) {}
   }
 }
+// notifica a schermo spento / altra app: tramite ntfy.sh (servizio gratuito) + app "ntfy" sul telefono.
+// L'app web, quando parte il recupero, programma sul server una notifica per la fine; se il timer cambia la sostituisce o la annulla.
+// Il server di ntfy invia le notifiche programmate a controlli ogni 10": la si programma 5" prima → arriva tra −5" e +5" circa.
+const NTFY = "https://ntfy.sh/";
+const newTopic = () => "palestra-" + Array.from(crypto.getRandomValues(new Uint8Array(9)), b => "abcdefghijkmnpqrstuvwxyz23456789"[b % 32]).join("");
+function ntfyPost(path, params, body) {
+  const p = tPrefs(); if (!p.topic) return Promise.reject();
+  return fetch(NTFY + p.topic + path + "?" + new URLSearchParams(params), { method: "POST", body, keepalive: true }).then(r => { if (!r.ok) throw r.status; return r; });
+}
+function notifSchedule() {
+  const p = tPrefs(); if (!p.ntfy || !p.topic || !running()) return;
+  const at = Math.round(T.end / 1000) - 5;
+  if (at - Date.now() / 1000 < 11) { notifCancel(); return; } // ntfy accetta ritardi di almeno 10"; sotto basta il timer nell'app
+  T.sid = T.sid || "r" + Date.now().toString(36); tSave();
+  ntfyPost("/" + T.sid, { at, title: "Recupero finito 💪", priority: "5", tags: "stopwatch" }, "Tocca a te · " + (T.label || "")).catch(() => {});
+}
+function notifCancel() {
+  const p = tPrefs(), sid = T.sid; if (!sid || !p.topic) return; delete T.sid; tSave();
+  fetch(NTFY + p.topic + "/" + sid, { method: "DELETE", keepalive: true }).catch(() => {});
+}
 // schermo acceso mentre il timer conta (a schermo bloccato il telefono sospende l'app)
 async function keepAwake(on) {
   try {
@@ -531,9 +552,29 @@ function renderTimerSet() {
     ${tg("snd", "Suono", "con il telefono in silenzioso potrebbe non sentirsi")}
     ${tg("warn", "Avviso 5 secondi prima", "una vibrazione/bip breve")}
     <div class="row"><button class="btn" id="tTest">Prova l'avviso</button></div>
-    <p class="note">Tieni l'app aperta: durante il recupero lo schermo resta acceso da solo. Se blocchi il telefono, l'avviso arriva quando lo riapri.</p>`;
+    <p class="note">Con l'app aperta lo schermo resta acceso da solo durante il recupero.</p>
+    ${tg("ntfy", "Notifica a schermo spento o in un'altra app", "tramite l'app gratuita ntfy: vibra e suona come un messaggio")}
+    ${p.ntfy ? `<div class="ntfy stack">
+      <ol>
+        <li>Installa <b>ntfy</b> dall'App Store (gratuita, senza registrazione).</li>
+        <li>Aprila, tocca <b>+</b> e scrivi questo nome, poi <b>Subscribe</b>:<div class="topic"><code id="ntTopic">${esc(p.topic)}</code><button class="btn sm" id="ntCopy">Copia</button></div></li>
+        <li>Consenti le notifiche quando te lo chiede.</li>
+        <li>Tocca <b>Prova subito</b>: la notifica deve arrivare in pochi secondi. Poi prova <b>a telefono bloccato</b>: tocca il tasto, blocca il telefono, aspetta.</li>
+      </ol>
+      <div class="row"><button class="btn" id="ntNow">Prova subito</button><button class="btn" id="ntLock">Prova a telefono bloccato (20")</button></div>
+      <p class="note" id="ntMsg">La notifica arriva con uno scarto di circa 5 secondi, prima o dopo. Il nome del canale fa da password: non condividerlo.</p>
+    </div>` : ""}`;
   $("timerSet").querySelectorAll("[data-d]").forEach(b => b.onclick = () => { setTPref("sec", Math.max(15, Math.min(600, p.sec + +b.dataset.d))); renderTimerSet(); drawTimer(); });
-  $("timerSet").querySelectorAll("input[data-k]").forEach(i => i.onchange = () => { setTPref(i.dataset.k, i.checked); });
+  $("timerSet").querySelectorAll("input[data-k]").forEach(i => i.onchange = () => {
+    setTPref(i.dataset.k, i.checked);
+    if (i.dataset.k === "ntfy") { if (i.checked && !tPrefs().topic) setTPref("topic", newTopic()); if (i.checked) notifSchedule(); else notifCancel(); renderTimerSet(); }
+  });
+  if (p.ntfy) {
+    const msg = t => { $("ntMsg").textContent = t; };
+    $("ntCopy").onclick = () => { const t = tPrefs().topic; (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast("Nome copiato"), () => { const r = document.createRange(); r.selectNodeContents($("ntTopic")); getSelection().removeAllRanges(); getSelection().addRange(r); }); };
+    $("ntNow").onclick = () => ntfyPost("", { title: "Prova Palestra 💪", tags: "stopwatch", priority: "5" }, "Le notifiche del recupero funzionano").then(() => msg("Inviata: deve arrivare nell'app ntfy entro pochi secondi."), () => msg("Invio non riuscito: controlla la connessione."));
+    $("ntLock").onclick = () => ntfyPost("", { in: "20s", title: "Prova a telefono bloccato 💪", tags: "stopwatch", priority: "5" }, "Se la vedi, funziona anche a schermo spento").then(() => msg("Programmata tra 20\" (può arrivare fino a 10\" dopo): blocca il telefono adesso."), () => msg("Invio non riuscito: controlla la connessione."));
+  }
   $("tTest").onclick = () => { unlockAudio(); setTimeout(() => alarm(false), 60); };
 }
 let toastT;
