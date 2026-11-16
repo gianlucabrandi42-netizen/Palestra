@@ -455,16 +455,29 @@ function rowEl(k, i) {
 }
 // Compilazione veloce: dopo i kg il cursore passa da solo alle reps; dopo le reps la serie si conferma da sola
 // (tastiera giù → parte il timer e si scorre alla serie dopo). Solo per ciò che scrivi tu, non per "Usa kg suggeriti".
+// Correzioni: mentre cancelli non scatta nulla; quando riscrivi, si aspetta un po' di più (el._fix fino all'uscita dal campo).
+const isDel = e => /^delete/.test(e.inputType || "");
 function autoKg(e, kg, rp) {
   if (!e || !e.isTrusted) return; clearTimeout(kg._t);
+  if (isDel(e)) { kg._fix = true; return; }
   const v = kg.value.trim(); if (!v || /[.,]$/.test(v) || num(v) == null) return;
-  kg._t = setTimeout(() => { if (document.activeElement === kg && rp.value === "") rp.focus(); }, 1100);
+  // attesa in base a quanto è "completo" il numero: 3 cifre o decimale scritto → 0,3"; 2 cifre → 0,6" (può arrivare la 3ª); 1 cifra → 0,8"
+  const dg = v.replace(/[^\d]/g, "").length, wait = /[.,]\d/.test(v) || dg >= 3 ? 300 : dg === 2 ? 600 : 800;
+  kg._t = setTimeout(() => { if (document.activeElement === kg && rp.value === "") rp.focus(); }, kg._fix ? 1200 : wait);
 }
 function autoReps(e, rp) {
   if (!e || !e.isTrusted) return; clearTimeout(rp._t);
+  if (isDel(e)) { rp._fix = true; return; }
   const v = rp.value.trim(); if (num(v) == null) return;
-  rp._t = setTimeout(() => { if (document.activeElement === rp) rp.blur(); }, v.replace(/\D/g, "").length >= 2 ? 400 : 1100);
+  rp._t = setTimeout(() => { if (document.activeElement === rp) rp.blur(); }, rp._fix ? 1200 : v.replace(/\D/g, "").length >= 2 ? 300 : 700);
 }
+// Tocco su un campo già compilato: il numero si seleziona tutto, così scrivi direttamente quello nuovo.
+document.addEventListener("focusin", e => {
+  const el = e.target; if (!el.matches || !el.matches(".set input")) return;
+  el._fix = false; if (!el.value) return;
+  setTimeout(() => { if (document.activeElement === el) try { el.setSelectionRange(0, el.value.length); } catch (x) { el.select(); } }, 30);
+});
+document.addEventListener("focusout", e => { const el = e.target; if (el.matches && el.matches(".set input")) { clearTimeout(el._t); el._fix = false; } });
 // Valutazione della serie: non solo "target sì/no", ma quanto ti sei avvicinato e se hai alzato il carico.
 // Forza stimata (formula di Epley): kg × (1 + reps/30), confrontata con la stessa serie dell'ultima volta.
 const repsTxt = n => n === 1 ? "manca 1 rep" : `mancano ${n} reps`;
