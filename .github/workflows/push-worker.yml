@@ -1,0 +1,29 @@
+# Pubblica il servizio delle notifiche (cartella worker/) su Cloudflare Workers.
+# Servono due segreti del repository: CLOUDFLARE_API_TOKEN e CLOUDFLARE_ACCOUNT_ID.
+name: Servizio notifiche (Cloudflare)
+on:
+  push:
+    branches: [main]
+    paths: ["worker/**", ".github/workflows/push-worker.yml"]
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Controlla i segreti
+        id: chk
+        env:
+          T: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          A: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -n "$T" ] && [ -n "$A" ]; then echo "ok=1" >> "$GITHUB_OUTPUT"; else echo "Segreti Cloudflare mancanti: pubblicazione saltata."; fi
+      - uses: actions/checkout@v4
+        if: steps.chk.outputs.ok == '1'
+      - name: Pubblica su Cloudflare
+        if: steps.chk.outputs.ok == '1'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
+          command: deploy

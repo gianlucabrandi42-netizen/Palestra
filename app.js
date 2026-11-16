@@ -565,7 +565,7 @@ function render() {
 // Recupero di base 1:30 (regolabile); se l'esercizio ha "rest" nella scheda, vale quello.
 // A fine recupero: vibrazione (Android), suono e tocco aptico (iPhone, dove possibile). Lo schermo resta acceso mentre conta.
 const TKEY = "palestra-timer";
-const tPrefs = () => { const t = D.prefs.timer = D.prefs.timer || {}; return { sec: t.sec ?? 90, auto: t.auto ?? true, vib: t.vib ?? true, snd: t.snd ?? true, warn: t.warn ?? true, ntfy: t.ntfy ?? false, topic: t.topic || "" }; };
+const tPrefs = () => { const t = D.prefs.timer = D.prefs.timer || {}; return { sec: t.sec ?? 90, auto: t.auto ?? true, vib: t.vib ?? true, snd: t.snd ?? true, warn: t.warn ?? true, push: t.push ?? false, pushSub: t.pushSub || null, pushId: t.pushId || "", lockNote: t.lockNote ?? true }; };
 const setTPref = (k, v) => { D.prefs.timer = D.prefs.timer || {}; D.prefs.timer[k] = v; save(); };
 const fmtSec = s => { s = Math.max(0, Math.ceil(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 function parseRest(r) {
@@ -590,7 +590,7 @@ const running = () => !!T.end && T.left == null;
 const remaining = () => T.left != null ? T.left : T.end ? (T.end - Date.now()) / 1000 : 0;
 
 function startRest(sec, label) {
-  unlockAudio(); notifCancel();
+  unlockAudio();
   T = { end: Date.now() + sec * 1000, dur: sec, label: label || "Recupero" }; tDone = 0; tWarned = sec <= 6; tSave();
   notifSchedule(); keepAwake(true); audioKeep(true); tickLoop(); drawTimer();
 }
@@ -687,26 +687,52 @@ function alarm(soft) {
     if (AC.state === "running") play(); else { try { AC.resume().then(play, play); } catch (e) { play(); } }
   }
 }
-// notifica a schermo spento / altra app: tramite ntfy.sh (servizio gratuito) + app "ntfy" sul telefono.
-// L'app web, quando parte il recupero, programma sul server una notifica per la fine; se il timer cambia la sostituisce o la annulla.
-// Il server di ntfy invia le notifiche programmate a controlli ogni 10": la si programma 5" prima → arriva tra −5" e +5" circa.
-const NTFY = "https://ntfy.sh/";
-const newTopic = () => "palestra-" + Array.from(crypto.getRandomValues(new Uint8Array(9)), b => "abcdefghijkmnpqrstuvwxyz23456789"[b % 32]).join("");
-function ntfyPost(path, params, body) {
-  const p = tPrefs(); if (!p.topic) return Promise.reject();
-  return fetch(NTFY + p.topic + path + "?" + new URLSearchParams(params), { method: "POST", body, keepalive: true }).then(r => { if (!r.ok) throw r.status; return r; });
+// ---------- notifiche push (anche a telefono bloccato o in un'altra app) ----------
+// Servizio su Cloudflare (cartella worker/): l'app gli chiede di inviare una notifica all'ora di fine recupero.
+// Le notifiche push su iPhone funzionano solo con l'app aperta dall'icona sulla Home (iOS 16.4+).
+const PUSH_URL = "";
+const pushReady = () => !!PUSH_URL;
+const newPushId = () => "p" + Array.from(crypto.getRandomValues(new Uint8Array(12)), b => (b % 36).toString(36)).join("");
+const b64uToU8 = s => { const b = atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)); return Uint8Array.from(b, c => c.charCodeAt(0)); };
+const u8ToB64u = u => btoa(String.fromCharCode(...new Uint8Array(u))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+function pushPost(path, body) {
+  return fetch(PUSH_URL + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), keepalive: true })
+    .then(r => r.json().catch(() => ({})).then(j => { if (!r.ok) throw new Error(j.error || j.detail || r.status); return j; }));
 }
+const pushOn = () => { const p = tPrefs(); return pushReady() && p.push && p.pushSub && p.pushId; };
 function notifSchedule() {
-  const p = tPrefs(); if (!p.ntfy || !p.topic || !running()) return;
-  const at = Math.round(T.end / 1000) - 5;
-  if (at - Date.now() / 1000 < 11) { notifCancel(); return; } // ntfy accetta ritardi di almeno 10"; sotto basta il timer nell'app
-  T.sid = T.sid || "r" + Date.now().toString(36); tSave();
-  ntfyPost("/" + T.sid, { at, title: "Recupero finito 💪", priority: "5", tags: "stopwatch" }, "Tocca a te · " + (T.label || "")).catch(() => {});
+  if (!pushOn() || !running()) return; const p = tPrefs();
+  T.sid = 1; tSave();
+  pushPost("/schedule", { id: p.pushId, seq: Date.now(), sub: p.pushSub, at: Math.round(T.end), title: "VIA! 💪 Recupero finito", body: T.label ? "Tocca a te · " + T.label : "Tocca a te" }).catch(() => {});
 }
 function notifCancel() {
-  const p = tPrefs(), sid = T.sid; if (!sid || !p.topic) return; delete T.sid; tSave();
-  fetch(NTFY + p.topic + "/" + sid, { method: "DELETE", keepalive: true }).catch(() => {});
+  if (!T.sid) return; delete T.sid; tSave();
+  if (pushOn()) pushPost("/cancel", { id: tPrefs().pushId, seq: Date.now() }).catch(() => {});
 }
+async function pushEnable() {
+  if (!pushReady()) throw new Error("Servizio notifiche non ancora attivo.");
+  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window))
+    throw new Error("Notifiche non disponibili qui: su iPhone apri l'app dall'icona sulla Home (serve iOS 16.4 o successivo).");
+  const perm = await Notification.requestPermission();
+  if (perm !== "granted") throw new Error("Permesso negato: abilitalo in Impostazioni → Notifiche → Palestra.");
+  const reg = await navigator.serviceWorker.ready;
+  const key = (await (await fetch(PUSH_URL + "/vapid")).json()).key;
+  let sub = await reg.pushManager.getSubscription();
+  if (sub && sub.options && sub.options.applicationServerKey && u8ToB64u(sub.options.applicationServerKey) !== key) { await sub.unsubscribe(); sub = null; }
+  if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64uToU8(key) });
+  setTPref("pushSub", sub.toJSON()); if (!tPrefs().pushId) setTPref("pushId", newPushId());
+  setTPref("push", true); setTPref("snd", false); // niente suono dall'app: la notifica vibra (iPhone in silenzioso)
+}
+// Uscendo dall'app durante il recupero: notifica con l'ora in cui riprendere (sostituita da "VIA!" a fine recupero)
+document.addEventListener("visibilitychange", () => {
+  if (!pushOn() || !tPrefs().lockNote || !("serviceWorker" in navigator) || !window.Notification || Notification.permission !== "granted") return;
+  navigator.serviceWorker.ready.then(reg => {
+    if (document.visibilityState === "hidden" && running()) {
+      const h = new Date(T.end).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      reg.showNotification(`Recupero · riprendi alle ${h}`, { body: T.label || "", tag: "rest", icon: "icons/icon-192.png", silent: true });
+    } else if (document.visibilityState === "visible" && reg.getNotifications) reg.getNotifications({ tag: "rest" }).then(ns => ns.forEach(n => n.close()));
+  }).catch(() => {});
+});
 // schermo acceso mentre il timer conta (a schermo bloccato il telefono sospende l'app)
 async function keepAwake(on) {
   try {
@@ -732,27 +758,29 @@ function renderTimerSet() {
     ${tg("warn", "Avviso 5 secondi prima", "una vibrazione/bip breve")}
     <div class="row"><button class="btn" id="tTest">Prova l'avviso</button></div>
     <p class="note">Con l'app aperta lo schermo resta acceso da solo durante il recupero.</p>
-    ${tg("ntfy", "Notifica a schermo spento o in un'altra app", "tramite l'app gratuita ntfy: vibra e suona come un messaggio")}
-    ${p.ntfy ? `<div class="ntfy stack">
-      <ol>
-        <li>Installa <b>ntfy</b> dall'App Store (gratuita, senza registrazione).</li>
-        <li>Aprila, tocca <b>+</b> e scrivi questo nome, poi <b>Subscribe</b>:<div class="topic"><code id="ntTopic">${esc(p.topic)}</code><button class="btn sm" id="ntCopy">Copia</button></div></li>
-        <li>Consenti le notifiche quando te lo chiede.</li>
-        <li>Tocca <b>Prova subito</b>: la notifica deve arrivare in pochi secondi. Poi prova <b>a telefono bloccato</b>: tocca il tasto, blocca il telefono, aspetta.</li>
-      </ol>
-      <div class="row"><button class="btn" id="ntNow">Prova subito</button><button class="btn" id="ntLock">Prova a telefono bloccato (20")</button></div>
-      <p class="note" id="ntMsg">La notifica arriva con uno scarto di circa 5 secondi, prima o dopo. Il nome del canale fa da password: non condividerlo.</p>
+    ${tg("push", "Notifica a fine recupero", pushReady() ? "arriva anche a telefono bloccato o in un'altra app; per la sola vibrazione tieni l'iPhone in silenzioso" : "servizio in attivazione: presto disponibile")}
+    ${p.push ? `<div class="ntfy stack">
+      ${tg("lockNote", "Ora di ripresa quando esci dall'app", "se blocchi il telefono durante il recupero, compare l'ora in cui riprendere")}
+      <div class="row"><button class="btn" id="puNow">Prova subito</button><button class="btn" id="puLock">Prova a telefono bloccato (20")</button></div>
+      <p class="note" id="puMsg">Il suono dell'app è spento: a fine recupero ti avvisa la notifica.</p>
     </div>` : ""}`;
   $("timerSet").querySelectorAll("[data-d]").forEach(b => b.onclick = () => { setTPref("sec", Math.max(15, Math.min(600, p.sec + +b.dataset.d))); renderTimerSet(); drawTimer(); });
   $("timerSet").querySelectorAll("input[data-k]").forEach(i => i.onchange = () => {
+    if (i.dataset.k === "push") {
+      if (!i.checked) { notifCancel(); setTPref("push", false); renderTimerSet(); return; }
+      if (!pushReady()) { i.checked = false; toast("Servizio notifiche non ancora attivo"); return; }
+      i.disabled = true;
+      pushEnable().then(() => { renderTimerSet(); if (running()) notifSchedule(); toast("Notifiche attive"); },
+        e => { i.checked = false; i.disabled = false; setTPref("push", false); toast(e.message || "Attivazione non riuscita"); });
+      return;
+    }
     setTPref(i.dataset.k, i.checked);
-    if (i.dataset.k === "ntfy") { if (i.checked && !tPrefs().topic) setTPref("topic", newTopic()); if (i.checked) notifSchedule(); else notifCancel(); renderTimerSet(); }
   });
-  if (p.ntfy) {
-    const msg = t => { $("ntMsg").textContent = t; };
-    $("ntCopy").onclick = () => { const t = tPrefs().topic; (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast("Nome copiato"), () => { const r = document.createRange(); r.selectNodeContents($("ntTopic")); getSelection().removeAllRanges(); getSelection().addRange(r); }); };
-    $("ntNow").onclick = () => ntfyPost("", { title: "Prova Palestra 💪", tags: "stopwatch", priority: "5" }, "Le notifiche del recupero funzionano").then(() => msg("Inviata: deve arrivare nell'app ntfy entro pochi secondi."), () => msg("Invio non riuscito: controlla la connessione."));
-    $("ntLock").onclick = () => ntfyPost("", { in: "20s", title: "Prova a telefono bloccato 💪", tags: "stopwatch", priority: "5" }, "Se la vedi, funziona anche a schermo spento").then(() => msg("Programmata tra 20\" (può arrivare fino a 10\" dopo): blocca il telefono adesso."), () => msg("Invio non riuscito: controlla la connessione."));
+  if (p.push) {
+    const msg = t => { $("puMsg").textContent = t; }, err = e => msg("Non riuscito: " + (e.message || e) + ". Riprova o riattiva l'interruttore.");
+    $("puNow").onclick = () => pushPost("/test", { sub: tPrefs().pushSub, title: "Prova Palestra 💪", body: "Le notifiche funzionano" }).then(() => msg("Inviata: deve arrivare in pochi secondi."), err);
+    $("puLock").onclick = () => pushPost("/schedule", { id: tPrefs().pushId, seq: Date.now(), sub: tPrefs().pushSub, at: Date.now() + 20000, title: "Prova a telefono bloccato 💪", body: "Se la vedi, funziona anche a schermo spento" })
+      .then(() => msg("Programmata tra 20 secondi: blocca il telefono adesso."), err);
   }
   $("tTest").onclick = () => { unlockAudio(); setTimeout(() => alarm(false), 60); };
 }

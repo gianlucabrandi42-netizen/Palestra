@@ -25,6 +25,8 @@
 | `LEGGIMI.md` / `README.md` | Istruzioni brevi |
 | `tools/pdf_pt.py` | Genera il PDF di controllo veloce per il PT dalla scheda attiva |
 | `CLAUDE.md` | Questo contesto, letto in automatico da Claude Code |
+| `worker/` | **Servizio notifiche** su Cloudflare Workers (account Cloudflare dell'utente): `src/index.js` (API `/vapid`, `/schedule`, `/cancel`, `/test`; Durable Object `Timer` per telefono con alarm preciso; `Keys` genera e conserva le chiavi VAPID), `src/webpush.js` (VAPID + cifratura aes128gcm con WebCrypto, verificata contro la libreria Python `cryptography`), `wrangler.toml` |
+| `.github/workflows/push-worker.yml` | Pubblica `worker/` su Cloudflare a ogni modifica (o a mano). Segreti del repo: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` (li inserisce l'utente: la sessione non può gestire i segreti). L'indirizzo del servizio va scritto in `PUSH_URL` in `app.js`. |
 
 ### Formato di un esercizio in `schede.js`
 ```js
@@ -79,7 +81,7 @@ Muscoli disponibili per `m`: CHEST, FRONT_DELTOIDS, BACK_DELTOIDS, TRICEPS, BICE
   - iPhone: le app web non possono vibrare → solo un leggero tocco aptico (iOS 18+, trucco dell'interruttore) + suono, che con il telefono in silenzioso potrebbe non sentirsi;
   - mentre conta, lo schermo resta acceso (Wake Lock); a telefono bloccato l'app è sospesa e l'avviso arriva alla riapertura;
   - impostazioni in `D.prefs.timer`, timer in corso in localStorage `palestra-timer` (non nel backup).
-  - **Notifica a schermo spento / altra app** (opzione in Backup → Timer, da attivare): l'app usa **ntfy.sh** (gratuito, senza account) + app **ntfy** sull'iPhone, iscritta a un canale casuale (`D.prefs.timer.topic`, es. `palestra-xxxxxxxxx`, fa da password). All'avvio del recupero l'app programma sul server una notifica (`POST ntfy.sh/<topic>/<sid>?at=<fine−5">`); ±15" la sostituisce (stesso sequence ID), pausa/stop la annullano (`DELETE ntfy.sh/<topic>/<sid>`). Il server invia le notifiche programmate ogni 10" → arriva tra circa −5" e +5". Ritardo minimo 10": recuperi più brevi restano solo nell'app. ntfy.sh non è raggiungibile dalla sessione cloud: si prova solo dal telefono.
+  - **Notifica push a fine recupero** (Backup → Timer → "Notifica a fine recupero"): notifiche push vere dell'app (Web Push), anche a telefono bloccato o in un'altra app. Su iPhone solo con l'app aperta dall'icona sulla Home (iOS 16.4+). Per la sola vibrazione: iPhone in silenzioso (l'utente non vuole suoni); attivandola, il suono dell'app si spegne (`snd=false`). All'avvio del recupero l'app chiama il servizio `worker/` (`POST /schedule` con `id` del telefono, `seq`, abbonamento push, ora di fine); ±15" riprogramma, pausa/stop → `POST /cancel`. Uscendo dall'app durante il recupero compare una notifica locale "Recupero · riprendi alle HH:MM:SS" (tag `rest`, opzione `lockNote`), sostituita da "VIA! 💪" a fine recupero. Prefs: `push`, `pushSub`, `pushId`, `lockNote`. **ntfy è stato tolto** (su iPhone non vibrava/suonava a schermo spento). Il conto alla rovescia che scorre sulla schermata di blocco non è possibile per un'app web.
 - **Ripresa all'apertura:** ogni volta che inserisci le reps, l'app salva palestra, giorno, esercizio e serie (localStorage `palestra-last`). Se riapri l'app lo stesso giorno, torna lì e evidenzia la prossima serie da fare: la stessa se mancano le reps, altrimenti la successiva o il primo set dell'esercizio dopo (nei circuiti segue l'ordine del giro).
 - **Compilazione veloce:** dopo i kg, 1,1" senza scrivere → il cursore passa da solo alle reps della stessa serie (se sono vuote). Dopo le reps la serie si conferma da sola, senza ✓: 0,4" se ci sono 2 cifre, 1,1" se 1 cifra (si può ancora aggiungere la seconda). La conferma chiude la tastiera, fa partire il timer e scorre alla serie dopo. Vale solo per ciò che si scrive a mano (`isTrusted`), non per "Usa kg suggeriti".
 - **Serie dimenticate:** se nella giornata c'è una serie compilata più avanti, le serie precedenti senza reps (o con reps ma senza kg, esercizi non a corpo libero; giri mancanti nei circuiti) sono segnate in arancione e sopra il timer compare "⚠ N serie da completare" → tocco = va alla prima. ✕ nasconde l'avviso per quella seduta (`sessione.ignoreMiss`). La riga in cui stai scrivendo non viene segnata.
@@ -107,6 +109,7 @@ Muscoli disponibili per `m`: CHEST, FRONT_DELTOIDS, BACK_DELTOIDS, TRICEPS, BICE
 - Il push funziona solo se la Claude GitHub App è installata su `Palestra` (fatto).
 - L'API GitHub Pages è bloccata dal proxy: impostazioni di Pages solo a mano (già attive).
 - `github.io` e `cdn.jsdelivr.net` non sono raggiungibili dalla sessione, mentre `raw.githubusercontent.com` sì. L'app online la provo io dal telefono.
+- Neanche Cloudflare e i servizi push (Apple) sono raggiungibili: il servizio notifiche si pubblica solo con il workflow GitHub e si prova dal telefono. I segreti delle GitHub Actions non sono gestibili dalla sessione (proxy).
 
 ## Scheda in uso: "Scheda novembre 2026" (id `p2026-11`, dal 15/11/2026)
 - **G1 Petto · Tricipiti · Spalle:**
