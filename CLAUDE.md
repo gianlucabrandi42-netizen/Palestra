@@ -26,7 +26,8 @@
 | `tools/pdf_pt.py` | Genera il PDF di controllo veloce per il PT dalla scheda attiva |
 | `CLAUDE.md` | Questo contesto, letto in automatico da Claude Code |
 | `worker/` | **Servizio notifiche** su Cloudflare Workers (account Cloudflare dell'utente): `src/index.js` (API `/vapid`, `/schedule`, `/cancel`, `/test`; Durable Object `Timer` per telefono con alarm preciso; `Keys` genera e conserva le chiavi VAPID), `src/webpush.js` (VAPID + cifratura aes128gcm con WebCrypto, verificata contro la libreria Python `cryptography`), `wrangler.toml` |
-| `.github/workflows/push-worker.yml` | Pubblica `worker/` su Cloudflare a ogni modifica (o a mano). Segreti del repo: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` (li inserisce l'utente: la sessione non può gestire i segreti). L'indirizzo del servizio va scritto in `PUSH_URL` in `app.js`. |
+| `.github/workflows/push-worker.yml` | Pubblica `worker/` su Cloudflare a ogni modifica di `worker/` (o a mano: `gh api -X POST repos/gianlucabrandi42-netizen/Palestra/actions/workflows/push-worker.yml/dispatches -f ref=main`). Segreti del repo (inseriti dall'utente il 16/11/2026): `CLOUDFLARE_API_TOKEN` (token "Palestra notifiche", modello Edit Cloudflare Workers, senza policy di zona, nessuna scadenza) e `CLOUDFLARE_ACCOUNT_ID` (**il valore salvato è sbagliato, 50 caratteri**: il workflow ricava da solo l'ID dell'unico account visto dal token). Dopo la pubblicazione prova `/`, `/vapid`, CORS e una richiesta errata. |
+| Servizio online | **https://palestra-push.gianluca-brandi42.workers.dev** (account Cloudflare Gianluca.brandi42@gmail.com, sottodominio `gianluca-brandi42`), scritto in `PUSH_URL` in `app.js`. |
 
 ### Formato di un esercizio in `schede.js`
 ```js
