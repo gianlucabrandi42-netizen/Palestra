@@ -430,3 +430,5 @@ html.standalone .cin{padding-top:36px}
 .ooo .btn{flex:none;font-size:12px;min-height:34px;padding:6px 10px}
 .ooo.ok{border-color:var(--line);background:var(--raised)}
 .ooo.ok b{color:var(--muted)}
+.tsum .tclean{border-top:1px solid var(--line);padding-top:10px;margin-top:4px}
+.tsum .tclean b{font-size:28px}

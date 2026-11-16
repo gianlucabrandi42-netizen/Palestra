@@ -93,6 +93,8 @@ function condition(s) {
   return { r, p, f: r.f * p.f, why };
 }
 const isOffDay = s => condition(s).f < 1;
+// seduta normale precedente a "rs" per questo esercizio (per l'aumento serve 2 volte di fila a target e pulite)
+function prevRef(k, rs) { const l = gymSessions(S.gym).filter(s => s.date < rs.date && exHas(s, k) && !isOffDay(s) && !oooOff(s, k)); return l[l.length - 1] || null; }
 // Riferimento per i suggerimenti: l'ultima seduta "normale" (salta fino a 2 giornate no o di rientro).
 function lastRef(k) { const l = gymSessions(S.gym).filter(s => s.date < S.date && exHas(s, k)); for (let i = l.length - 1; i >= Math.max(0, l.length - 3); i--) if (!isOffDay(l[i]) && !oooOff(l[i], k)) return l[i]; return l[l.length - 1] || null; }
 // ---------- esercizi fatti fuori ordine (macchina occupata) ----------
@@ -256,11 +258,12 @@ function renderLog() {
     const cg0 = isCircNoLog(d, idx);
     if (cg0) { list.appendChild(circCard(d, cg0, exN, u === curU)); return; }
     const last = lastBefore(ex.key), lastSets = last ? exSets(last, ex.key) : [];
-    const rs = lastRef(ex.key), refSets = rs ? exSets(rs, ex.key) : [], hit = rs ? allHit(refSets, ex) && allClean(refSets) : false, cond = condition(sess);
+    const rs = lastRef(ex.key), refSets = rs ? exSets(rs, ex.key) : [], hit1 = rs ? allHit(refSets, ex) && allClean(refSets) : false, pr = hit1 ? prevRef(ex.key, rs) : null,
+      hit = hit1 && !!pr && allHit(exSets(pr, ex.key), ex) && allClean(exSets(pr, ex.key)), cond = condition(sess);
     const ref = ex.ref && ex.ref[S.gym];
     let pills = "";
     if (rs && cond.f < 1) pills += `<span class="pill near">Oggi −${Math.round((1 - cond.f) * 100)}% · ${esc(cond.why)}</span>`;
-    else if (rs) pills += hit ? `<span class="pill up">↑ Aumenta${ex.bw ? "" : " carico"}</span>` : !allClean(refSets) ? `<span class="pill near">~ Serie sporche l'ultima volta: niente aumento</span>` : `<span class="pill">= Stesso carico</span>`;
+    else if (rs) pills += hit ? `<span class="pill up">↑ Aumenta${ex.bw ? "" : " carico"}: 2 volte di fila a target e pulite</span>` : !allClean(refSets) ? `<span class="pill near">~ Serie sporche l'ultima volta: stesso carico, falle pulite</span>` : hit1 ? `<span class="pill">= Stesso carico: a target e pulite 1 volta, alla 2ª aumenti</span>` : `<span class="pill">= Stesso carico</span>`;
     else if (ref) pills += `<span class="pill">Rif. scheda prec. ${fmt(ref)} kg</span>`;
     const cg = circGroup(d, idx);
     if (cg) pills += cg.last ? `<span class="pill circ">Circuito · recupero ${fmtSec(restFor(ex))} a fine giro</span>` : `<span class="pill circ">Circuito · subito il prossimo</span>`;
@@ -476,13 +479,13 @@ function judge(kgEl, rpEl, fb, t, lr, cond, dirty) {
     const e1 = hasLast ? e1rm(kg, reps) : 0, exp = hasLast ? e1rm(lr.kg, lr.reps) * f : 0;
     if (reps >= t) { cls = "ok"; msg = reps > t ? `Target superato di ${reps - t}` : (off ? (cond && cond.ooo && cond.f >= 1 ? "Target pieno anche fuori ordine" : "Target pieno anche in una giornata difficile") : ""); }
     else if (hasLast && e1 >= exp * 0.99 && (up > 0 || off)) { cls = "prog"; msg = off ? `${missTxt} in meno, ma forza in linea con oggi (${cond.why}): va bene così` : `${missTxt} in meno ma +${fmt(up)} kg: forza pari o superiore all'ultima volta`; }
-    else if (hasLast && up > 0 && pct >= 0.6) { cls = "near"; msg = `Carico salito di ${fmt(up)} kg: normale perdere qualche rep (${repsTxt(miss)})`; }
-    else if (pct >= (off ? 0.6 : 0.8)) { cls = "near"; msg = `Quasi: ${repsTxt(miss)} (${Math.round(pct * 100)}% del target)` + (off ? " · oggi: " + cond.why : ""); }
-    else { cls = "ko"; msg = `Sotto target: ${reps} su ${t}.` + (off ? " Oggi non conta per la progressione." : hasLast && up >= 0 ? " Se si ripete, scendi un po' di carico." : ""); }
+    else if (hasLast && up > 0) { cls = "prog"; msg = `Carico salito di ${fmt(up)} kg: normale perdere qualche rep (${repsTxt(miss)})`; }
+    else if (pct >= 0.6 || off) { cls = "prog"; msg = `Pulita, ${repsTxt(miss)}: carico giusto per oggi` + (off ? " · " + cond.why : ""); }
+    else { cls = "prog"; msg = `Pulita, ${reps} su ${t}: se succede ancora, scendi un po' di carico`; }
   }
   if (dirty && reps != null) { // serie sporca: mai verde; dice cosa succede la prossima volta
-    if (t == null || reps >= t) { cls = "near"; msg = "A target ma sporca: la prossima volta stesso carico, falla pulita"; }
-    else { cls = "ko"; msg = "Sporca e sotto target: la prossima volta −5% su questa serie"; }
+    if (t == null || reps >= t) { cls = "near"; msg = "Sporca: meglio una rep in meno ma pulita. La prossima volta stesso carico"; }
+    else { cls = "near"; msg = "Sporca: la prossima volta −5% su questa serie, per farla pulita"; }
   }
   for (const c of ["ok", "prog", "near", "ko"]) rpEl.classList.toggle(c, c === cls);
   fb.textContent = msg; fb.className = "fb " + cls; fb.hidden = !msg;
@@ -713,6 +716,10 @@ function renderTrend(p, d) {
   const box = $("trend"), { weeks, exs, dayPct } = trendData(p, d, S.gym);
   if (!weeks.length) { box.innerHTML = `<div class="empty">Nessuna seduta di ${esc(d.id)} in questa scheda (palestra ${esc(GYMS.find(g => g.id === S.gym).name)}).</div>`; return; }
   const last = dayPct[dayPct.length - 1], wk = weeks.length;
+  // serie pulite: tutte le serie registrate del giorno in questa scheda (giornate no comprese: l'esecuzione conta sempre)
+  const cl = (ss) => { let n = 0, c = 0; for (const s of ss) d.ex.forEach((e, idx) => { if (isCircNoLog(d, idx)) return; exSets(s, e.key).forEach(r => { if (r && r.reps != null) { n++; if (!r.dirty) c++; } }); }); return n ? c / n : null; };
+  const dss = gymSessions(S.gym).filter(s => s.plan === p.id && s.day === d.id), lastW = dss.length ? weekOf(p, dss[dss.length - 1].date) : null;
+  const clAll = cl(dss), clW = lastW != null ? cl(dss.filter(s => weekOf(p, s.date) === lastW)) : null, pc0 = x => Math.round(x * 100) + "%";
   const from = w => { const t = new Date((p.from || todayISO()) + "T12:00"); t.setDate(t.getDate() + (w - 1) * 7); return fmtDate(t.toISOString().slice(0, 10)).slice(0, 5); };
   const cell = (x, w, i) => {
     const b = x.byW[w]; if (!b) return `<td class="na">—</td>`;
@@ -723,7 +730,9 @@ function renderTrend(p, d) {
   box.innerHTML = `
     <div class="tsum card"><div><span>Miglioramento ${esc(d.id)}</span><b class="${last > 0.0005 ? "up" : last < -0.0005 ? "dn" : ""}">${wk > 1 ? pctTxt(last) : "—"}</b></div>
       <p class="note">${wk > 1 ? `dalla 1ª alla ${wk}ª settimana di dati della scheda, media degli esercizi` : "Serve almeno un'altra settimana per vedere il miglioramento."}</p>
-      ${trendChart(weeks, dayPct)}</div>
+      ${trendChart(weeks, dayPct)}
+      ${clAll != null ? `<div class="tclean"><span>Serie pulite</span><b class="${clAll >= 0.9 ? "up" : ""}">${pc0(clAll)}</b></div>
+      <p class="note">${wk > 1 && clW != null ? `ultima settimana ${pc0(clW)} · ` : ""}conta quanto la forza: meglio un carico un po' più basso fatto bene</p>` : ""}</div>
     <div class="ttab"><table><thead><tr><th>Esercizio</th>${weeks.map(w => `<th>S${w}<small>${from(w)}</small></th>`).join("")}<th>Tot.</th></tr></thead>
       <tbody>${exs.filter(x => x.base).map(x => { const lw = [...weeks].reverse().find(w => x.byW[w]), tot = x.base && lw ? x.byW[lw].v / x.base - 1 : null, first = weeks.find(w => x.byW[w]);
         return `<tr><th>${esc(x.e.name)}</th>${weeks.map((w, i) => cell(x, w, i)).join("")}<td class="tot ${tot > 0.0005 && lw !== first ? "up" : tot < -0.0005 ? "dn" : ""}">${lw && lw !== first ? pctTxt(tot) : "—"}</td></tr>`; }).join("")}</tbody></table></div>
