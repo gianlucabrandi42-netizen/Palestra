@@ -410,3 +410,10 @@ textarea{width:100%;min-height:84px;padding:10px;background:var(--surface);borde
 .tmain i{top:auto;bottom:5px;left:12px;height:3px;border-radius:2px;max-width:calc(100% - 24px);background:var(--accent)}
 .tbox.last .tmain i{background:var(--near)}
 .tb{border-radius:14px}
+/* App aperta dalla Home su iPhone: iOS sfuma la fascia subito sotto la barra di stato (orologio/batteria).
+   Lasciamo lì solo lo sfondo della barra, così titolo e cerchio restano nitidi. */
+@media (display-mode: standalone){
+  .cin{padding-top:30px}
+  .console::before{content:"";position:absolute;left:0;right:0;top:-1px;height:31px;background:var(--surface)}
+  .console{position:sticky}
+}
