@@ -696,7 +696,7 @@ function render() {
 // Recupero di base 1:30 (regolabile); se l'esercizio ha "rest" nella scheda, vale quello.
 // A fine recupero: vibrazione (Android), suono e tocco aptico (iPhone, dove possibile). Lo schermo resta acceso mentre conta.
 const TKEY = "palestra-timer";
-const tPrefs = () => { const t = D.prefs.timer = D.prefs.timer || {}; return { sec: t.sec ?? 90, auto: t.auto ?? true, vib: t.vib ?? true, snd: t.snd ?? true, warn: t.warn ?? true, push: t.push ?? false, pushSub: t.pushSub || null, pushId: t.pushId || "", lockNote: t.lockNote ?? true }; };
+const tPrefs = () => { const t = D.prefs.timer = D.prefs.timer || {}; return { sec: t.sec ?? 90, auto: t.auto ?? true, vib: t.vib ?? true, snd: t.snd ?? true, warn: t.warn ?? true, push: t.push ?? false, pushSub: t.pushSub || null, pushId: t.pushId || "", lockNote: t.lockNote ?? false }; };
 const setTPref = (k, v) => { D.prefs.timer = D.prefs.timer || {}; D.prefs.timer[k] = v; save(); };
 const fmtSec = s => { s = Math.max(0, Math.ceil(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 function parseRest(r) {
@@ -911,7 +911,7 @@ function renderTimerSet() {
     <p class="note">Con l'app aperta lo schermo resta acceso da solo durante il recupero.</p>
     ${tg("push", "Notifica a fine recupero", pushReady() ? "arriva anche a telefono bloccato o in un'altra app; per la sola vibrazione tieni l'iPhone in silenzioso" : "servizio in attivazione: presto disponibile")}
     ${p.push ? `<div class="ntfy stack">
-      ${tg("lockNote", "Ora di ripresa quando esci dall'app", "se blocchi il telefono durante il recupero, compare l'ora in cui riprendere")}
+      ${tg("lockNote", "Notifica anche all'inizio del recupero", "se blocchi il telefono mentre conta: ora in cui ripartire e serie dopo (spenta di base)")}
       <div class="row"><button class="btn" id="puNow">Prova subito</button><button class="btn" id="puLock">Prova a telefono bloccato (20")</button></div>
       <p class="note" id="puMsg">Il suono dell'app è spento: a fine recupero ti avvisa la notifica.</p>
     </div>` : ""}`;
