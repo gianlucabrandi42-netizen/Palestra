@@ -301,7 +301,12 @@ function renderLog() {
       if (isOpen) S.open.delete(ex.key); else { S.open.add(ex.key); if (!panel.firstChild) fillPanel(panel, ex); }
     });
     const z = card.querySelector("[data-zoom]"); if (z) z.onclick = () => openLB(ex, 0);
-    const cl = card.querySelector("[data-close]"); if (cl) cl.onclick = () => { S.exOpen.delete(ex.key); renderLog(); };
+    // Chiudi: la riga chiusa resta dove stavi guardando (o subito sotto la barra in alto se la scheda iniziava più su)
+    const cl = card.querySelector("[data-close]"); if (cl) cl.onclick = () => {
+      const top = card.getBoundingClientRect().top, hb = $("console").getBoundingClientRect().bottom + 8;
+      S.exOpen.delete(ex.key); renderLog();
+      const m = rowEl(ex.key, 0); if (m) scrollTo({ top: Math.max(0, m.getBoundingClientRect().top + scrollY - Math.max(top, hb)) });
+    };
     list.appendChild(card);
   });
   markNext();

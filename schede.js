@@ -1405,9 +1405,7 @@ window.SCHEDE = [
       "img": {
        "local": [
         "rumeno-f1.webp",
-        "rumeno-f2.webp",
-        "rumeno-d1.webp",
-        "rumeno-d2.webp"
+        "rumeno-f2.webp"
        ]
       },
       "ref": {},
@@ -1506,9 +1504,7 @@ window.SCHEDE = [
       "img": {
        "local": [
         "calf-f1.webp",
-        "calf-f2.webp",
-        "calf-d1.webp",
-        "calf-d2.webp"
+        "calf-f2.webp"
        ]
       },
       "ref": {
