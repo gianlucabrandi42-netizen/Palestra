@@ -58,6 +58,7 @@ Muscoli disponibili per `m`: CHEST, FRONT_DELTOIDS, BACK_DELTOIDS, TRICEPS, BICE
   - **Schede:** aperta solo quella "adesso" (+ quelle aperte a mano, `S.exOpen`, con tasto "Chiudi"); le altre sono **righe chiuse** (`.exmini`): fatte = ✓ + riepilogo serie (`42×10 · 47×8~`), da fare = "3 serie · 10-8-8 · ultima 45 kg". Un esercizio finito si chiude da solo e si apre il successivo (riorganizzazione dopo la chiusura della tastiera, confronto `S.sig`).
   - **Scheda aperta:** miniatura animata 92 px (tocco = immagini grandi), "02 · Adesso · Recupero 1:30", nome, tecnica, un solo pill sul carico, consigli flash come etichette, Regolazioni, serie con colonna **~** (serie sporca) e messaggio sotto, riga della **prossima serie evidenziata**; in fondo "⚡ Usa kg suggeriti" ed "Esecuzione" (galleria, muscoli, esecuzione/errori).
   - Il menu "Backup" ora si chiama **Impostazioni** (backup, timer, palestre).
+  - **iOS 26 sfuma la fascia sotto la barra di stato** nelle app aperte dalla Home (status bar `black-translucent`): in `display-mode: standalone` la barra in alto ha 30px di spazio vuoto in cima (`.cin{padding-top:30px}`) così titolo e cerchio non finiscono sfocati. Se serve più o meno spazio, si regola lì. Non cambiare `apple-mobile-web-app-status-bar-style`: iOS lo legge all'aggiunta alla Home e reinstallare l'icona cancellerebbe i dati.
 - **Allenamento:** si scelgono palestra, giorno e data. Per ogni esercizio:
   - animazione del movimento (foto inizio/fine alternate), con zoom a pizzico o doppio tocco;
   - nome, tecnica esatta e consigli flash;
