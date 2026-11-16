@@ -17,6 +17,17 @@ jobs:
           A: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           if [ -n "$T" ] && [ -n "$A" ]; then echo "ok=1" >> "$GITHUB_OUTPUT"; else echo "Segreti Cloudflare mancanti: pubblicazione saltata."; fi
+      - name: Verifica token e ID account (senza mostrarli)
+        if: steps.chk.outputs.ok == '1'
+        env:
+          T: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          A: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          A_CLEAN=$(printf '%s' "$A" | tr -d '[:space:]')
+          echo "ID account: ${#A} caratteri (senza spazi: ${#A_CLEAN}); formato 32 esadecimali: $(printf '%s' "$A_CLEAN" | grep -Eq '^[0-9a-f]{32}$' && echo sì || echo NO)"
+          echo -n "Token valido: "; curl -s -H "Authorization: Bearer $T" https://api.cloudflare.com/client/v4/user/tokens/verify | jq -r '.success'
+          echo "Account visibili dal token:"
+          curl -s -H "Authorization: Bearer $T" "https://api.cloudflare.com/client/v4/accounts?per_page=50" | jq -r --arg a "$A_CLEAN" '.result[]? | "- " + .name + (if .id == $a then "  ← coincide con il segreto" else "  (id diverso dal segreto)" end)'
       - uses: actions/checkout@v4
         if: steps.chk.outputs.ok == '1'
       - name: Pubblica su Cloudflare
@@ -25,5 +36,6 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4"
           workingDirectory: worker
           command: deploy
