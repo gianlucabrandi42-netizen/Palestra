@@ -846,8 +846,9 @@ function nextInfo() {
 }
 function endMsg() {
   const n = nextInfo();
-  if (n && n.done) return { title: "🏁 Recupero finito", body: "Hai completato tutte le serie di oggi. Ottimo lavoro!" };
-  return { title: "💪 Recupero finito · si riparte!", body: n ? `${n.name}\n${n.set} · ${n.what}` : (T.label || "Tocca a te") };
+  if (n && n.done) return { title: "🏁 Allenamento completato", body: "Tutte le serie di oggi sono fatte. Ottimo lavoro!" };
+  // iPhone mette sempre "from Palestra" tra titolo e testo: l'essenziale va nel titolo
+  return n ? { title: `💪 Via! ${n.name}`, body: `${n.set} · ${n.what}` } : { title: "💪 Via! Recupero finito", body: T.label || "Tocca a te" };
 }
 function notifSchedule() {
   if (!pushOn() || !running()) return; const p = tPrefs();
