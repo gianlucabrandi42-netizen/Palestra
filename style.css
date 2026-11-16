@@ -314,3 +314,28 @@ textarea{width:100%;min-height:84px;padding:10px;background:var(--surface);borde
 .hdet li span{color:var(--muted);font-variant-numeric:tabular-nums}
 .hdet .btn{justify-self:start}
 .hmore{justify-self:start}
+/* andamento della scheda */
+.trend{display:grid;gap:10px;margin-top:12px}
+.tsum{display:grid;gap:6px}
+.tsum>div{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.tsum span{font-weight:700}
+.tsum b{font-family:var(--display);font-weight:800;font-size:34px;line-height:1}
+.up{color:var(--ok)}.dn{color:var(--ko)}.eq{color:var(--muted)}
+.tchart{width:100%;height:auto;margin-top:4px}
+.tchart .z{stroke:var(--line);stroke-width:1;stroke-dasharray:3 3}
+.tchart .l{fill:none;stroke:var(--accent);stroke-width:2.4;stroke-linejoin:round}
+.tchart circle{fill:var(--accent)}
+.tchart text{font-family:var(--text);font-size:11px;fill:var(--muted)}
+.tchart .lb{fill:var(--ink);font-weight:700}
+.tchart .lb.dn{fill:var(--ko)}
+.ttab{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:16px}
+.ttab table{border-collapse:collapse;width:100%;font-size:12px;font-variant-numeric:tabular-nums}
+.ttab th,.ttab td{padding:8px 4px;text-align:center;border-bottom:1px solid var(--line);white-space:nowrap}
+.ttab tr:last-child th,.ttab tr:last-child td{border-bottom:0}
+.ttab thead th{color:var(--muted);font-weight:700;font-size:11px}
+.ttab thead th small{display:block;font-weight:500}
+.ttab tbody th{text-align:left;font-weight:600;white-space:normal;min-width:88px;max-width:110px;padding-left:10px;line-height:1.25;position:sticky;left:0;background:var(--surface)}
+.ttab td b{display:block;font-weight:700;font-size:12px}
+.ttab td small{display:block;font-size:11px;font-weight:700}
+.ttab td.na{color:var(--muted)}
+.ttab td.tot{font-weight:800;font-size:13px}

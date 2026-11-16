@@ -509,6 +509,7 @@ function renderProg() {
   $("pdays").innerHTML = p.days.map(x => `<button data-d="${x.id}" aria-pressed="${x.id === d.id}"><b>${esc(x.id)}</b><small>${esc(x.name)}</small></button>`).join("");
   $("pdays").querySelectorAll("button").forEach(b => b.onclick = () => { S.pday = b.dataset.d; renderProg(); });
   renderHist();
+  renderTrend(p, d);
   const box = $("prog"); box.textContent = "";
   const ss = gymSessions(S.gym);
   if (!ss.length) { box.innerHTML = `<div class="empty">Ancora nessuna seduta registrata in questa palestra. Compila un allenamento e qui compaiono i grafici.</div>`; return; }
@@ -533,6 +534,67 @@ function renderProg() {
     row.innerHTML = `<div><div class="n">${esc(ex.name)}</div><div class="s">${stat}</div>${pill ? `<div class="pills">${pill}</div>` : ""}</div>${spark(pts.map(x => x.i))}`;
     box.appendChild(row);
   });
+}
+// ---------- andamento della scheda, settimana per settimana ----------
+// Per il giorno scelto e la palestra scelta: per ogni esercizio la serie migliore di ogni settimana della scheda
+// (forza stimata = kg × (1 + reps/30); a corpo libero = reps). Escluse giornate no, rientri e serie sporche.
+// Il miglioramento del giorno = media delle variazioni degli esercizi rispetto alla loro prima settimana.
+function weekOf(p, date) { const from = p.from || date; return Math.floor((new Date(date + "T12:00") - new Date(from + "T12:00")) / (7 * 864e5)) + 1; }
+function bestSet(sets, bw) {
+  let best = null;
+  for (const r of sets || []) {
+    if (!r || r.dirty || r.reps == null || (!bw && r.kg == null)) continue;
+    const v = bw && r.kg == null ? r.reps : e1rm(r.kg, r.reps);
+    if (!best || v > best.v) best = { v, r };
+  }
+  return best;
+}
+function trendData(p, d, gym) {
+  const ss = gymSessions(gym).filter(s => s.plan === p.id && s.day === d.id && !isOffDay(s));
+  const weeks = [...new Set(ss.map(s => weekOf(p, s.date)))].filter(w => w >= 1).sort((a, b) => a - b);
+  const exs = d.ex.filter((e, idx) => !isCircNoLog(d, idx)).map(e => {
+    const byW = {};
+    for (const s of ss) { const w = weekOf(p, s.date), b = bestSet(exSets(s, e.key), e.bw); if (b && (!byW[w] || b.v > byW[w].v)) byW[w] = b; }
+    const w0 = weeks.find(w => byW[w]);
+    return { e, byW, base: w0 ? byW[w0].v : null };
+  });
+  const dayPct = weeks.map(w => { const r = exs.filter(x => x.base && x.byW[w]).map(x => x.byW[w].v / x.base - 1); return r.length ? r.reduce((a, b) => a + b, 0) / r.length : null; });
+  return { weeks, exs, dayPct };
+}
+const pctTxt = v => v == null ? "—" : `${v > 0.0005 ? "+" : v < -0.0005 ? "−" : ""}${Math.abs(v * 100).toFixed(1).replace(".", ",").replace(",0", "")}%`;
+function trendChart(weeks, pcts) {
+  const W = 340, H = 150, L = 34, R = 30, T = 22, B = 26, pts = weeks.map((w, i) => ({ w, v: pcts[i] })).filter(x => x.v != null);
+  if (!pts.length) return "";
+  const vs = pts.map(x => x.v), mn = Math.min(0, ...vs), mx = Math.max(0.02, ...vs), span = mx - mn || 1;
+  const X = i => L + (weeks.length > 1 ? i * (W - L - R) / (weeks.length - 1) : (W - L - R) / 2), Y = v => T + (mx - v) / span * (H - T - B);
+  const idx = w => weeks.indexOf(w);
+  const path = pts.map((x, k) => `${k ? "L" : "M"}${X(idx(x.w)).toFixed(1)},${Y(x.v).toFixed(1)}`).join("");
+  return `<svg class="tchart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Miglioramento per settimana">
+    <line class="z" x1="${L}" x2="${W - R}" y1="${Y(0)}" y2="${Y(0)}"/><text class="ax" x="${L - 6}" y="${Y(0) + 4}" text-anchor="end">0%</text>
+    ${weeks.map((w, i) => `<text class="ax" x="${X(i)}" y="${H - 8}" text-anchor="middle">S${w}</text>`).join("")}
+    ${pts.length > 1 ? `<path class="l" d="${path}"/>` : ""}
+    ${pts.map(x => `<circle cx="${X(idx(x.w))}" cy="${Y(x.v)}" r="4"/><text class="lb${x.v < -0.0005 ? " dn" : ""}" x="${X(idx(x.w))}" y="${Y(x.v) - 9}" text-anchor="middle">${pctTxt(x.v)}</text>`).join("")}
+  </svg>`;
+}
+function renderTrend(p, d) {
+  const box = $("trend"), { weeks, exs, dayPct } = trendData(p, d, S.gym);
+  if (!weeks.length) { box.innerHTML = `<div class="empty">Nessuna seduta di ${esc(d.id)} in questa scheda (palestra ${esc(GYMS.find(g => g.id === S.gym).name)}).</div>`; return; }
+  const last = dayPct[dayPct.length - 1], wk = weeks.length;
+  const from = w => { const t = new Date((p.from || todayISO()) + "T12:00"); t.setDate(t.getDate() + (w - 1) * 7); return fmtDate(t.toISOString().slice(0, 10)).slice(0, 5); };
+  const cell = (x, w, i) => {
+    const b = x.byW[w]; if (!b) return `<td class="na">—</td>`;
+    const r = b.r, set = `${r.kg != null ? fmt(r.kg) + "×" : ""}${r.reps}`, pc = x.base ? b.v / x.base - 1 : null;
+    const prevW = weeks.slice(0, i).reverse().find(v => x.byW[v]), dir = prevW ? (b.v > x.byW[prevW].v * 1.001 ? "up" : b.v < x.byW[prevW].v * 0.999 ? "dn" : "eq") : "";
+    return `<td><b>${set}</b><small class="${dir}">${prevW ? pctTxt(pc) : "base"}</small></td>`;
+  };
+  box.innerHTML = `
+    <div class="tsum card"><div><span>Miglioramento ${esc(d.id)}</span><b class="${last > 0.0005 ? "up" : last < -0.0005 ? "dn" : ""}">${wk > 1 ? pctTxt(last) : "—"}</b></div>
+      <p class="note">${wk > 1 ? `dalla 1ª alla ${wk}ª settimana di dati della scheda, media degli esercizi` : "Serve almeno un'altra settimana per vedere il miglioramento."}</p>
+      ${trendChart(weeks, dayPct)}</div>
+    <div class="ttab"><table><thead><tr><th>Esercizio</th>${weeks.map(w => `<th>S${w}<small>${from(w)}</small></th>`).join("")}<th>Tot.</th></tr></thead>
+      <tbody>${exs.filter(x => x.base).map(x => { const lw = [...weeks].reverse().find(w => x.byW[w]), tot = x.base && lw ? x.byW[lw].v / x.base - 1 : null, first = weeks.find(w => x.byW[w]);
+        return `<tr><th>${esc(x.e.name)}</th>${weeks.map((w, i) => cell(x, w, i)).join("")}<td class="tot ${tot > 0.0005 && lw !== first ? "up" : tot < -0.0005 ? "dn" : ""}">${lw && lw !== first ? pctTxt(tot) : "—"}</td></tr>`; }).join("")}</tbody></table></div>
+    <p class="note">Serie migliore della settimana (kg × reps). La % è la forza stimata rispetto alla prima settimana: kg × (1 + reps/30). Escluse giornate no, rientri e serie sporche.</p>`;
 }
 // Storico sedute della palestra: dalla più recente; tocco = dettaglio serie per serie; "Apri" = la riapre in Allenamento
 function renderHist() {
