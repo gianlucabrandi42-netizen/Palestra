@@ -821,7 +821,7 @@ function alarm(soft) {
 // ---------- notifiche push (anche a telefono bloccato o in un'altra app) ----------
 // Servizio su Cloudflare (cartella worker/): l'app gli chiede di inviare una notifica all'ora di fine recupero.
 // Le notifiche push su iPhone funzionano solo con l'app aperta dall'icona sulla Home (iOS 16.4+).
-const PUSH_URL = "";
+const PUSH_URL = "https://palestra-push.gianluca-brandi42.workers.dev";
 const pushReady = () => !!PUSH_URL;
 const newPushId = () => "p" + Array.from(crypto.getRandomValues(new Uint8Array(12)), b => (b % 36).toString(36)).join("");
 const b64uToU8 = s => { const b = atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)); return Uint8Array.from(b, c => c.charCodeAt(0)); };

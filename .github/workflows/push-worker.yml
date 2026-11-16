@@ -44,3 +44,13 @@ jobs:
           wranglerVersion: "4"
           workingDirectory: worker
           command: deploy
+      - name: Prova del servizio
+        if: steps.chk.outputs.ok == '1'
+        run: |
+          U=https://palestra-push.gianluca-brandi42.workers.dev
+          sleep 5
+          echo "GET /        → $(curl -s $U/)"
+          echo "GET /vapid   → $(curl -s $U/vapid | jq -r '.key | length') caratteri di chiave pubblica"
+          echo "CORS         → $(curl -s -o /dev/null -w '%{http_code}' -X OPTIONS -H 'Origin: https://gianlucabrandi42-netizen.github.io' -H 'Access-Control-Request-Method: POST' $U/schedule)"
+          echo "richiesta errata → $(curl -s -o /dev/null -w '%{http_code}' -X POST -d '{}' $U/schedule) (atteso 400)"
+          test "$(curl -s $U/vapid | jq -r '.key | length')" = "87"
