@@ -20,7 +20,7 @@
 | `index.html`, `style.css` | Interfaccia |
 | `data.js` | Poligoni della mappa muscoli (react-body-highlighter, MIT) |
 | `img/` | Immagini esercizi in webp: `<key>-f1/f2` = foto inizio/fine; `<key>-d1/d2` = disegni inizio/fine |
-| `sw.js` | Service worker: **a ogni aggiornamento cambiare `VERSION`** (es. `"2026-12-01-1"`), altrimenti i telefoni non scaricano subito i file nuovi |
+| `sw.js` | Service worker (i file principali sono "rete prima" con `cache:"no-cache"`, perché GitHub Pages li farebbe tenere in cache 10 minuti): **a ogni aggiornamento cambiare `VERSION`** (es. `"2026-12-01-1"`), altrimenti i telefoni non scaricano subito i file nuovi |
 | `manifest.webmanifest`, `icons/` | Icona (manubrio) e installazione sulla Home |
 | `LEGGIMI.md` / `README.md` | Istruzioni brevi |
 | `tools/pdf_pt.py` | Genera il PDF di controllo veloce per il PT dalla scheda attiva |
@@ -58,7 +58,7 @@ Muscoli disponibili per `m`: CHEST, FRONT_DELTOIDS, BACK_DELTOIDS, TRICEPS, BICE
   - **Schede:** aperta solo quella "adesso" (+ quelle aperte a mano, `S.exOpen`, con tasto "Chiudi"); le altre sono **righe chiuse** (`.exmini`): fatte = ✓ + riepilogo serie (`42×10 · 47×8~`), da fare = "3 serie · 10-8-8 · ultima 45 kg". Un esercizio finito si chiude da solo e si apre il successivo (riorganizzazione dopo la chiusura della tastiera, confronto `S.sig`).
   - **Scheda aperta:** miniatura animata 92 px (tocco = immagini grandi), "02 · Adesso · Recupero 1:30", nome, tecnica, un solo pill sul carico, consigli flash come etichette, Regolazioni, serie con colonna **~** (serie sporca) e messaggio sotto, riga della **prossima serie evidenziata**; in fondo "⚡ Usa kg suggeriti" ed "Esecuzione" (galleria, muscoli, esecuzione/errori).
   - Il menu "Backup" ora si chiama **Impostazioni** (backup, timer, palestre).
-  - **iOS 26 sfuma la fascia sotto la barra di stato** nelle app aperte dalla Home (status bar `black-translucent`): in `display-mode: standalone` la barra in alto ha 30px di spazio vuoto in cima (`.cin{padding-top:30px}`) così titolo e cerchio non finiscono sfocati. Se serve più o meno spazio, si regola lì. Non cambiare `apple-mobile-web-app-status-bar-style`: iOS lo legge all'aggiunta alla Home e reinstallare l'icona cancellerebbe i dati.
+  - **iOS 26 sfuma la fascia sotto la barra di stato** nelle app aperte dalla Home (status bar `black-translucent`): con l'app aperta dalla Home (`display-mode: standalone` o classe `html.standalone`, impostata da uno script in `index.html` con `navigator.standalone`) la barra in alto ha 36px di spazio vuoto in cima (`.cin{padding-top:36px}`) così titolo e cerchio non finiscono sfocati. Se serve più o meno spazio, si regola lì. Non cambiare `apple-mobile-web-app-status-bar-style`: iOS lo legge all'aggiunta alla Home e reinstallare l'icona cancellerebbe i dati.
 - **Allenamento:** si scelgono palestra, giorno e data. Per ogni esercizio:
   - animazione del movimento (foto inizio/fine alternate), con zoom a pizzico o doppio tocco;
   - nome, tecnica esatta e consigli flash;

@@ -412,11 +412,8 @@ textarea{width:100%;min-height:84px;padding:10px;background:var(--surface);borde
 .tb{border-radius:14px}
 /* App aperta dalla Home su iPhone: iOS sfuma la fascia subito sotto la barra di stato (orologio/batteria).
    Lasciamo lì solo lo sfondo della barra, così titolo e cerchio restano nitidi. */
-@media (display-mode: standalone){
-  .cin{padding-top:30px}
-  .console::before{content:"";position:absolute;left:0;right:0;top:-1px;height:31px;background:var(--surface)}
-  .console{position:sticky}
-}
+@media (display-mode: standalone){ .cin{padding-top:36px} }
+html.standalone .cin{padding-top:36px}
 /* lampo "VIA!" a fine recupero con l'app aperta */
 #goflash{position:fixed;inset:0;z-index:60;display:none;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:24px;
   background:color-mix(in srgb,var(--ok) 92%,#000);color:#06200f}
