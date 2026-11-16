@@ -422,3 +422,11 @@ html.standalone .cin{padding-top:36px}
 #goflash span{font-size:22px;font-weight:800}
 #goflash small{font-size:16px;font-weight:700;opacity:.8}
 @keyframes goflash{0%{opacity:0}6%{opacity:1}14%{opacity:.55}22%{opacity:1}30%{opacity:.55}38%{opacity:1}85%{opacity:1}100%{opacity:0}}
+/* esercizio fatto fuori ordine */
+.ooo{display:flex;gap:10px;align-items:center;margin:0 12px 10px;padding:9px 11px;border-radius:12px;border:1px solid color-mix(in srgb,var(--near) 55%,var(--line));background:color-mix(in srgb,var(--near) 9%,var(--surface))}
+.ooo>div{flex:1;min-width:0}
+.ooo b{display:block;font-size:13px;color:var(--near)}
+.ooo p{font-size:12px;color:var(--ink);opacity:.85;margin-top:2px}
+.ooo .btn{flex:none;font-size:12px;min-height:34px;padding:6px 10px}
+.ooo.ok{border-color:var(--line);background:var(--raised)}
+.ooo.ok b{color:var(--muted)}

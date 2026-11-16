@@ -94,7 +94,37 @@ function condition(s) {
 }
 const isOffDay = s => condition(s).f < 1;
 // Riferimento per i suggerimenti: l'ultima seduta "normale" (salta fino a 2 giornate no o di rientro).
-function lastRef(k) { const l = gymSessions(S.gym).filter(s => s.date < S.date && exHas(s, k)); for (let i = l.length - 1; i >= Math.max(0, l.length - 3); i--) if (!isOffDay(l[i])) return l[i]; return l[l.length - 1] || null; }
+function lastRef(k) { const l = gymSessions(S.gym).filter(s => s.date < S.date && exHas(s, k)); for (let i = l.length - 1; i >= Math.max(0, l.length - 3); i--) if (!isOffDay(l[i]) && !oooOff(l[i], k)) return l[i]; return l[l.length - 1] || null; }
+// ---------- esercizi fatti fuori ordine (macchina occupata) ----------
+// sessione.ord = ordine in cui hai iniziato gli esercizi (prima serie compilata). Un esercizio è "fuori ordine" se prima
+// di lui hai iniziato un esercizio che nella scheda viene dopo. Quel giorno, per quell'esercizio: valutazione tollerante,
+// non è base dei kg suggeriti, escluso da andamento e progressi. sessione.orderOk[key] = "non ha influito" (conta normale).
+function planDay(s) { const p = plans.find(x => x.id === s.plan); return p ? p.days.find(x => x.id === s.day) : null; }
+function oooInfo(s, key, prospective) {
+  const d = planDay(s); if (!d || !s) return null;
+  const pos = k => d.ex.findIndex(e => e.key === k);
+  const unit = k => { const i = pos(k); if (i < 0) return k; const g = isCircNoLog(d, i); return g ? d.ex[g.start].key : k; };
+  const ord = [...new Set((s.ord || []).map(unit))]; key = unit(key);
+  let idx = ord.indexOf(key);
+  if (idx < 0) { if (!prospective || !ord.length) return null; ord.push(key); idx = ord.length - 1; }
+  const me = pos(key); if (me < 0) return null;
+  const later = ord.slice(0, idx).filter(k => pos(k) > me).map(k => d.ex[pos(k)]);
+  if (!later.length) return null;
+  const ex = d.ex[me], mine = new Set([...((ex.m && ex.m.p) || []), ...((ex.m && ex.m.s) || [])]);
+  const tired = later.filter(e => ((e.m && e.m.p) || []).some(m => mine.has(m)));
+  const muscles = [...new Set(tired.flatMap(e => e.m.p.filter(m => mine.has(m)).map(m => MNAME[m] || m)))];
+  return { key, later, tired, muscles, started: idx < (s.ord || []).length && (s.ord || []).map(unit).includes(key), off: !(s.orderOk && s.orderOk[key]) };
+}
+const oooOff = (s, key) => { const o = oooInfo(s, key); return !!(o && o.off); };
+const listIt = a => a.length < 2 ? a.join("") : a.slice(0, -1).join(", ") + " e " + a[a.length - 1];
+function oooBox(o, prospective) {
+  const names = listIt(o.later.map(e => e.name));
+  const why = o.tired.length ? `${listIt(o.muscles)} già lavorat${o.muscles.length > 1 ? "i" : "o"} da ${listIt(o.tired.map(e => e.name))}: se serve scendi del 5%.` : `Fatto dopo ${names}.`;
+  return `<div class="ooo${o.off ? "" : " ok"}"><div><b>↕ ${prospective ? "Se lo fai adesso: fuori ordine" : "Fatto fuori ordine"}</b>
+    <p>${esc(why)} ${o.off ? "Oggi non pesa sulla progressione." : "Conta come seduta normale."}</p></div>
+    ${prospective ? "" : `<button class="btn sm" data-ooo>${o.off ? "Non ha influito" : "Annulla"}</button>`}</div>`;
+}
+function toggleOrderOk(key) { const s = JSON.parse(JSON.stringify(current())); s.orderOk = { ...(s.orderOk || {}) }; if (s.orderOk[key]) delete s.orderOk[key]; else s.orderOk[key] = true; s.updatedAt = Date.now(); D.sessions[s.id] = s; save(); renderLog(); }
 const roundKg = x => Math.round(x * 2) / 2;
 // Serie "sporca" (ultime reps fatte male / carico troppo alto): niente aumento; se era anche sotto target, −5% su quella serie.
 const allClean = sets => !sets.some(r => r && r.dirty);
@@ -235,6 +265,8 @@ function renderLog() {
     const cg = circGroup(d, idx);
     if (cg) pills += cg.last ? `<span class="pill circ">Circuito · recupero ${fmtSec(restFor(ex))} a fine giro</span>` : `<span class="pill circ">Circuito · subito il prossimo</span>`;
     const isCur = u === curU, manual = !isCur;
+    const oi = oooInfo(sess, ex.key, S.date === todayISO()), prosp = oi && !oi.started;
+    const jc = oi && oi.off && !prosp ? { ...cond, ooo: true, why: [cond.why, "fuori ordine"].filter(Boolean).join(" + ") } : cond;
     const fr = execFrames(ex);
     const card = document.createElement("article"); card.className = "ex" + (isCur ? " cur" : ""); card.dataset.ex = ex.key;
     const open = S.open.has(ex.key);
@@ -248,6 +280,7 @@ function renderLog() {
       </div>
       ${pills ? `<div class="pills">${pills}</div>` : ""}
       ${(ex.flash || []).length ? `<ul class="flash" aria-label="Da ricordare">${ex.flash.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
+      ${oi ? oooBox(oi, prosp) : ""}
       ${ex.setup === false ? "" : `<div class="setup"><label for="su-${ex.key}">Regolazioni</label><input id="su-${ex.key}" autocomplete="off" placeholder="es. sedile 4 · schienale 2"></div>`}
       <div class="sets"><div class="sh"><span>Serie</span><span>Ultima</span><span>${ex.bw ? "kg (opz.)" : "kg"}</span><span>Reps</span><span></span></div></div>
       <div class="exfoot"><button class="btn sm" data-copy>⚡ Usa kg suggeriti</button>
@@ -271,7 +304,7 @@ function renderLog() {
       const fb = row.querySelector(".fb"), dq = row.querySelector(".dq");
       const isDirty = () => !!(exSets(current(), ex.key)[i] || {}).dirty;
       const upd = () => {
-        judge(kg, rp, fb, tn, rr, cond, isDirty());
+        judge(kg, rp, fb, tn, rr, jc, isDirty());
         const has = num(rp.value) != null, dirty = isDirty();
         dq.classList.toggle("off", !has); dq.disabled = !has; dq.classList.toggle("on", dirty);
         dq.setAttribute("aria-label", dirty ? "Serie sporca: tocca per segnarla pulita" : "Serie pulita: tocca se l'hai sporcata");
@@ -285,7 +318,7 @@ function renderLog() {
         const g = circGroup(d, idx);
         if (g && !g.last) { toast(`Subito: ${d.ex[idx + 1].name}`); return; } // circuito: niente recupero tra gli esercizi
         if (g) { const after = d.ex[g.end + 1]; startRest(restFor(ex), i < ex.sets.length - 1 ? `Giro ${i + 1} finito · poi giro ${i + 2}` : after ? `Circuito finito · poi ${after.name}` : "Circuito finito"); return; }
-        const nx =i < ex.sets.length - 1 ? `${ex.name} · poi serie ${i + 2}` : (d.ex[idx + 1] ? `Poi: ${d.ex[idx + 1].name}` : "Ultima serie del giorno");
+        const nx =i < ex.sets.length - 1 ? `${ex.name} · poi serie ${i + 2}` : (() => { const n = nextOpenUnit(d, idx); if (!n) return "Ultima serie del giorno"; const ni = d.ex.findIndex(e => e.key === n.k), g2 = isCircNoLog(d, ni); return `Poi: ${g2 ? "Circuito " + d.ex[ni].circ : d.ex[ni].name}`; })();
         startRest(restFor(ex), nx);
       });
       upd(); setsEl.appendChild(row);
@@ -302,6 +335,7 @@ function renderLog() {
     });
     const z = card.querySelector("[data-zoom]"); if (z) z.onclick = () => openLB(ex, 0);
     // Chiudi: la riga chiusa resta dove stavi guardando (o subito sotto la barra in alto se la scheda iniziava più su)
+    const ob = card.querySelector("[data-ooo]"); if (ob) ob.onclick = () => toggleOrderOk(oi.key);
     const cl = card.querySelector("[data-close]"); if (cl) cl.onclick = () => {
       const top = card.getBoundingClientRect().top, hb = $("console").getBoundingClientRect().bottom + 8;
       S.exOpen.delete(ex.key); renderLog();
@@ -360,7 +394,7 @@ function miniCard(u, s) {
   b.className = "exmini" + (u.done ? " done" : ""); b.dataset.keys = u.keys.join(" "); b.dataset.mini = u.keys[0];
   let sub;
   if (u.circ) { const c = circCount(s, e.circ); sub = u.done ? `${c}/${e.sets.length} giri` : `${e.sets.length} giri · ${e.sets[0].t} reps · recupero ${fmtSec(restFor(u.circ ? d_last(u) : e))}`; }
-  else if (u.started || u.done) sub = exSets(s, e.key).filter(r => r && (r.kg != null || r.reps != null)).map(r => `${r.kg != null ? fmt(r.kg) + "×" : ""}${r.reps ?? "–"}${r.dirty ? "~" : ""}`).join(" · ");
+  else if (u.started || u.done) sub = (oooOff(s, e.key) ? "↕ " : "") + exSets(s, e.key).filter(r => r && (r.kg != null || r.reps != null)).map(r => `${r.kg != null ? fmt(r.kg) + "×" : ""}${r.reps ?? "–"}${r.dirty ? "~" : ""}`).join(" · ");
   else { const l = lastBefore(e.key), mk = l ? maxKg(exSets(l, e.key)) : null; sub = `${e.sets.length} serie · ${e.sets.map(x => x.t).join("-")}${mk != null ? ` · ultima ${fmt(mk)} kg` : ""}`; }
   b.innerHTML = `<span class="mk">${u.done ? "✓" : String(u.n).padStart(2, "0")}</span>${f ? `<img src="${f.src}" alt="" loading="lazy">` : ""}
     <span class="t"><b>${u.done ? String(u.n).padStart(2, "0") + " · " : ""}${esc(u.name)}</b><small>${esc(sub)}</small></span><span class="chev">›</span>`;
@@ -397,7 +431,9 @@ function circCard(d, g, n, isCur) {
   card.querySelectorAll("[data-m]").forEach(b => { const e = mem[+b.dataset.m], panel = b.closest("li").querySelector(".panel"); if (!panel.hidden) fillPanel(panel, e);
     b.onclick = () => { const open = panel.hidden; panel.hidden = !open; b.setAttribute("aria-expanded", open); if (open) { S.open.add(e.key); if (!panel.firstChild) fillPanel(panel, e); } else S.open.delete(e.key); }; });
   const setCirc = k => {
-    const s2 = JSON.parse(JSON.stringify(current())); s2.circ = { ...(s2.circ || {}), [c]: Math.max(0, Math.min(giri, k)) }; s2.updatedAt = Date.now(); D.sessions[s2.id] = s2; save();
+    const s2 = JSON.parse(JSON.stringify(current())); s2.circ = { ...(s2.circ || {}), [c]: Math.max(0, Math.min(giri, k)) }; s2.updatedAt = Date.now();
+    if (k > 0 && !(s2.ord || []).includes(mem[0].key)) s2.ord = [...(s2.ord || []), mem[0].key];
+    D.sessions[s2.id] = s2; save();
     if (S.date === todayISO()) try { localStorage.setItem(LKEY, JSON.stringify({ gym: S.gym, day: S.day, date: S.date, key: mem[0].key, i: 0 })); } catch (e) {}
     const was = cnt >= giri, now = Math.max(0, Math.min(giri, k)) >= giri;
     if (was !== now) { if (now) S.exOpen.delete(mem[0].key); renderLog(); return; } // completato (o riaperto): la lista si riorganizza
@@ -430,7 +466,7 @@ function autoReps(e, rp) {
 // Forza stimata (formula di Epley): kg × (1 + reps/30), confrontata con la stessa serie dell'ultima volta.
 const repsTxt = n => n === 1 ? "manca 1 rep" : `mancano ${n} reps`;
 function judge(kgEl, rpEl, fb, t, lr, cond, dirty) {
-  const kg = num(kgEl.value), reps = num(rpEl.value), f = cond ? cond.f : 1, off = f < 1;
+  const kg = num(kgEl.value), reps = num(rpEl.value), f = cond ? cond.f : 1, off = f < 1 || !!(cond && cond.ooo);
   let cls = "", msg = "";
   if (reps != null && t != null) {
     const miss = t - reps, pct = reps / t, missTxt = miss === 1 ? "1 rep" : miss + " reps";
@@ -438,7 +474,7 @@ function judge(kgEl, rpEl, fb, t, lr, cond, dirty) {
     const up = hasLast ? kg - lr.kg : 0;
     // forza attesa oggi = forza dell'ultima volta × fattore di forma/rientro
     const e1 = hasLast ? e1rm(kg, reps) : 0, exp = hasLast ? e1rm(lr.kg, lr.reps) * f : 0;
-    if (reps >= t) { cls = "ok"; msg = reps > t ? `Target superato di ${reps - t}` : (off ? "Target pieno anche in una giornata difficile" : ""); }
+    if (reps >= t) { cls = "ok"; msg = reps > t ? `Target superato di ${reps - t}` : (off ? (cond && cond.ooo && cond.f >= 1 ? "Target pieno anche fuori ordine" : "Target pieno anche in una giornata difficile") : ""); }
     else if (hasLast && e1 >= exp * 0.99 && (up > 0 || off)) { cls = "prog"; msg = off ? `${missTxt} in meno, ma forza in linea con oggi (${cond.why}): va bene così` : `${missTxt} in meno ma +${fmt(up)} kg: forza pari o superiore all'ultima volta`; }
     else if (hasLast && up > 0 && pct >= 0.6) { cls = "near"; msg = `Carico salito di ${fmt(up)} kg: normale perdere qualche rep (${repsTxt(miss)})`; }
     else if (pct >= (off ? 0.6 : 0.8)) { cls = "near"; msg = `Quasi: ${repsTxt(miss)} (${Math.round(pct * 100)}% del target)` + (off ? " · oggi: " + cond.why : ""); }
@@ -471,6 +507,7 @@ function edit(ex, i, field, val) {
   while (s.ex[ex.key].length < ex.sets.length) s.ex[ex.key].push({ kg: null, reps: null });
   const v = field === "dirty" ? (val ? true : undefined) : num(val);
   s.ex[ex.key][i] = { ...s.ex[ex.key][i], [field]: v };
+  if (v != null && field !== "dirty" && !(s.ord || []).includes(ex.key)) s.ord = [...(s.ord || []), ex.key]; // ordine reale di esecuzione
   s.updatedAt = Date.now(); D.sessions[s.id] = s; save(); updateProgress();
   if (field === "reps") try { localStorage.setItem(LKEY, JSON.stringify({ gym: S.gym, day: S.day, date: S.date, key: ex.key, i })); } catch (e) {}
 }
@@ -482,9 +519,18 @@ function nextSet(d, idx, i) {
   if (r && r.reps != null) {
     if (g) { if (!g.last) k = d.ex[idx + 1].key; else { k = d.ex[g.start].key; i++; } if (!$(`rp-${k}-${i}`)) { k = (d.ex[g.end + 1] || ex).key; i = 0; } }
     else if (i < ex.sets.length - 1) i++;
-    else if (d.ex[idx + 1]) { k = d.ex[idx + 1].key; i = 0; }
+    else { const n = nextOpenUnit(d, idx); if (n) ({ k, i } = n); else if (d.ex[idx + 1]) { k = d.ex[idx + 1].key; i = 0; } }
   }
   return { k, i };
+}
+// primo esercizio non finito dopo idx (poi dall'inizio): serve quando cambi ordine (es. macchina occupata)
+function nextOpenUnit(d, idx) {
+  const s = current(), us = dayUnitsList(d, s).filter(u => !u.done); if (!us.length) return null;
+  const pos = u => d.ex.findIndex(e => e.key === u.keys[0]);
+  const u = us.find(x => pos(x) > idx) || us[0];
+  if (u.circ) return { k: u.keys[0], i: 0 };
+  const sets = exSets(s, u.ex.key), j = u.ex.sets.findIndex((_, n) => !sets[n] || sets[n].reps == null);
+  return { k: u.ex.key, i: Math.max(0, j) };
 }
 // Dopo ✓ (tastiera chiusa) iPhone riposiziona la pagina: aspettiamo che la tastiera sia giù e portiamo
 // con uno scorrimento fluido alla prossima serie da fare (se l'esercizio cambia, mostriamo la sua scheda dall'inizio).
@@ -606,13 +652,13 @@ function renderProg() {
       const done = ss.filter(s => circCount(s, ex.circ) > 0), l = done[done.length - 1], row = document.createElement("div"); row.className = "pr";
       row.innerHTML = `<div><div class="n">Circuito ${esc(ex.circ)}</div><div class="s">${done.length ? `${done.length} sedute · ultima ${fmtDate(l.date)}: ${circCount(l, ex.circ)}/${ex.sets.length} giri` : "Nessun dato"}</div></div>`;
       box.appendChild(row); return; }
-    const all = ss.filter(s => exHas(s, ex.key)).map(s => ({ i: index(exSets(s, ex.key)), m: maxKg(exSets(s, ex.key)), hit: allHit(exSets(s, ex.key), ex), dirty: exSets(s, ex.key).filter(r => r && r.dirty).length, off: isOffDay(s) }));
+    const all = ss.filter(s => exHas(s, ex.key)).map(s => ({ i: index(exSets(s, ex.key)), m: maxKg(exSets(s, ex.key)), hit: allHit(exSets(s, ex.key), ex), dirty: exSets(s, ex.key).filter(r => r && r.dirty).length, off: isOffDay(s) || oooOff(s, ex.key) }));
     const pts = all.filter(x => !x.off), nOff = all.length - pts.length;
     let stat = "Nessun dato", pill = "";
     if (pts.length) {
       const a = pts[0], z = pts[pts.length - 1], q = pts[pts.length - 2];
       const dP = q && q.i ? (z.i - q.i) / q.i : null, dF = a.i ? (z.i - a.i) / a.i : null;
-      stat = `${pts.length} sedute${nOff ? ` (+${nOff} giornate no escluse dal trend)` : ""} · ${z.m != null ? "max " + fmt(z.m) + " kg · " : ""}indice ${Math.round(z.i)}${dF != null && pts.length > 1 ? ` (${dF >= 0 ? "+" : ""}${(dF * 100).toFixed(1).replace(".", ",")}% dalla 1ª)` : ""}`;
+      stat = `${pts.length} sedute${nOff ? ` (+${nOff} escluse dal trend: giornate no o fuori ordine)` : ""} · ${z.m != null ? "max " + fmt(z.m) + " kg · " : ""}indice ${Math.round(z.i)}${dF != null && pts.length > 1 ? ` (${dF >= 0 ? "+" : ""}${(dF * 100).toFixed(1).replace(".", ",")}% dalla 1ª)` : ""}`;
       if (dP != null) pill = dP > 0.03 ? `<span class="pill up">↑ in crescita</span>` : dP < -0.03 ? `<span class="pill down">↓ in calo</span>` : `<span class="pill">→ stabile</span>`;
       if (z.dirty) pill += ` <span class="pill near">ultima volta ${z.dirty} ${z.dirty === 1 ? "serie sporca" : "serie sporche"}</span>`;
       else if (z.hit) pill += ` <span class="pill up">prossima: aumenta</span>`;
@@ -641,7 +687,7 @@ function trendData(p, d, gym) {
   const weeks = [...new Set(ss.map(s => weekOf(p, s.date)))].filter(w => w >= 1).sort((a, b) => a - b);
   const exs = d.ex.filter((e, idx) => !isCircNoLog(d, idx)).map(e => {
     const byW = {};
-    for (const s of ss) { const w = weekOf(p, s.date), b = bestSet(exSets(s, e.key), e.bw); if (b && (!byW[w] || b.v > byW[w].v)) byW[w] = b; }
+    for (const s of ss) { if (oooOff(s, e.key)) continue; const w = weekOf(p, s.date), b = bestSet(exSets(s, e.key), e.bw); if (b && (!byW[w] || b.v > byW[w].v)) byW[w] = b; }
     const w0 = weeks.find(w => byW[w]);
     return { e, byW, base: w0 ? byW[w0].v : null };
   });
@@ -681,7 +727,7 @@ function renderTrend(p, d) {
     <div class="ttab"><table><thead><tr><th>Esercizio</th>${weeks.map(w => `<th>S${w}<small>${from(w)}</small></th>`).join("")}<th>Tot.</th></tr></thead>
       <tbody>${exs.filter(x => x.base).map(x => { const lw = [...weeks].reverse().find(w => x.byW[w]), tot = x.base && lw ? x.byW[lw].v / x.base - 1 : null, first = weeks.find(w => x.byW[w]);
         return `<tr><th>${esc(x.e.name)}</th>${weeks.map((w, i) => cell(x, w, i)).join("")}<td class="tot ${tot > 0.0005 && lw !== first ? "up" : tot < -0.0005 ? "dn" : ""}">${lw && lw !== first ? pctTxt(tot) : "—"}</td></tr>`; }).join("")}</tbody></table></div>
-    <p class="note">Serie migliore della settimana (kg × reps). La % è la forza stimata rispetto alla prima settimana: kg × (1 + reps/30). Escluse giornate no, rientri e serie sporche.</p>`;
+    <p class="note">Serie migliore della settimana (kg × reps). La % è la forza stimata rispetto alla prima settimana: kg × (1 + reps/30). Escluse giornate no, rientri, serie sporche ed esercizi fatti fuori ordine.</p>`;
 }
 // Storico sedute della palestra: dalla più recente; tocco = dettaglio serie per serie; "Apri" = la riapre in Allenamento
 function renderHist() {
@@ -696,7 +742,7 @@ function renderHist() {
     const rows = d ? d.ex.map((e, idx) => {
       const g = isCircNoLog(d, idx); if (g) return idx === g.start && circCount(s, e.circ) ? `<li><b>Circuito ${esc(e.circ)}</b><span>${circCount(s, e.circ)}/${e.sets.length} giri</span></li>` : "";
       const sets = exSets(s, e.key).filter(r => r && (r.kg != null || r.reps != null)); if (!sets.length) return "";
-      return `<li><b>${esc(e.name)}</b><span>${sets.map(r => `${r.kg != null ? fmt(r.kg) + "×" : ""}${r.reps ?? "–"}${r.dirty ? "~" : ""}`).join(" · ")}</span></li>`;
+      return `<li><b>${esc(e.name)}${oooOff(s, e.key) ? " ↕" : ""}</b><span>${sets.map(r => `${r.kg != null ? fmt(r.kg) + "×" : ""}${r.reps ?? "–"}${r.dirty ? "~" : ""}`).join(" · ")}</span></li>`;
     }).join("") : "";
     return `<div class="hitem"><button class="hrow" data-h="${n}"><b>${esc(wd)}</b><span>${esc(s.day)}${d ? " · " + esc(d.name) : ""}</span><small>${esc(info)}</small></button>
       <div class="hdet" hidden><ul>${rows}</ul>${(s.note || "").trim() ? `<p class="note">📝 ${esc(s.note)}</p>` : ""}
