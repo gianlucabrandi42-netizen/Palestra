@@ -417,3 +417,11 @@ textarea{width:100%;min-height:84px;padding:10px;background:var(--surface);borde
   .console::before{content:"";position:absolute;left:0;right:0;top:-1px;height:31px;background:var(--surface)}
   .console{position:sticky}
 }
+/* lampo "VIA!" a fine recupero con l'app aperta */
+#goflash{position:fixed;inset:0;z-index:60;display:none;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:24px;
+  background:color-mix(in srgb,var(--ok) 92%,#000);color:#06200f}
+#goflash.on{display:flex;animation:goflash 3.2s ease-out forwards}
+#goflash b{font-family:var(--display);font-weight:800;font-size:96px;line-height:.9;letter-spacing:.02em}
+#goflash span{font-size:22px;font-weight:800}
+#goflash small{font-size:16px;font-weight:700;opacity:.8}
+@keyframes goflash{0%{opacity:0}6%{opacity:1}14%{opacity:.55}22%{opacity:1}30%{opacity:.55}38%{opacity:1}85%{opacity:1}100%{opacity:0}}

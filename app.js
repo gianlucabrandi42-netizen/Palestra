@@ -889,7 +889,19 @@ function beep(at, freq, len, vol) {
 function iosTap() { // iPhone: Safari non ha la vibrazione per le app web; un interruttore nativo dà un piccolo tocco aptico (iOS 18+)
   try { const l = document.createElement("label"), i = document.createElement("input"); i.type = "checkbox"; i.setAttribute("switch", ""); l.appendChild(i); l.style.cssText = "position:fixed;opacity:0;pointer-events:none"; document.body.appendChild(l); l.click(); setTimeout(() => l.remove(), 50); } catch (e) {}
 }
+// A fine recupero con l'app aperta: lampo verde a tutto schermo con "VIA!" e la serie da fare
+// (su iPhone le app web non possono vibrare e iOS non mostra le notifiche dell'app che hai davanti).
+function flashGo() {
+  if (document.visibilityState !== "visible") return;
+  let f = $("goflash");
+  if (!f) { f = document.createElement("div"); f.id = "goflash"; f.setAttribute("role", "alert"); document.body.appendChild(f); f.onclick = () => f.classList.remove("on"); }
+  const n = nextInfo();
+  f.innerHTML = `<b>VIA!</b>${n && !n.done ? `<span>${esc(n.name)}</span><small>${esc(n.set)} · ${esc(n.what)}</small>` : n && n.done ? `<span>Allenamento completato 🏁</span>` : ""}`;
+  f.classList.remove("on"); void f.offsetWidth; f.classList.add("on");
+  clearTimeout(f._t); f._t = setTimeout(() => f.classList.remove("on"), 3200);
+}
 function alarm(soft) {
+  if (!soft) flashGo();
   const p = tPrefs();
   if (p.vib) {
     if (navigator.vibrate) navigator.vibrate(soft ? 150 : [500, 200, 500, 200, 700]);

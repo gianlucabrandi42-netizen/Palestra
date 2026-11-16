@@ -89,6 +89,7 @@ Muscoli disponibili per `m`: CHEST, FRONT_DELTOIDS, BACK_DELTOIDS, TRICEPS, BICE
   - **tocco sul tempo durante il recupero → porta alla prossima serie da fare** (stessa logica della ripresa all'apertura, anche da un'altra sezione);
   - iPhone sospende l'audio delle app web silenziose: durante il recupero l'app tiene acceso un tono inudibile (40 Hz, volume minimo) perché i bip di fine timer suonino; si spegne in pausa/stop/fine;
   - a fine recupero: vibrazione (Android), 3 bip, "VIA!" verde; avviso breve a 5" dalla fine. Ogni avviso si può disattivare;
+  - **con l'app aperta**: lampo verde a tutto schermo per ~3" con "VIA!", esercizio e serie da fare (`flashGo()`, tocco = chiude). Serve perché su iPhone, ad app aperta, non c'è vibrazione: le app web non possono vibrare e iOS non mostra le notifiche push dell'app in primo piano;
   - iPhone: le app web non possono vibrare → solo un leggero tocco aptico (iOS 18+, trucco dell'interruttore) + suono, che con il telefono in silenzioso potrebbe non sentirsi;
   - mentre conta, lo schermo resta acceso (Wake Lock); a telefono bloccato l'app è sospesa e l'avviso arriva alla riapertura;
   - impostazioni in `D.prefs.timer`, timer in corso in localStorage `palestra-timer` (non nel backup).
