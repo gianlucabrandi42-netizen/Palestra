@@ -57,7 +57,7 @@ if (navigator.storage && navigator.storage.persist) navigator.storage.persist().
 const GYMS = window.PALESTRE;
 const plans = window.SCHEDE;
 const activePlan = () => plans.find(p => p.id === window.SCHEDA_ATTIVA) || plans[plans.length - 1];
-const S = { view: "log", gym: D.prefs.gym || GYMS[0].id, day: D.prefs.day, date: todayISO(), open: new Set(), pday: null };
+const S = { view: "log", gym: D.prefs.gym || GYMS[0].id, day: D.prefs.day, date: todayISO(), open: new Set(), exOpen: new Set(), pday: null };
 function plan() { return activePlan(); }
 function dayObj() { const p = plan(); let d = p.days.find(x => x.id === S.day); if (!d) { d = p.days[0]; S.day = d.id; } return d; }
 const sid = () => `${S.gym}_${plan().id}_${S.day}_${S.date}`;
@@ -124,11 +124,11 @@ const mnames = l => [...new Set((l || []).map(x => MNAME[x] || x))].join(" · ")
 function renderConsole() {
   const gi = GYMS.findIndex(g => g.id === S.gym);
   document.body.classList.toggle("g1", gi === 1);
-  $("gyms").innerHTML = GYMS.map(g => `<button data-g="${g.id}" aria-pressed="${g.id === S.gym}">${esc(g.name)}</button>`).join("");
+  $("gyms").innerHTML = GYMS.map(g => `<button data-g="${g.id}" aria-pressed="${g.id === S.gym}" aria-label="${esc(g.name)}">${esc(g.short || g.name.split(" ")[0])}</button>`).join("");
   $("gyms").querySelectorAll("button").forEach(b => b.onclick = () => { S.gym = b.dataset.g; persistPrefs(); render(); });
   const p = plan(); dayObj();
   $("days").innerHTML = p.days.map(d => `<button data-d="${d.id}" aria-pressed="${d.id === S.day}"><b>${esc(d.id)}</b><small>${esc(d.name)}</small></button>`).join("");
-  $("days").querySelectorAll("button").forEach(b => b.onclick = () => { S.day = b.dataset.d; S.open.clear(); persistPrefs(); render(); scrollTo(0, 0); });
+  $("days").querySelectorAll("button").forEach(b => b.onclick = () => { S.day = b.dataset.d; S.open.clear(); S.exOpen.clear(); togglePanel(false); persistPrefs(); render(); scrollTo(0, 0); });
   $("date").value = S.date;
   const list = gymSessions(S.gym).filter(s => s.plan === p.id && s.day === S.day).slice(-12).reverse();
   const box = $("sessions"); box.textContent = "";
@@ -136,13 +136,62 @@ function renderConsole() {
   if (!list.some(s => s.date === today)) box.appendChild(chip("Oggi", today));
   list.forEach(s => box.appendChild(chip(s.date === today ? "Oggi" : fmtDate(s.date), s.date)));
 }
-function chip(label, date) { const b = document.createElement("button"); b.className = "chip"; b.textContent = label; b.setAttribute("aria-pressed", S.date === date); b.onclick = () => { S.date = date; render(); }; return b; }
+function chip(label, date) { const b = document.createElement("button"); b.className = "chip"; b.textContent = label; b.setAttribute("aria-pressed", S.date === date); b.onclick = () => { S.date = date; S.exOpen.clear(); togglePanel(false); render(); }; return b; }
+function togglePanel(open) { const o = open ?? $("cpanel").hidden; $("cpanel").hidden = !o; $("dsel").setAttribute("aria-expanded", o); }
+$("dsel").onclick = () => togglePanel();
+
+// ---------- esercizi del giorno come "unità" (un esercizio, o un circuito senza registrazione) ----------
+// Tutto è calcolato da schede.js: con una scheda nuova contatori, cerchio, striscia e schede si aggiornano da soli.
+function dayUnitsList(d, s) {
+  const u = [];
+  d.ex.forEach((e, idx) => {
+    const g = isCircNoLog(d, idx);
+    if (g) { if (idx !== g.start) return; const mem = d.ex.slice(g.start, g.end + 1), c = circCount(s, e.circ);
+      u.push({ circ: g, ex: e, keys: mem.map(x => x.key), name: `Circuito ${e.circ}`, done: c >= e.sets.length, started: c > 0 }); return; }
+    const n = doneSets(s, e);
+    u.push({ idx, ex: e, keys: [e.key], name: e.name, done: n === e.sets.length, started: n > 0 });
+  });
+  u.forEach((x, i) => x.n = i + 1);
+  return u;
+}
+// esercizio "adesso": quello della prossima serie da fare dopo l'ultima compilata; altrimenti il primo non finito
+function currentUnit(d, s, units) {
+  let L = null; try { L = JSON.parse(localStorage.getItem(LKEY)); } catch (e) {}
+  if (L && L.date === S.date && L.gym === S.gym && L.day === S.day) {
+    const idx = d.ex.findIndex(e => e.key === L.key);
+    if (idx >= 0) { const t = nextSet(d, idx, L.i), u = units.find(x => x.keys.includes(t.k)); if (u && !u.done) return u; }
+  }
+  return units.find(x => !x.done) || null;
+}
+const unitOpen = (u, cur) => u === cur || u.keys.some(k => S.exOpen.has(k));
+const shortName = n => n.length > 14 ? n.slice(0, 13).trim() + "." : n;
+function drawHeader(d, s, units, cur) {
+  const tot = units.length, done = units.filter(x => x.done).length, left = tot - done, C = 2 * Math.PI * 18;
+  $("ring").innerHTML = `<svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" class="rb"/><circle cx="22" cy="22" r="18" class="rf" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - (tot ? done / tot : 0))).toFixed(1)}"/></svg><b>${left ? left : "✓"}</b>`;
+  $("ring").classList.toggle("all", !left && tot > 0);
+  $("dtitle").textContent = `${d.id} · ${d.name}`;
+  const r = s.readiness || "ok", when = S.date === todayISO() ? "oggi" : new Date(S.date + "T12:00").toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" });
+  $("dsub").textContent = `${left ? (left === 1 ? "manca 1 esercizio" : `mancano ${left} esercizi`) : "allenamento completato"} · ${when}${r !== "ok" ? " · " + READY[r].n : ""} ▾`;
+  const strip = $("strip");
+  strip.innerHTML = units.map(u => { const f = execFrames(u.circ ? u.ex : u.ex)[0], c = u === cur;
+    return `<button class="schip${u.done ? " d" : ""}${c ? " c" : ""}${u.started && !u.done ? " p" : ""}" data-k="${u.keys[0]}" aria-label="${esc(u.name)}${u.done ? ", fatto" : ""}">${f ? `<img src="${f.src}" alt="" loading="lazy">` : ""}<span>${u.done ? "✓ " : ""}${u.n}${c ? " " + esc(shortName(u.name)) : ""}</span></button>`; }).join("");
+  strip.querySelectorAll("[data-k]").forEach(b => b.onclick = () => openUnit(b.dataset.k));
+  const c = strip.querySelector(".c"); if (c) strip.scrollLeft = Math.max(0, c.offsetLeft - strip.clientWidth / 2 + c.offsetWidth / 2);
+}
+// apre (se chiuso) e mostra l'esercizio subito sotto la barra in alto
+function openUnit(k) {
+  const d = dayObj(), units = dayUnitsList(d, current()), cur = currentUnit(d, current(), units), u = units.find(x => x.keys.includes(k)); if (!u) return;
+  if (!unitOpen(u, cur)) { S.exOpen.add(u.keys[0]); renderLog(); }
+  const card = document.querySelector(`.ex[data-ex="${u.keys[0]}"], .circ-card[data-keys~="${u.keys[0]}"]`); if (!card) return;
+  scrollTo({ top: Math.max(0, card.getBoundingClientRect().top + scrollY - $("console").getBoundingClientRect().bottom - 8), behavior: "smooth" });
+}
+// la riga indicata è in un esercizio chiuso? lo apre (serve a timer, ripresa e serie dimenticate)
+function ensureRow(k, i) { let row = rowEl(k, i); if (row && row.classList.contains("exmini")) { S.exOpen.add(k); renderLog(); row = rowEl(k, i); } return row; }
 function persistPrefs() { D.prefs.gym = S.gym; D.prefs.day = S.day; save(); }
 
 function updateProgress() {
   const d = dayObj(), s = current();
-  const { tot, done } = dayUnits(d, s);
-  $("barfill").style.width = (tot ? done / tot * 100 : 0) + "%"; $("bartxt").textContent = `${done}/${tot} serie`;
+  const units = dayUnitsList(d, s); drawHeader(d, s, units, currentUnit(d, s, units));
   d.ex.forEach(e => { const c = document.querySelector(`[data-ex="${e.key}"]`); if (c) c.classList.toggle("done", doneSets(s, e) === e.sets.length); });
   document.querySelectorAll(".circ-card").forEach(c => { const e = d.ex.find(x => x.circ === c.dataset.circ); if (e) c.classList.toggle("done", circCount(s, e.circ) >= e.sets.length); });
   checkMissing();
@@ -151,16 +200,10 @@ function updateProgress() {
 function renderLog() {
   renderConsole();
   const p = plan(), d = dayObj(), sess = current();
-  const gname = GYMS.find(g => g.id === S.gym).name;
-  $("herok").textContent = `${d.id} · ${gname} · ${S.date === todayISO() ? "oggi" : fmtDate(S.date)}`;
-  $("heroh").textContent = d.name;
-  const past = gymSessions(S.gym).filter(s => s.plan === p.id && s.day === S.day && s.date < S.date);
-  const { tot, nEx } = dayUnits(d, null);
-  $("herostats").innerHTML = `<span><b>${nEx}</b> esercizi</span><span><b>${tot}</b> serie</span><span>Ultima volta <b>${past.length ? fmtDate(past[past.length - 1].date) : "—"}</b></span>`;
   // forma del giorno
   const cond = condition(sess);
   $("ready").innerHTML = `<span>Come stai oggi?</span>` + Object.entries(READY).map(([k, v]) => `<button data-r="${k}" aria-pressed="${(sess.readiness || "ok") === k}">${v.n}</button>`).join("");
-  $("ready").querySelectorAll("button").forEach(b => b.onclick = () => setSess({ readiness: b.dataset.r }));
+  $("ready").querySelectorAll("button").forEach(b => b.onclick = () => { setSess({ readiness: b.dataset.r }); togglePanel(false); });
   const pi = pauseInfo(S.date);
   $("pauseNag").innerHTML = pi.f < 1 && !sess.ignorePause
     ? `<div class="nag info"><span><b>Rientro dopo ${pi.days} giorni.</b> Carichi suggeriti ridotti del ${Math.round((1 - pi.f) * 100)}%: riprendi gradualmente.</span><button class="btn sm" id="noPause">Non è un rientro</button></div>`
@@ -172,11 +215,16 @@ function renderLog() {
   if ($("nagBk")) $("nagBk").onclick = exportBackup;
 
   const list = $("list"); list.textContent = "";
+  const units = dayUnitsList(d, sess), curU = currentUnit(d, sess, units);
+  S.sig = units.filter(u => unitOpen(u, curU)).map(u => u.keys[0]).join(",") + "|" + (curU ? curU.keys[0] : "");
   let exN = 0;
   d.ex.forEach((ex, idx) => {
+    const u = units.find(x => x.keys[0] === ex.key);
+    if (!u) return; // membro di circuito già mostrato
+    exN = u.n;
+    if (!unitOpen(u, curU)) { list.appendChild(miniCard(u, sess)); return; }
     const cg0 = isCircNoLog(d, idx);
-    if (cg0) { if (idx === cg0.start) list.appendChild(circCard(d, cg0, ++exN)); return; }
-    exN++;
+    if (cg0) { list.appendChild(circCard(d, cg0, exN, u === curU)); return; }
     const last = lastBefore(ex.key), lastSets = last ? exSets(last, ex.key) : [];
     const rs = lastRef(ex.key), refSets = rs ? exSets(rs, ex.key) : [], hit = rs ? allHit(refSets, ex) && allClean(refSets) : false, cond = condition(sess);
     const ref = ex.ref && ex.ref[S.gym];
@@ -186,25 +234,25 @@ function renderLog() {
     else if (ref) pills += `<span class="pill">Rif. scheda prec. ${fmt(ref)} kg</span>`;
     const cg = circGroup(d, idx);
     if (cg) pills += cg.last ? `<span class="pill circ">Circuito · recupero ${fmtSec(restFor(ex))} a fine giro</span>` : `<span class="pill circ">Circuito · subito il prossimo</span>`;
-    else pills += `<span class="pill">Recupero ${fmtSec(restFor(ex))}</span>`;
-    if (last) pills += `<span class="pill">ultima ${fmtDate(last.date)}</span>`;
+    const isCur = u === curU, manual = !isCur;
     const fr = execFrames(ex);
-    const card = document.createElement("article"); card.className = "ex"; card.dataset.ex = ex.key;
+    const card = document.createElement("article"); card.className = "ex" + (isCur ? " cur" : ""); card.dataset.ex = ex.key;
     const open = S.open.has(ex.key);
     card.innerHTML = `
-      ${fr.length ? `<button class="exec" data-zoom aria-label="Ingrandisci le immagini di ${esc(ex.name)}">
-        ${fr.map(f => `<img src="${f.src}" alt="${esc(ex.name)} — ${esc(f.cap)}" class="${f.draw ? "draw" : ""}" loading="lazy">`).join("")}
-        <span class="lbl"><i></i>Esecuzione</span><span class="zoom"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4M11 8v6M8 11h6"/></svg></span></button>` : ""}
-      <div class="exhead">
-        <div class="num">${String(exN).padStart(2, "0")}</div>
-        <div><h3 class="exname">${esc(ex.name)}</h3><div class="tec">${esc(ex.tec || "")}</div>${pills ? `<div class="pills">${pills}</div>` : ""}</div>
-        <button class="mini" data-more aria-label="Muscoli di ${esc(ex.name)}">${bodySVG(ex.m || {})}</button>
+      <div class="exh">
+        ${fr.length ? `<button class="exec thumb" data-zoom aria-label="Ingrandisci le immagini di ${esc(ex.name)}">
+          ${fr.map(f => `<img src="${f.src}" alt="${esc(ex.name)} — ${esc(f.cap)}" class="${f.draw ? "draw" : ""}" loading="lazy">`).join("")}
+          <span class="zoom"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></span></button>` : ""}
+        <div class="t"><div class="exk">${String(exN).padStart(2, "0")}${isCur ? " · Adesso" : ""} · Recupero ${fmtSec(restFor(ex))}</div>
+          <h3 class="exname">${esc(ex.name)}</h3><div class="tec">${esc(ex.tec || "")}</div></div>
       </div>
+      ${pills ? `<div class="pills">${pills}</div>` : ""}
       ${(ex.flash || []).length ? `<ul class="flash" aria-label="Da ricordare">${ex.flash.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
       ${ex.setup === false ? "" : `<div class="setup"><label for="su-${ex.key}">Regolazioni</label><input id="su-${ex.key}" autocomplete="off" placeholder="es. sedile 4 · schienale 2"></div>`}
-      <div class="sets"><div class="sh"><span>Serie</span><span>Ultima volta</span><span>${ex.bw ? "kg (opz.)" : "kg"}</span><span>Reps</span></div></div>
-      <div class="exfoot"><button class="btn sm" data-copy>Usa kg suggeriti</button>
-        <button class="more" data-more aria-expanded="${open}">Dettagli<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></div>
+      <div class="sets"><div class="sh"><span>Serie</span><span>Ultima</span><span>${ex.bw ? "kg (opz.)" : "kg"}</span><span>Reps</span><span></span></div></div>
+      <div class="exfoot"><button class="btn sm" data-copy>⚡ Usa kg suggeriti</button>
+        ${manual ? `<button class="more" data-close>Chiudi</button>` : ""}
+        <button class="more" data-more aria-expanded="${open}">Esecuzione<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></div>
       <div class="panel" ${open ? "" : "hidden"}></div>`;
     const setsEl = card.querySelector(".sets"), cur = exSets(sess, ex.key);
     let sn = 0;
@@ -217,19 +265,16 @@ function renderLog() {
       row.innerHTML = `<div class="sn" style="--tc:var(${ty.c})">${label}<small>${esc(st.t)}${ex.bw && tn != null ? "" : ""} reps</small>${ty.n || st.note ? `<em>${esc([ty.n, st.note].filter(Boolean).join(" · "))}</em>` : ""}</div>
         <div class="prev">${lr && (lr.kg != null || lr.reps != null) ? `${lr.kg != null ? fmt(lr.kg) + " × " : ""}${lr.reps ?? "–"}${lr.dirty ? "~" : ""}` : "—"}${sug != null ? `<b class="sug">oggi ${fmt(sug)} kg</b>` : ""}</div>
         <input id="kg-${ex.key}-${i}" inputmode="decimal" enterkeyhint="next" autocomplete="off" aria-label="${esc(ex.name)} serie ${i + 1} kg" placeholder="${sug != null ? fmt(sug) : lr && lr.kg != null ? fmt(lr.kg) : "kg"}">
-        <input id="rp-${ex.key}-${i}" inputmode="numeric" enterkeyhint="next" autocomplete="off" aria-label="${esc(ex.name)} serie ${i + 1} ripetizioni" placeholder="${tn != null ? tn : "max"}">`;
+        <input id="rp-${ex.key}-${i}" inputmode="numeric" enterkeyhint="next" autocomplete="off" aria-label="${esc(ex.name)} serie ${i + 1} ripetizioni" placeholder="${tn != null ? tn : "max"}">
+        <button type="button" class="dq">~</button><div class="fb"></div>`;
       const [kg, rp] = row.querySelectorAll("input"); kg.value = fmt(r.kg); rp.value = r.reps ?? "";
-      const fbl = document.createElement("div"); fbl.className = "fbl";
-      const fb = document.createElement("div"); fb.className = "fb";
-      const dq = document.createElement("button"); dq.type = "button"; dq.className = "dq";
-      fbl.append(fb, dq); row.appendChild(fbl);
+      const fb = row.querySelector(".fb"), dq = row.querySelector(".dq");
       const isDirty = () => !!(exSets(current(), ex.key)[i] || {}).dirty;
       const upd = () => {
         judge(kg, rp, fb, tn, rr, cond, isDirty());
         const has = num(rp.value) != null, dirty = isDirty();
-        dq.hidden = !has; dq.classList.toggle("on", dirty); dq.textContent = dirty ? "~ Sporca" : "Pulita";
+        dq.classList.toggle("off", !has); dq.disabled = !has; dq.classList.toggle("on", dirty);
         dq.setAttribute("aria-label", dirty ? "Serie sporca: tocca per segnarla pulita" : "Serie pulita: tocca se l'hai sporcata");
-        fbl.hidden = !has && fb.hidden;
       };
       dq.onclick = () => { edit(ex, i, "dirty", !isDirty()); upd(); };
       kg.oninput = e => { edit(ex, i, "kg", kg.value); upd(); autoKg(e, kg, rp); };
@@ -256,27 +301,34 @@ function renderLog() {
       if (isOpen) S.open.delete(ex.key); else { S.open.add(ex.key); if (!panel.firstChild) fillPanel(panel, ex); }
     });
     const z = card.querySelector("[data-zoom]"); if (z) z.onclick = () => openLB(ex, 0);
+    const cl = card.querySelector("[data-close]"); if (cl) cl.onclick = () => { S.exOpen.delete(ex.key); renderLog(); };
     list.appendChild(card);
   });
+  markNext();
   $("note").value = sess.note || "";
   updateProgress();
 }
 // ---------- campi dimenticati ----------
 // Se hai già compilato una serie più avanti nella giornata, le serie precedenti senza reps (o con reps ma senza kg)
 // sono "da completare": righe segnate in arancione + avviso sopra il timer che porta alla prima.
+// Serie dimenticate: (1) reps scritte senza kg; (2) in un esercizio già iniziato, serie vuote prima di una compilata
+// o quando sei già passato a un altro esercizio. Gli esercizi mai iniziati non contano (li mostra il cerchio "mancano").
 function missingSlots(d, s) {
-  const slots = [];
-  d.ex.forEach((e, idx) => { const g = isCircNoLog(d, idx); if (g) { if (idx === g.start) slots.push({ circ: e.circ, giri: e.sets.length, k: e.key }); return; } e.sets.forEach((_, i) => slots.push({ e, i, k: e.key })); });
-  const rOf = sl => exSets(s, sl.e.key)[sl.i];
-  const filled = sl => sl.circ ? circCount(s, sl.circ) > 0 : (r => r && (r.kg != null || r.reps != null))(rOf(sl));
-  let last = -1; slots.forEach((sl, j) => { if (filled(sl)) last = j; });
-  const miss = [];
-  slots.forEach((sl, j) => {
-    if (j > last) return;
-    if (sl.circ) { if (j < last && circCount(s, sl.circ) < sl.giri) miss.push({ k: sl.k, i: 0, what: "giri" }); return; }
-    const r = rOf(sl);
-    if (j < last && (!r || r.reps == null)) miss.push({ k: sl.k, i: sl.i, what: "reps" });
-    else if (r && r.reps != null && r.kg == null && !sl.e.bw) miss.push({ k: sl.k, i: sl.i, what: "kg" });
+  const units = dayUnitsList(d, s), miss = [];
+  const touched = units.map(u => u.circ ? circCount(s, u.ex.circ) > 0 : exSets(s, u.ex.key).some(r => r && (r.kg != null || r.reps != null)));
+  const lastIdx = touched.lastIndexOf(true);
+  let L = null; try { L = JSON.parse(localStorage.getItem(LKEY)); } catch (e) {}
+  const lastUnit = L && L.date === S.date && L.gym === S.gym && L.day === S.day ? units.findIndex(u => u.keys.includes(L.key)) : lastIdx;
+  units.forEach((u, j) => {
+    if (!touched[j]) return;
+    const movedOn = units.some((v, k) => k !== j && touched[k] && (k > j || k === lastUnit)) && lastUnit !== j;
+    if (u.circ) { if (movedOn && circCount(s, u.ex.circ) < u.ex.sets.length) miss.push({ k: u.keys[0], i: 0, what: "giri" }); return; }
+    const sets = exSets(s, u.ex.key), lastFilled = u.ex.sets.reduce((a, _, i) => sets[i] && (sets[i].kg != null || sets[i].reps != null) ? i : a, -1);
+    u.ex.sets.forEach((_, i) => {
+      const r = sets[i];
+      if ((!r || r.reps == null) && (i < lastFilled || movedOn)) miss.push({ k: u.ex.key, i, what: "reps" });
+      else if (r && r.reps != null && r.kg == null && !u.ex.bw) miss.push({ k: u.ex.key, i, what: "kg" });
+    });
   });
   return miss;
 }
@@ -292,20 +344,41 @@ function drawMissing() {
   if (!miss.length) return;
   const n = miss.length, kgOnly = miss.every(m => m.what === "kg");
   $("missGo").textContent = `⚠ ${n} ${n === 1 ? "serie" : "serie"} da completare${kgOnly ? " (kg)" : ""}`;
-  $("missGo").onclick = () => { const m = missingSlots(dayObj(), current())[0]; if (!m) return drawMissing(); const row = rowEl(m.k, m.i);
+  $("missGo").onclick = () => { const m = missingSlots(dayObj(), current())[0]; if (!m) return drawMissing(); const row = ensureRow(m.k, m.i);
     row.scrollIntoView({ block: "center", behavior: "smooth" }); row.classList.remove("here"); void row.offsetWidth; row.classList.add("here"); setTimeout(() => row.classList.remove("here"), 2600); };
   $("missX").onclick = () => { const s2 = JSON.parse(JSON.stringify(current())); s2.ignoreMiss = true; s2.updatedAt = Date.now(); D.sessions[s2.id] = s2; save(); drawMissing(); toast("Avviso nascosto per questa seduta"); };
 }
 document.addEventListener("focusin", e => { if (e.target.matches && e.target.matches(".set input")) checkMissing(); });
+// scheda chiusa (esercizio fatto o da fare): una riga, tocco = apre
+function miniCard(u, s) {
+  const e = u.ex, f = execFrames(e)[0], b = document.createElement("button");
+  b.className = "exmini" + (u.done ? " done" : ""); b.dataset.keys = u.keys.join(" "); b.dataset.mini = u.keys[0];
+  let sub;
+  if (u.circ) { const c = circCount(s, e.circ); sub = u.done ? `${c}/${e.sets.length} giri` : `${e.sets.length} giri · ${e.sets[0].t} reps · recupero ${fmtSec(restFor(u.circ ? d_last(u) : e))}`; }
+  else if (u.started || u.done) sub = exSets(s, e.key).filter(r => r && (r.kg != null || r.reps != null)).map(r => `${r.kg != null ? fmt(r.kg) + "×" : ""}${r.reps ?? "–"}${r.dirty ? "~" : ""}`).join(" · ");
+  else { const l = lastBefore(e.key), mk = l ? maxKg(exSets(l, e.key)) : null; sub = `${e.sets.length} serie · ${e.sets.map(x => x.t).join("-")}${mk != null ? ` · ultima ${fmt(mk)} kg` : ""}`; }
+  b.innerHTML = `<span class="mk">${u.done ? "✓" : String(u.n).padStart(2, "0")}</span>${f ? `<img src="${f.src}" alt="" loading="lazy">` : ""}
+    <span class="t"><b>${u.done ? String(u.n).padStart(2, "0") + " · " : ""}${esc(u.name)}</b><small>${esc(sub)}</small></span><span class="chev">›</span>`;
+  b.onclick = () => openUnit(u.keys[0]);
+  return b;
+}
+const d_last = u => dayObj().ex.slice(u.circ.start, u.circ.end + 1).pop();
+// evidenzia la prossima serie da fare nell'esercizio aperto "adesso"
+function markNext() {
+  document.querySelectorAll(".set.next").forEach(x => x.classList.remove("next"));
+  const d = dayObj(), s = current(), units = dayUnitsList(d, s), cur = currentUnit(d, s, units); if (!cur || cur.circ) return;
+  const i = cur.ex.sets.findIndex((_, j) => { const r = exSets(s, cur.ex.key)[j]; return !r || r.reps == null; });
+  const el = i >= 0 && $(`rp-${cur.ex.key}-${i}`); if (el) el.closest(".set").classList.add("next");
+}
 // scheda unica del circuito senza registrazione: esercizi + "▶ Giro fatto" + "⏱ recupero"
-function circCard(d, g, n) {
+function circCard(d, g, n, isCur) {
   const mem = d.ex.slice(g.start, g.end + 1), c = mem[0].circ, giri = mem[0].sets.length, t = mem[0].sets[0].t;
   const rest = restFor(mem[mem.length - 1]), cnt = circCount(current(), c);
   const mu = { p: [...new Set(mem.flatMap(e => (e.m && e.m.p) || []))], s: [...new Set(mem.flatMap(e => (e.m && e.m.s) || []))] };
   const card = document.createElement("article"); card.className = "ex circ-card" + (cnt >= giri ? " done" : ""); card.dataset.circ = c; card.dataset.keys = mem.map(e => e.key).join(" ");
   card.innerHTML = `
     <div class="exhead"><div class="num">${String(n).padStart(2, "0")}</div>
-      <div><h3 class="exname">Circuito ${esc(c)}</h3><div class="tec">${giri} giri: ${mem.map(e => esc(e.name)).join(" → ")}, ${esc(t)} reps ciascuno senza pausa. ${fmtSec(rest)} di recupero dopo ogni giro.</div></div>
+      <div>${isCur ? `<div class="exk">Adesso</div>` : ""}<h3 class="exname">Circuito ${esc(c)}</h3><div class="tec">${giri} giri: ${mem.map(e => esc(e.name)).join(" → ")}, ${esc(t)} reps ciascuno senza pausa. ${fmtSec(rest)} di recupero dopo ogni giro.</div></div>
       <div class="mini" aria-hidden="true">${bodySVG(mu)}</div></div>
     <ol class="circlist">${mem.map((e, i) => { const f = execFrames(e)[0]; return `<li>
       <div class="crow">${f ? `<button class="cthumb" data-z="${i}" aria-label="Immagini di ${esc(e.name)}"><img src="${f.src}" alt="" loading="lazy"></button>` : ""}
@@ -321,7 +394,9 @@ function circCard(d, g, n) {
   const setCirc = k => {
     const s2 = JSON.parse(JSON.stringify(current())); s2.circ = { ...(s2.circ || {}), [c]: Math.max(0, Math.min(giri, k)) }; s2.updatedAt = Date.now(); D.sessions[s2.id] = s2; save();
     if (S.date === todayISO()) try { localStorage.setItem(LKEY, JSON.stringify({ gym: S.gym, day: S.day, date: S.date, key: mem[0].key, i: 0 })); } catch (e) {}
-    card.replaceWith(circCard(d, g, n)); updateProgress();
+    const was = cnt >= giri, now = Math.max(0, Math.min(giri, k)) >= giri;
+    if (was !== now) { if (now) S.exOpen.delete(mem[0].key); renderLog(); return; } // completato (o riaperto): la lista si riorganizza
+    card.replaceWith(circCard(d, g, n, isCur)); updateProgress();
   };
   card.querySelector("[data-play]").onclick = () => setCirc(cnt + 1);
   card.querySelectorAll("[data-g]").forEach(b => b.onclick = () => { const k = +b.dataset.g; setCirc(cnt === k ? k - 1 : k); });
@@ -329,7 +404,11 @@ function circCard(d, g, n) {
   return card;
 }
 // elemento da mostrare per la serie k/i: la riga della serie, o i tasti del circuito se l'esercizio è in un circuito senza registrazione
-function rowEl(k, i) { const el = $(`rp-${k}-${i}`); if (el) return el.closest(".set"); const c = document.querySelector(`.circ-card[data-keys~="${k}"]`); return c ? c.querySelector(".circbtns") : null; }
+function rowEl(k, i) {
+  const el = $(`rp-${k}-${i}`); if (el) return el.closest(".set");
+  const c = document.querySelector(`.circ-card[data-keys~="${k}"]`); if (c) return c.querySelector(".circbtns");
+  return document.querySelector(`.exmini[data-keys~="${k}"]`);
+}
 // Compilazione veloce: dopo i kg il cursore passa da solo alle reps; dopo le reps la serie si conferma da sola
 // (tastiera giù → parte il timer e si scorre alla serie dopo). Solo per ciò che scrivi tu, non per "Usa kg suggeriti".
 function autoKg(e, kg, rp) {
@@ -415,7 +494,10 @@ document.addEventListener("focusout", e => {
   const go = () => {
     if (done) return; done = true;
     if (document.activeElement && document.activeElement.matches("input, textarea")) return; // l'utente ha già toccato un altro campo
-    const row = rowEl(t.k, t.i); if (!row) return;
+    const dd = dayObj(), uu = dayUnitsList(dd, current()), cu = currentUnit(dd, current(), uu);
+    const ue = uu.find(x => x.keys.includes(m[2])); if (ue && ue.done) S.exOpen.delete(ue.keys[0]); // finito: si chiude
+    if (uu.filter(x => unitOpen(x, cu)).map(x => x.keys[0]).join(",") + "|" + (cu ? cu.keys[0] : "") !== S.sig) renderLog(); else { markNext(); updateProgress(); }
+    const row = ensureRow(t.k, t.i); if (!row) return;
     const card = row.closest(".ex"), con = document.querySelector(".console");
     const rb = row.getBoundingClientRect(), tm = $("timer"), barTop = tm && !tm.hidden ? $("tbox").getBoundingClientRect().top : innerHeight - 70;
     // esercizio nuovo: mostra la scheda dall'alto, ma la serie da fare deve restare sopra la barra del timer
@@ -439,7 +521,7 @@ function resumeLast(force) {
   const d = dayObj(), idx = d.ex.findIndex(e => e.key === L.key); if (idx < 0) return;
   // prossima serie da fare: la stessa se mancano le reps, altrimenti la successiva (nel circuito segue l'ordine del giro)
   const { k, i } = nextSet(d, idx, L.i);
-  const row = rowEl(k, i); if (!row) return false;
+  const row = ensureRow(k, i); if (!row) return false;
   const go = () => row.scrollIntoView({ block: "center", behavior: force ? "smooth" : "auto" });
   go(); if (!force) setTimeout(go, 350);
   row.classList.remove("here"); void row.offsetWidth; row.classList.add("here"); setTimeout(() => row.classList.remove("here"), 2600);
@@ -448,7 +530,7 @@ function resumeLast(force) {
 function setSess(patch) { const s = JSON.parse(JSON.stringify(current())); Object.assign(s, patch); s.updatedAt = Date.now(); D.sessions[s.id] = s; save(); renderLog(); }
 let noteT;
 $("note").oninput = e => { clearTimeout(noteT); const v = e.target.value; noteT = setTimeout(() => { const s = JSON.parse(JSON.stringify(current())); s.note = v; s.updatedAt = Date.now(); D.sessions[s.id] = s; save(); }, 300); };
-$("date").onchange = e => { if (e.target.value) { S.date = e.target.value; render(); } };
+$("date").onchange = e => { if (e.target.value) { S.date = e.target.value; S.exOpen.clear(); render(); } };
 document.addEventListener("keydown", e => {
   if (e.key === "Enter" && e.target.matches(".set input")) {
     // circuito: dalle reps passa all'esercizio successivo del giro (o al giro dopo dal primo esercizio)
@@ -616,7 +698,7 @@ function renderHist() {
       ${p && p.id === act.id ? `<button class="btn sm" data-open="${n}">Apri nell'allenamento</button>` : ""}</div></div>`;
   }).join("") + (all.length > list.length ? `<button class="btn sm hmore" id="histAll">Mostra tutte (${all.length})</button>` : "");
   box.querySelectorAll("[data-h]").forEach(b => b.onclick = () => { const det = b.nextElementSibling; det.hidden = !det.hidden; b.classList.toggle("open", !det.hidden); });
-  box.querySelectorAll("[data-open]").forEach(b => b.onclick = () => { const s = list[+b.dataset.open]; S.view = "log"; S.gym = s.gym; S.day = s.day; S.date = s.date; S.open.clear(); render(); scrollTo(0, 0); });
+  box.querySelectorAll("[data-open]").forEach(b => b.onclick = () => { const s = list[+b.dataset.open]; S.view = "log"; S.gym = s.gym; S.day = s.day; S.date = s.date; S.open.clear(); S.exOpen.clear(); render(); scrollTo(0, 0); });
   if ($("histAll")) $("histAll").onclick = () => { S.histAll = true; renderHist(); };
 }
 function spark(v) {
@@ -688,6 +770,7 @@ function render() {
   document.querySelectorAll(".tabbar button").forEach(b => b.toggleAttribute("aria-current", b.dataset.view === S.view));
   document.querySelectorAll(".tabbar button[aria-current]").forEach(b => b.setAttribute("aria-current", "page"));
   for (const v of ["log", "prog", "plan", "more"]) $("v-" + v).hidden = S.view !== v;
+  $("console").hidden = S.view !== "log"; if (S.view !== "log") togglePanel(false);
   if (S.view === "log") renderLog(); else if (S.view === "prog") renderProg(); else if (S.view === "plan") renderPlans(); else renderMore();
   drawTimer(); drawMissing();
 }
