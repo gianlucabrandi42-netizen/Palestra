@@ -96,7 +96,14 @@ const isOffDay = s => condition(s).f < 1;
 // Riferimento per i suggerimenti: l'ultima seduta "normale" (salta fino a 2 giornate no o di rientro).
 function lastRef(k) { const l = gymSessions(S.gym).filter(s => s.date < S.date && exHas(s, k)); for (let i = l.length - 1; i >= Math.max(0, l.length - 3); i--) if (!isOffDay(l[i])) return l[i]; return l[l.length - 1] || null; }
 const roundKg = x => Math.round(x * 2) / 2;
-function suggestKg(ls, hit, f) { if (!ls || ls.kg == null) return null; let k = ls.kg; if (hit && f >= 1) k = Math.max(k * 1.025, k + 1); return roundKg(k * f); }
+// Serie "sporca" (ultime reps fatte male / carico troppo alto): niente aumento; se era anche sotto target, −5% su quella serie.
+const allClean = sets => !sets.some(r => r && r.dirty);
+function suggestKg(ls, hit, f, t) {
+  if (!ls || ls.kg == null) return null; let k = ls.kg;
+  if (ls.dirty && t != null && ls.reps != null && ls.reps < t) k = ls.kg * 0.95;
+  else if (hit && f >= 1) k = Math.max(k * 1.025, k + 1);
+  return roundKg(k * f);
+}
 const e1rm = (kg, reps) => kg * (1 + reps / 30);
 const maxKg = sets => { const k = sets.filter(r => r && r.kg != null).map(r => r.kg); return k.length ? Math.max(...k) : null; };
 const doneSets = (s, ex) => ex.sets.filter((_, i) => { const r = exSets(s, ex.key)[i]; return r && r.reps != null; }).length;
@@ -171,11 +178,11 @@ function renderLog() {
     if (cg0) { if (idx === cg0.start) list.appendChild(circCard(d, cg0, ++exN)); return; }
     exN++;
     const last = lastBefore(ex.key), lastSets = last ? exSets(last, ex.key) : [];
-    const rs = lastRef(ex.key), refSets = rs ? exSets(rs, ex.key) : [], hit = rs ? allHit(refSets, ex) : false, cond = condition(sess);
+    const rs = lastRef(ex.key), refSets = rs ? exSets(rs, ex.key) : [], hit = rs ? allHit(refSets, ex) && allClean(refSets) : false, cond = condition(sess);
     const ref = ex.ref && ex.ref[S.gym];
     let pills = "";
     if (rs && cond.f < 1) pills += `<span class="pill near">Oggi −${Math.round((1 - cond.f) * 100)}% · ${esc(cond.why)}</span>`;
-    else if (rs) pills += hit ? `<span class="pill up">↑ Aumenta${ex.bw ? "" : " carico"}</span>` : `<span class="pill">= Stesso carico</span>`;
+    else if (rs) pills += hit ? `<span class="pill up">↑ Aumenta${ex.bw ? "" : " carico"}</span>` : !allClean(refSets) ? `<span class="pill near">~ Serie sporche l'ultima volta: niente aumento</span>` : `<span class="pill">= Stesso carico</span>`;
     else if (ref) pills += `<span class="pill">Rif. scheda prec. ${fmt(ref)} kg</span>`;
     const cg = circGroup(d, idx);
     if (cg) pills += cg.last ? `<span class="pill circ">Circuito · recupero ${fmtSec(restFor(ex))} a fine giro</span>` : `<span class="pill circ">Circuito · subito il prossimo</span>`;
@@ -205,15 +212,26 @@ function renderLog() {
       const ty = TYPES[st.type] || TYPES.std; if (!st.type || st.type === "std" || st.type === "alte" || st.type === "pausa" || st.type === "risc") sn++;
       const label = st.type === "ced" ? "RP" : st.type === "strip" ? "ST" : st.type === "super" ? "SS" : "S" + sn;
       const r = cur[i] || {}, lr = lastSets[i], tn = tnum(st.t), rr = refSets[i];
-      const sug = ex.bw ? null : suggestKg(rr, hit, cond.f);
+      const sug = ex.bw ? null : suggestKg(rr, hit, cond.f, tn);
       const row = document.createElement("div"); row.className = "set";
       row.innerHTML = `<div class="sn" style="--tc:var(${ty.c})">${label}<small>${esc(st.t)}${ex.bw && tn != null ? "" : ""} reps</small>${ty.n || st.note ? `<em>${esc([ty.n, st.note].filter(Boolean).join(" · "))}</em>` : ""}</div>
-        <div class="prev">${lr && (lr.kg != null || lr.reps != null) ? `${lr.kg != null ? fmt(lr.kg) + " × " : ""}${lr.reps ?? "–"}` : "—"}${sug != null ? `<b class="sug">oggi ${fmt(sug)} kg</b>` : ""}</div>
+        <div class="prev">${lr && (lr.kg != null || lr.reps != null) ? `${lr.kg != null ? fmt(lr.kg) + " × " : ""}${lr.reps ?? "–"}${lr.dirty ? "~" : ""}` : "—"}${sug != null ? `<b class="sug">oggi ${fmt(sug)} kg</b>` : ""}</div>
         <input id="kg-${ex.key}-${i}" inputmode="decimal" enterkeyhint="next" autocomplete="off" aria-label="${esc(ex.name)} serie ${i + 1} kg" placeholder="${sug != null ? fmt(sug) : lr && lr.kg != null ? fmt(lr.kg) : "kg"}">
         <input id="rp-${ex.key}-${i}" inputmode="numeric" enterkeyhint="next" autocomplete="off" aria-label="${esc(ex.name)} serie ${i + 1} ripetizioni" placeholder="${tn != null ? tn : "max"}">`;
       const [kg, rp] = row.querySelectorAll("input"); kg.value = fmt(r.kg); rp.value = r.reps ?? "";
-      const fb = document.createElement("div"); fb.className = "fb"; row.appendChild(fb);
-      const upd = () => judge(kg, rp, fb, tn, rr, cond);
+      const fbl = document.createElement("div"); fbl.className = "fbl";
+      const fb = document.createElement("div"); fb.className = "fb";
+      const dq = document.createElement("button"); dq.type = "button"; dq.className = "dq";
+      fbl.append(fb, dq); row.appendChild(fbl);
+      const isDirty = () => !!(exSets(current(), ex.key)[i] || {}).dirty;
+      const upd = () => {
+        judge(kg, rp, fb, tn, rr, cond, isDirty());
+        const has = num(rp.value) != null, dirty = isDirty();
+        dq.hidden = !has; dq.classList.toggle("on", dirty); dq.textContent = dirty ? "~ Sporca" : "Pulita";
+        dq.setAttribute("aria-label", dirty ? "Serie sporca: tocca per segnarla pulita" : "Serie pulita: tocca se l'hai sporcata");
+        fbl.hidden = !has && fb.hidden;
+      };
+      dq.onclick = () => { edit(ex, i, "dirty", !isDirty()); upd(); };
       kg.oninput = e => { edit(ex, i, "kg", kg.value); upd(); autoKg(e, kg, rp); };
       rp.oninput = e => { edit(ex, i, "reps", rp.value); upd(); autoReps(e, rp); };
       // serie completata (reps inserite e campo lasciato) → parte il recupero
@@ -231,7 +249,7 @@ function renderLog() {
     if (su) { su.value = ((D.setup[S.gym] || {})[ex.key]) || ""; su.oninput = () => { D.setup[S.gym] = D.setup[S.gym] || {}; D.setup[S.gym][ex.key] = su.value.trim(); save(); }; }
     const cp = card.querySelector("[data-copy]");
     if (ex.bw || !rs || !refSets.some(r => r && r.kg != null)) cp.hidden = true;
-    cp.onclick = () => ex.sets.forEach((_, i) => { const k = suggestKg(refSets[i], hit, cond.f); if (k != null) { const el = $(`kg-${ex.key}-${i}`); el.value = fmt(k); edit(ex, i, "kg", el.value); el.dispatchEvent(new Event("input")); } });
+    cp.onclick = () => ex.sets.forEach((_, i) => { const k = suggestKg(refSets[i], hit, cond.f, tnum(ex.sets[i].t)); if (k != null) { const el = $(`kg-${ex.key}-${i}`); el.value = fmt(k); edit(ex, i, "kg", el.value); el.dispatchEvent(new Event("input")); } });
     const panel = card.querySelector(".panel"); if (open) fillPanel(panel, ex);
     card.querySelectorAll("[data-more]").forEach(b => b.onclick = () => {
       const isOpen = !panel.hidden; panel.hidden = isOpen; card.querySelector(".more").setAttribute("aria-expanded", !isOpen);
@@ -327,7 +345,7 @@ function autoReps(e, rp) {
 // Valutazione della serie: non solo "target sì/no", ma quanto ti sei avvicinato e se hai alzato il carico.
 // Forza stimata (formula di Epley): kg × (1 + reps/30), confrontata con la stessa serie dell'ultima volta.
 const repsTxt = n => n === 1 ? "manca 1 rep" : `mancano ${n} reps`;
-function judge(kgEl, rpEl, fb, t, lr, cond) {
+function judge(kgEl, rpEl, fb, t, lr, cond, dirty) {
   const kg = num(kgEl.value), reps = num(rpEl.value), f = cond ? cond.f : 1, off = f < 1;
   let cls = "", msg = "";
   if (reps != null && t != null) {
@@ -341,6 +359,10 @@ function judge(kgEl, rpEl, fb, t, lr, cond) {
     else if (hasLast && up > 0 && pct >= 0.6) { cls = "near"; msg = `Carico salito di ${fmt(up)} kg: normale perdere qualche rep (${repsTxt(miss)})`; }
     else if (pct >= (off ? 0.6 : 0.8)) { cls = "near"; msg = `Quasi: ${repsTxt(miss)} (${Math.round(pct * 100)}% del target)` + (off ? " · oggi: " + cond.why : ""); }
     else { cls = "ko"; msg = `Sotto target: ${reps} su ${t}.` + (off ? " Oggi non conta per la progressione." : hasLast && up >= 0 ? " Se si ripete, scendi un po' di carico." : ""); }
+  }
+  if (dirty && reps != null) { // serie sporca: mai verde; dice cosa succede la prossima volta
+    if (t == null || reps >= t) { cls = "near"; msg = "A target ma sporca: la prossima volta stesso carico, falla pulita"; }
+    else { cls = "ko"; msg = "Sporca e sotto target: la prossima volta −5% su questa serie"; }
   }
   for (const c of ["ok", "prog", "near", "ko"]) rpEl.classList.toggle(c, c === cls);
   fb.textContent = msg; fb.className = "fb " + cls; fb.hidden = !msg;
@@ -363,7 +385,8 @@ function edit(ex, i, field, val) {
   const s = JSON.parse(JSON.stringify(current()));
   s.ex[ex.key] = s.ex[ex.key] || [];
   while (s.ex[ex.key].length < ex.sets.length) s.ex[ex.key].push({ kg: null, reps: null });
-  s.ex[ex.key][i] = { ...s.ex[ex.key][i], [field]: num(val) };
+  const v = field === "dirty" ? (val ? true : undefined) : num(val);
+  s.ex[ex.key][i] = { ...s.ex[ex.key][i], [field]: v };
   s.updatedAt = Date.now(); D.sessions[s.id] = s; save(); updateProgress();
   if (field === "reps") try { localStorage.setItem(LKEY, JSON.stringify({ gym: S.gym, day: S.day, date: S.date, key: ex.key, i })); } catch (e) {}
 }
@@ -485,6 +508,7 @@ function renderProg() {
   $("pk").textContent = `${GYMS.find(g => g.id === S.gym).name} · ${p.name}`;
   $("pdays").innerHTML = p.days.map(x => `<button data-d="${x.id}" aria-pressed="${x.id === d.id}"><b>${esc(x.id)}</b><small>${esc(x.name)}</small></button>`).join("");
   $("pdays").querySelectorAll("button").forEach(b => b.onclick = () => { S.pday = b.dataset.d; renderProg(); });
+  renderHist();
   const box = $("prog"); box.textContent = "";
   const ss = gymSessions(S.gym);
   if (!ss.length) { box.innerHTML = `<div class="empty">Ancora nessuna seduta registrata in questa palestra. Compila un allenamento e qui compaiono i grafici.</div>`; return; }
@@ -494,7 +518,7 @@ function renderProg() {
       const done = ss.filter(s => circCount(s, ex.circ) > 0), l = done[done.length - 1], row = document.createElement("div"); row.className = "pr";
       row.innerHTML = `<div><div class="n">Circuito ${esc(ex.circ)}</div><div class="s">${done.length ? `${done.length} sedute · ultima ${fmtDate(l.date)}: ${circCount(l, ex.circ)}/${ex.sets.length} giri` : "Nessun dato"}</div></div>`;
       box.appendChild(row); return; }
-    const all = ss.filter(s => exHas(s, ex.key)).map(s => ({ i: index(exSets(s, ex.key)), m: maxKg(exSets(s, ex.key)), hit: allHit(exSets(s, ex.key), ex), off: isOffDay(s) }));
+    const all = ss.filter(s => exHas(s, ex.key)).map(s => ({ i: index(exSets(s, ex.key)), m: maxKg(exSets(s, ex.key)), hit: allHit(exSets(s, ex.key), ex), dirty: exSets(s, ex.key).filter(r => r && r.dirty).length, off: isOffDay(s) }));
     const pts = all.filter(x => !x.off), nOff = all.length - pts.length;
     let stat = "Nessun dato", pill = "";
     if (pts.length) {
@@ -502,12 +526,36 @@ function renderProg() {
       const dP = q && q.i ? (z.i - q.i) / q.i : null, dF = a.i ? (z.i - a.i) / a.i : null;
       stat = `${pts.length} sedute${nOff ? ` (+${nOff} giornate no escluse dal trend)` : ""} · ${z.m != null ? "max " + fmt(z.m) + " kg · " : ""}indice ${Math.round(z.i)}${dF != null && pts.length > 1 ? ` (${dF >= 0 ? "+" : ""}${(dF * 100).toFixed(1).replace(".", ",")}% dalla 1ª)` : ""}`;
       if (dP != null) pill = dP > 0.03 ? `<span class="pill up">↑ in crescita</span>` : dP < -0.03 ? `<span class="pill down">↓ in calo</span>` : `<span class="pill">→ stabile</span>`;
-      if (z.hit) pill += ` <span class="pill up">prossima: aumenta</span>`;
+      if (z.dirty) pill += ` <span class="pill near">ultima volta ${z.dirty} ${z.dirty === 1 ? "serie sporca" : "serie sporche"}</span>`;
+      else if (z.hit) pill += ` <span class="pill up">prossima: aumenta</span>`;
     }
     const row = document.createElement("div"); row.className = "pr";
     row.innerHTML = `<div><div class="n">${esc(ex.name)}</div><div class="s">${stat}</div>${pill ? `<div class="pills">${pill}</div>` : ""}</div>${spark(pts.map(x => x.i))}`;
     box.appendChild(row);
   });
+}
+// Storico sedute della palestra: dalla più recente; tocco = dettaglio serie per serie; "Apri" = la riapre in Allenamento
+function renderHist() {
+  const box = $("hist"), act = plan(), all = gymSessions(S.gym).slice().reverse();
+  if (!all.length) { box.innerHTML = `<div class="empty">Nessuna seduta ancora.</div>`; return; }
+  const list = S.histAll ? all : all.slice(0, 6);
+  box.innerHTML = list.map((s, n) => {
+    const p = plans.find(x => x.id === s.plan), d = p && p.days.find(x => x.id === s.day), u = d ? dayUnits(d, s) : null;
+    const dirty = Object.values(s.ex || {}).reduce((a, arr) => a + (arr || []).filter(r => r && r.dirty).length, 0);
+    const wd = new Date(s.date + "T12:00").toLocaleDateString("it-IT", { weekday: "short", day: "2-digit", month: "2-digit" });
+    const info = [u ? `${u.done}/${u.tot} serie` : "", dirty ? `${dirty} ${dirty === 1 ? "sporca" : "sporche"}` : "", isOffDay(s) ? "giornata no" : "", p && p.id !== act.id ? p.name : ""].filter(Boolean).join(" · ");
+    const rows = d ? d.ex.map((e, idx) => {
+      const g = isCircNoLog(d, idx); if (g) return idx === g.start && circCount(s, e.circ) ? `<li><b>Circuito ${esc(e.circ)}</b><span>${circCount(s, e.circ)}/${e.sets.length} giri</span></li>` : "";
+      const sets = exSets(s, e.key).filter(r => r && (r.kg != null || r.reps != null)); if (!sets.length) return "";
+      return `<li><b>${esc(e.name)}</b><span>${sets.map(r => `${r.kg != null ? fmt(r.kg) + "×" : ""}${r.reps ?? "–"}${r.dirty ? "~" : ""}`).join(" · ")}</span></li>`;
+    }).join("") : "";
+    return `<div class="hitem"><button class="hrow" data-h="${n}"><b>${esc(wd)}</b><span>${esc(s.day)}${d ? " · " + esc(d.name) : ""}</span><small>${esc(info)}</small></button>
+      <div class="hdet" hidden><ul>${rows}</ul>${(s.note || "").trim() ? `<p class="note">📝 ${esc(s.note)}</p>` : ""}
+      ${p && p.id === act.id ? `<button class="btn sm" data-open="${n}">Apri nell'allenamento</button>` : ""}</div></div>`;
+  }).join("") + (all.length > list.length ? `<button class="btn sm hmore" id="histAll">Mostra tutte (${all.length})</button>` : "");
+  box.querySelectorAll("[data-h]").forEach(b => b.onclick = () => { const det = b.nextElementSibling; det.hidden = !det.hidden; b.classList.toggle("open", !det.hidden); });
+  box.querySelectorAll("[data-open]").forEach(b => b.onclick = () => { const s = list[+b.dataset.open]; S.view = "log"; S.gym = s.gym; S.day = s.day; S.date = s.date; S.open.clear(); render(); scrollTo(0, 0); });
+  if ($("histAll")) $("histAll").onclick = () => { S.histAll = true; renderHist(); };
 }
 function spark(v) {
   if (v.length < 2) return `<svg class="spark" viewBox="0 0 104 40" aria-hidden="true"><line x1="4" y1="36" x2="100" y2="36"/></svg>`;
@@ -556,11 +604,11 @@ $("bkFile").onchange = async e => {
 };
 $("csv").onclick = () => {
   const names = {}; plans.forEach(p => p.days.forEach(d => d.ex.forEach(ex => names[ex.key] = ex.name)));
-  const rows = [["data", "palestra", "scheda", "giorno", "esercizio", "serie", "kg", "reps"]];
+  const rows = [["data", "palestra", "scheda", "giorno", "esercizio", "serie", "kg", "reps", "sporca"]];
   Object.values(D.sessions).sort((a, b) => a.date < b.date ? -1 : 1).forEach(s => {
     const pn = (plans.find(p => p.id === s.plan) || {}).name || s.plan, gn = (GYMS.find(g => g.id === s.gym) || {}).name || s.gym;
     Object.entries(s.circ || {}).forEach(([c, n]) => { if (n > 0) rows.push([s.date, gn, pn, s.day, "Circuito " + c, "giri", "", n]); });
-    Object.entries(s.ex || {}).forEach(([k, arr]) => (arr || []).forEach((r, i) => { if (r && (r.kg != null || r.reps != null)) rows.push([s.date, gn, pn, s.day, names[k] || k, i + 1, fmt(r.kg), r.reps ?? ""]); }));
+    Object.entries(s.ex || {}).forEach(([k, arr]) => (arr || []).forEach((r, i) => { if (r && (r.kg != null || r.reps != null)) rows.push([s.date, gn, pn, s.day, names[k] || k, i + 1, fmt(r.kg), r.reps ?? "", r.dirty ? "sì" : ""]); }));
   });
   const csv = "﻿" + rows.map(r => r.map(x => `"${String(x).replace(/"/g, '""')}"`).join(";")).join("\n");
   const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = `palestra-${todayISO()}.csv`; document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 1000);

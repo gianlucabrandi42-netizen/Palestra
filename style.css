@@ -295,3 +295,22 @@ textarea{width:100%;min-height:84px;padding:10px;background:var(--surface);borde
 .set.miss input:placeholder-shown{border-color:var(--near);border-style:dashed;background:color-mix(in srgb,var(--near) 8%,var(--raised))}
 .set.miss .sn{color:var(--near)}
 .circbtns.miss .btn.primary{box-shadow:0 0 0 2px var(--near)}
+/* serie sporca */
+.set .fbl{grid-column:1/-1;display:flex;align-items:center;gap:8px;padding:0 0 2px 50px;margin-top:-2px}
+.set .fbl .fb{grid-column:auto;padding:0;margin:0;flex:1;min-width:0}
+.set .dq{flex:none;margin-left:auto;border:1px solid var(--line);background:var(--raised);color:var(--muted);border-radius:999px;font-size:12px;font-weight:700;padding:5px 11px;min-height:30px}
+.set .dq.on{background:var(--near-bg);border-color:var(--near);color:var(--near)}
+/* storico sedute */
+.hist{display:grid;gap:8px}
+.hitem{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.hrow{width:100%;border:0;background:none;text-align:left;padding:11px 14px;display:grid;grid-template-columns:auto 1fr;gap:2px 12px;align-items:baseline}
+.hrow b{font-family:var(--display);font-weight:800;font-size:18px;text-transform:uppercase;color:var(--accent)}
+.hrow span{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hrow small{grid-column:2;color:var(--muted);font-size:12px}
+.hdet{padding:0 14px 12px;display:grid;gap:8px}
+.hdet ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.hdet li{display:grid;gap:1px;font-size:13px}
+.hdet li b{font-weight:700}
+.hdet li span{color:var(--muted);font-variant-numeric:tabular-nums}
+.hdet .btn{justify-self:start}
+.hmore{justify-self:start}
