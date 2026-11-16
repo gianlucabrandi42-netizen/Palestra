@@ -831,10 +831,29 @@ function pushPost(path, body) {
     .then(r => r.json().catch(() => ({})).then(j => { if (!r.ok) throw new Error(j.error || j.detail || r.status); return j; }));
 }
 const pushOn = () => { const p = tPrefs(); return pushReady() && p.push && p.pushSub && p.pushId; };
+// Cosa c'è dopo il recupero: esercizio, serie, reps previste e kg (scritti o suggeriti) della prossima serie da fare
+function nextInfo() {
+  let L = null; try { L = JSON.parse(localStorage.getItem(LKEY)); } catch (e) {}
+  if (!L || L.date !== S.date || L.gym !== S.gym || L.day !== S.day) return null;
+  const d = dayObj(), idx = d.ex.findIndex(e => e.key === L.key); if (idx < 0) return null;
+  const { k, i } = nextSet(d, idx, L.i), ei = d.ex.findIndex(e => e.key === k), ex = d.ex[ei]; if (!ex) return null;
+  const cg = isCircNoLog(d, ei);
+  if (cg) { const c = circCount(current(), ex.circ), n = ex.sets.length; if (c >= n) return { done: true };
+    return { name: `Circuito ${ex.circ}`, set: `Giro ${c + 1} di ${n}`, what: `${ex.sets[0].t} reps per esercizio` }; }
+  const r = exSets(current(), k)[i]; if (r && r.reps != null) return { done: true };
+  const kgEl = $(`kg-${k}-${i}`), kg = kgEl ? (kgEl.value || (/\d/.test(kgEl.placeholder) ? kgEl.placeholder : "")) : "";
+  return { name: ex.name, set: `Serie ${i + 1} di ${ex.sets.length}`, what: [`${ex.sets[i].t} reps`, kg && !ex.bw ? `${kg} kg` : ""].filter(Boolean).join(" · ") };
+}
+function endMsg() {
+  const n = nextInfo();
+  if (n && n.done) return { title: "🏁 Recupero finito", body: "Hai completato tutte le serie di oggi. Ottimo lavoro!" };
+  return { title: "💪 Recupero finito · si riparte!", body: n ? `${n.name}\n${n.set} · ${n.what}` : (T.label || "Tocca a te") };
+}
 function notifSchedule() {
   if (!pushOn() || !running()) return; const p = tPrefs();
   T.sid = 1; tSave();
-  pushPost("/schedule", { id: p.pushId, seq: Date.now(), sub: p.pushSub, at: Math.round(T.end), title: "VIA! 💪 Recupero finito", body: T.label ? "Tocca a te · " + T.label : "Tocca a te" }).catch(() => {});
+  const m = endMsg();
+  pushPost("/schedule", { id: p.pushId, seq: Date.now(), sub: p.pushSub, at: Math.round(T.end), title: m.title, body: m.body }).catch(() => {});
 }
 function notifCancel() {
   if (!T.sid) return; delete T.sid; tSave();
@@ -860,7 +879,8 @@ document.addEventListener("visibilitychange", () => {
   navigator.serviceWorker.ready.then(reg => {
     if (document.visibilityState === "hidden" && running()) {
       const h = new Date(T.end).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-      reg.showNotification(`Recupero · riprendi alle ${h}`, { body: T.label || "", tag: "rest", icon: "icons/icon-192.png", silent: true });
+      const n = nextInfo();
+      reg.showNotification(`⏱ Recupero · riparti alle ${h}`, { body: n ? (n.done ? "Hai finito le serie di oggi 🏁" : `Poi: ${n.name}\n${n.set} · ${n.what}`) : (T.label || ""), tag: "rest", icon: "icons/icon-192.png", silent: true });
     } else if (document.visibilityState === "visible" && reg.getNotifications) reg.getNotifications({ tag: "rest" }).then(ns => ns.forEach(n => n.close()));
   }).catch(() => {});
 });
