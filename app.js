@@ -4,7 +4,11 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const num = v => { if (v === "" || v == null) return null; const n = parseFloat(String(v).replace(",", ".")); return isFinite(n) ? n : null; };
 const fmt = n => n == null ? "" : (Math.round(n * 100) / 100).toString().replace(".", ",");
-const todayISO = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
+// La "giornata di allenamento" cambia alle 4 del mattino, non a mezzanotte: un allenamento serale che va oltre
+// la mezzanotte (o riaprire l'app subito dopo) resta nella seduta della sera.
+const DAY_START_H = 4;
+const isoLocal = t => { const d = new Date(t - DAY_START_H * 3600e3); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
+const todayISO = () => isoLocal(Date.now());
 const fmtDate = iso => { const [y, m, d] = iso.split("-"); return `${d}/${m}/${y.slice(2)}`; };
 const daysSince = iso => iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 864e5) : null;
 
@@ -20,7 +24,24 @@ function load() {
   try { d = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
   d = d || {};
   d.sessions = d.sessions || {}; d.setup = d.setup || {}; d.prefs = d.prefs || {};
+  if (!d.prefs.nightFix) { mergeNightSessions(d); d.prefs.nightFix = 1; try { localStorage.setItem("palestra-v1", JSON.stringify(d)); } catch (e) {} }
   return d;
+}
+// Correzione una tantum: le sedute nate tra mezzanotte e le 4 (prima di questa regola) tornano nella seduta del giorno prima.
+// Si riempiono solo i campi vuoti della seduta della sera; nulla di già scritto viene sovrascritto.
+function mergeNightSessions(d) {
+  for (const [id, s] of Object.entries(d.sessions)) {
+    if (!s || !s.date || !s.updatedAt) continue;
+    const real = isoLocal(s.updatedAt); if (real >= s.date) continue; // ultima modifica dopo le 4 di quel giorno: seduta vera
+    const tid = `${s.gym}_${s.plan}_${s.day}_${real}`, t = d.sessions[tid] || { ...s, id: tid, date: real, ex: {}, circ: {}, note: "" };
+    for (const [k, arr] of Object.entries(s.ex || {})) {
+      const ta = t.ex[k] = t.ex[k] || [];
+      (arr || []).forEach((r, i) => { if (!r) return; const tr = ta[i] || { kg: null, reps: null }; ta[i] = { kg: tr.kg ?? r.kg ?? null, reps: tr.reps ?? r.reps ?? null }; });
+    }
+    for (const [c, n] of Object.entries(s.circ || {})) { t.circ = t.circ || {}; t.circ[c] = Math.max(t.circ[c] || 0, n || 0); }
+    if ((s.note || "").trim() && !(t.note || "").includes(s.note.trim())) t.note = [t.note, s.note].filter(x => (x || "").trim()).join("\n");
+    t.updatedAt = Math.max(t.updatedAt || 0, s.updatedAt); d.sessions[tid] = t; delete d.sessions[id];
+  }
 }
 let saveT;
 function save(now) {
