@@ -819,3 +819,20 @@ html[data-theme="sparta"] .dlive{color:var(--gold)}
 .advice.up{color:color-mix(in srgb,var(--ok) 70%,var(--muted))}
 .advice.near{color:color-mix(in srgb,var(--near) 70%,var(--muted))}
 .sn small{font-size:13px;white-space:nowrap}
+/* ===== In 2, aiutata, sostituisci / fastidio / salta (17/11/2026) ===== */
+.fopts.five{grid-template-columns:repeat(5,1fr)}
+.fopts.five button{font-size:10.5px}
+[data-v="help"],[data-f="help"]{--fc:#9DB8DA}
+.subof{font-size:12px;font-weight:600;color:var(--muted);margin-top:2px}
+.xb{display:flex;align-items:center;gap:10px;margin:0 14px 10px;padding:9px 11px;border-radius:12px;border:1px solid var(--line);background:var(--raised)}
+.xb p{margin:0;flex:1;font-size:12.5px;line-height:1.4;color:var(--ink)}
+.xb .chip{flex:none}
+.xb.pain{border-color:color-mix(in srgb,var(--near) 45%,var(--line));background:color-mix(in srgb,var(--near) 9%,var(--raised))}
+.xb.skip{opacity:.9}
+.subin{display:flex;align-items:center;gap:8px;flex:1;font-weight:700;color:var(--muted)}
+.subin input{flex:1;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:10px;color:var(--ink);font:inherit;font-weight:600;font-size:14px;padding:8px 10px}
+.iv.acts{display:flex;flex-wrap:wrap;gap:6px}
+.iv.acts .chip[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
+.seg.buddy{display:inline-flex;gap:3px;padding:3px;border-radius:12px;background:var(--surface);border:1px solid var(--line);margin-right:8px;margin-bottom:6px}
+.seg.buddy button{border:0;background:transparent;color:var(--muted);font-weight:700;font-size:13px;padding:6px 12px;border-radius:9px}
+.seg.buddy button[aria-pressed="true"]{background:var(--grad);color:var(--on-accent)}
