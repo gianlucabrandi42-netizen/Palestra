@@ -524,6 +524,10 @@ function toNextSet(rp) {
   tgt.focus(); markNext();
   const row = tgt.closest(".set"); if (row) row.scrollIntoView({ block: "center", behavior: "smooth" });
 }
+// Tastiera aperta (qualsiasi campo di testo): via il menu in basso, timer compatto appena sopra la tastiera.
+const isField = el => el && el.matches && el.matches("input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=date]), textarea");
+document.addEventListener("focusin", e => { if (isField(e.target)) document.body.classList.add("kb"); });
+document.addEventListener("focusout", () => setTimeout(() => { if (!isField(document.activeElement)) document.body.classList.remove("kb"); }, 80));
 // Tocco su un campo già compilato: il numero si seleziona tutto, così scrivi direttamente quello nuovo.
 document.addEventListener("focusin", e => {
   const el = e.target; if (!el.matches || !el.matches(".set input")) return;
