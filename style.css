@@ -707,3 +707,44 @@ html[data-theme] .gym button[aria-pressed="true"]::before{filter:drop-shadow(0 1
 html[data-theme="green"] .wk.sel b,html[data-theme="green"] .wk.done b{color:var(--gt-title)}
 html[data-theme="sparta"] .wk b{font-family:var(--display);font-weight:700}
 html[data-theme="sparta"] .wk.sel b,html[data-theme="sparta"] .wk.done b{color:var(--gold)}
+
+/* ===== Green Theory · rifinitura (17/11/2026): foglie rade e sottili, emblema monstera di giada, giada metallica, titoli bianchi ===== */
+html[data-theme="green"]{--accent:#33A26F;--a1:#33A26F;--a2:#33A26F;--t-std:#33A26F;
+  --grad:linear-gradient(160deg,#D2F7E4 0%,#6FD3A2 22%,#33A06E 55%,#1C7048 100%);--on-accent:#04190F;
+  --gt-title:#8FD9B4;--leaf:#8FD9B4;
+  --side:url(img/theme/gt-side.svg);--frieze:url(img/theme/gt-frieze.svg);--fw:30px;--fh:12px}
+html[data-theme="green"] .console::before{background-image:url(img/theme/gt-leaves.svg);opacity:.5}
+html[data-theme="green"] .vines::before,html[data-theme="green"] .vines::after{opacity:.4}
+html[data-theme="green"] body::after{right:-50px;bottom:60px;width:260px;height:260px;background:url(img/theme/gt-corner.svg) center/contain no-repeat;opacity:.16}
+html[data-theme="green"] .hero::after{right:0;top:2px;width:86px;height:86px;background:url(img/theme/gt-emblem.svg) center/contain no-repeat;opacity:1}
+html[data-theme="green"] h2::before,html[data-theme="green"] .hero .k::before{display:none}
+html[data-theme="green"] .gym button[data-g="PA"]::before{background-image:url(img/theme/gt-leaf.svg)}
+html[data-theme="green"] .hero h1,html[data-theme="green"] .dsel b{color:#F2F7F4}
+html[data-theme="green"] h2,html[data-theme="green"] .hero .k,html[data-theme="green"] .exk{color:var(--gt-title)}
+html[data-theme="green"] .ring .s1{stop-color:#CFF7E2} html[data-theme="green"] .ring .s2{stop-color:#1C7048}
+html[data-theme="green"] .console::after{background:linear-gradient(90deg,transparent,#33A26F,transparent)}
+
+html[data-theme="green"] body.g1{--accent:#33A26F}
+html[data-theme="green"] .ex.cur{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 15%,transparent),0 18px 40px -28px color-mix(in srgb,var(--accent) 55%,transparent)}
+/* durata */
+.dur{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.durv{font-size:13px;color:var(--muted)}
+.durv b{color:var(--ink)}
+/* recap di fine allenamento */
+.recap{position:relative;margin:4px 0 14px;padding:16px 16px 12px;border-radius:18px;border:1px solid color-mix(in srgb,var(--accent) 45%,var(--line));background:linear-gradient(160deg,color-mix(in srgb,var(--accent) 16%,var(--surface)),var(--surface) 60%);box-shadow:0 18px 40px -26px var(--accent)}
+.rc-h{display:grid;gap:2px;margin-bottom:12px}
+.rc-k{font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+.rc-h b{font-family:var(--display);font-size:22px;color:var(--ink)}
+.rc-h small{font-size:13px;color:var(--muted)}
+.rc-g{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.rc-g>div{background:var(--raised);border:1px solid var(--line);border-radius:12px;padding:8px 10px;display:grid;gap:1px}
+.rc-g span{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.rc-g b{font-family:var(--display);font-size:22px;color:var(--ink);font-variant-numeric:tabular-nums}
+.rc-g b i{font-style:normal;font-size:13px;color:var(--muted);font-weight:600}
+.rc-g small{font-size:11px;font-weight:700}
+.rc-g small.up,.rc-l.up b{color:var(--ok)} .rc-g small.dn,.rc-l.dn b{color:var(--near)}
+.rc-l{font-size:13.5px;line-height:1.4;margin:6px 0 0;color:var(--ink)}
+.rc-l.rec b{color:var(--accent)}
+.rc-l.nx{padding-top:8px;border-top:1px solid var(--line);margin-top:10px}
+html[data-theme="green"] .rc-h b{font-family:Didot,"Bodoni 72","Latin Modern Roman Demi",serif}
+html[data-theme="sparta"] .rc-k,html[data-theme="sparta"] .rc-l.rec b{color:var(--gold)}
