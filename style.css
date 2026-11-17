@@ -543,3 +543,18 @@ html[data-theme] .ex::after{content:"";position:absolute;left:0;right:0;top:0;he
 html[data-theme="sparta"]{--frieze:url(img/theme/sp-frieze.svg);--fw:14px;--fh:7px}
 html[data-theme="green"]{--frieze:url(img/theme/gt-frieze.svg);--fw:25px;--fh:10px}
 html[data-theme] .exhead{padding-top:18px}
+/* selettore palestre più grande (17/11/2026) */
+html[data-theme] .ctop .gym{padding:4px}
+html[data-theme] .ctop .gym button{width:48px;min-height:42px}
+html[data-theme] .ctop .gym button::before,html[data-theme] .ctop .gym button[aria-pressed="false"]::before{width:26px;height:26px}
+/* consigli: una riga di testo pulita (niente pillole), separati da puntini nel colore della palestra */
+.flash{display:block;margin:0 12px 10px;padding:0;font-size:13px;line-height:1.45;color:var(--ink);opacity:.9}
+.flash li{display:inline;background:none;border:0;padding:0;font-size:13px;font-weight:600;color:inherit;border-radius:0}
+.flash li::before{display:none}
+.flash li+li::before{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--accent);margin:0 8px;vertical-align:2px;transform:none}
+/* regolazioni: nascoste se vuote, ⚙ in alto a destra per aggiungerle */
+.tips{margin:0 12px 10px;font-size:13px;line-height:1.45}
+.tips .flash{display:inline;margin:0}
+.tips .gear{display:inline-flex;align-items:center;gap:4px;margin-left:8px;border:1px dashed var(--line);background:none;color:var(--muted);font-size:12px;font-weight:700;border-radius:8px;padding:2px 8px;min-height:26px;vertical-align:1px}
+.tips .gear[hidden]{display:none}
+.setup label{white-space:nowrap}

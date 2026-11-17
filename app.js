@@ -298,9 +298,9 @@ function renderLog() {
           <h3 class="exname">${esc(ex.name)}</h3><div class="tec">${esc(ex.tec || "")}</div></div>
       </div>
       ${pills ? `<div class="pills">${pills}</div>` : ""}
-      ${(ex.flash || []).length ? `<ul class="flash" aria-label="Da ricordare">${ex.flash.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
+      ${(ex.flash || []).length || ex.setup !== false ? `<div class="tips">${(ex.flash || []).length ? `<ul class="flash" aria-label="Da ricordare">${ex.flash.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}${ex.setup === false ? "" : `<button type="button" class="gear" data-setup hidden>⚙ Regolazioni</button>`}</div>` : ""}
       ${oi ? oooBox(oi, prosp) : ""}
-      ${ex.setup === false ? "" : `<div class="setup"><label for="su-${ex.key}">Regolazioni</label><input id="su-${ex.key}" autocomplete="off" placeholder="es. sedile 4 · schienale 2"></div>`}
+      ${ex.setup === false ? "" : `<div class="setup" ${((D.setup[S.gym] || {})[ex.key]) ? "" : "hidden"}><label for="su-${ex.key}">⚙ Regolazioni</label><input id="su-${ex.key}" autocomplete="off" placeholder="es. sedile 4 · schienale 2"></div>`}
       ${ex.bw ? "" : `<div class="stepsel" role="group" aria-label="Salto dei pesi"><span>Salto pesi${stp.auto && stp.v ? " <i>stimato</i>" : ""}</span>${STEPS.map(v => `<button type="button" data-step="${v}" aria-pressed="${stp.v === v}" class="${stp.v === v && stp.auto ? "auto" : ""}">${fmt(v)}</button>`).join("")}</div>`}
       <div class="sets"><div class="sh"><span>Serie</span><span>Ultima</span><span>${ex.bw ? "kg (opz.)" : "kg"}</span><span>Reps</span><span></span></div></div>
       <div class="exfoot"><button class="btn sm" data-copy>⚡ Usa kg suggeriti</button>
@@ -345,7 +345,12 @@ function renderLog() {
       upd(); setsEl.appendChild(row);
     });
     const su = card.querySelector(".setup input");
-    if (su) { su.value = ((D.setup[S.gym] || {})[ex.key]) || ""; su.oninput = () => { D.setup[S.gym] = D.setup[S.gym] || {}; D.setup[S.gym][ex.key] = su.value.trim(); save(); }; }
+    if (su) {
+      su.value = ((D.setup[S.gym] || {})[ex.key]) || ""; su.oninput = () => { D.setup[S.gym] = D.setup[S.gym] || {}; D.setup[S.gym][ex.key] = su.value.trim(); save(); };
+      const box = su.closest(".setup"), gb = card.querySelector("[data-setup]");
+      su.onblur = () => { if (!su.value.trim()) { box.hidden = true; if (gb) gb.hidden = false; } };
+      if (gb) { gb.hidden = !box.hidden; gb.onclick = () => { box.hidden = false; gb.hidden = true; su.focus(); }; }
+    }
     const cp = card.querySelector("[data-copy]");
     if (ex.bw || !rs || !refSets.some(r => r && r.kg != null)) cp.hidden = true;
     cp.onclick = () => ex.sets.forEach((_, i) => { const k = suggestKg(refSets[i], hit, cond.f, tnum(ex.sets[i].t), stp.v); if (k != null) { const el = $(`kg-${ex.key}-${i}`); el.value = fmt(k); edit(ex, i, "kg", el.value); el.dispatchEvent(new Event("input")); } });
@@ -360,8 +365,15 @@ function renderLog() {
     const ob = card.querySelector("[data-ooo]"); if (ob) ob.onclick = () => toggleOrderOk(oi.key);
     const cl = card.querySelector("[data-close]"); if (cl) cl.onclick = () => {
       const top = card.getBoundingClientRect().top, hb = $("console").getBoundingClientRect().bottom + 8;
+      const nx = card.nextElementSibling, nsel = nx ? (nx.dataset.mini ? `.exmini[data-mini="${nx.dataset.mini}"]` : nx.dataset.ex ? `.ex[data-ex="${nx.dataset.ex}"]` : nx.dataset.circ ? `[data-circ="${nx.dataset.circ}"]` : null) : null;
+      const nt = nsel ? nx.getBoundingClientRect().top : null;
       S.exOpen.delete(ex.key); renderLog();
-      const m = rowEl(ex.key, 0); if (m) scrollTo({ top: Math.max(0, m.getBoundingClientRect().top + scrollY - Math.max(top, hb)) });
+      const m = document.querySelector(`.exmini[data-mini="${ex.key}"]`) || rowEl(ex.key, 0), n2 = nsel && document.querySelector(nsel);
+      if (n2 && nt != null && nt < innerHeight) {
+        let dy = n2.getBoundingClientRect().top - nt;                       // ciò che stava sotto resta dov'era
+        if (m) { const mt = m.getBoundingClientRect().top - dy; if (mt < hb) dy -= hb - mt; } // e la riga chiusa resta visibile
+        scrollTo({ top: Math.max(0, scrollY + dy) });
+      } else if (m) scrollTo({ top: Math.max(0, m.getBoundingClientRect().top + scrollY - Math.max(top, hb)) });
     };
     list.appendChild(card);
   });
