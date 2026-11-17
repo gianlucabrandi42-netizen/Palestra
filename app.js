@@ -298,10 +298,12 @@ function renderLog() {
           <h3 class="exname">${esc(ex.name)}</h3><div class="tec">${esc(ex.tec || "")}</div></div>
       </div>
       ${pills ? `<div class="pills">${pills}</div>` : ""}
-      ${(ex.flash || []).length || ex.setup !== false ? `<div class="tips">${(ex.flash || []).length ? `<ul class="flash" aria-label="Da ricordare">${ex.flash.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}${ex.setup === false ? "" : `<button type="button" class="gear" data-setup hidden>⚙ Regolazioni</button>`}</div>` : ""}
       ${oi ? oooBox(oi, prosp) : ""}
-      ${ex.setup === false ? "" : `<div class="setup" ${((D.setup[S.gym] || {})[ex.key]) ? "" : "hidden"}><label for="su-${ex.key}">⚙ Regolazioni</label><input id="su-${ex.key}" autocomplete="off" placeholder="es. sedile 4 · schienale 2"></div>`}
-      ${ex.bw ? "" : `<div class="stepsel" role="group" aria-label="Salto dei pesi"><span>Salto pesi${stp.auto && stp.v ? " <i>stimato</i>" : ""}</span>${STEPS.map(v => `<button type="button" data-step="${v}" aria-pressed="${stp.v === v}" class="${stp.v === v && stp.auto ? "auto" : ""}">${fmt(v)}</button>`).join("")}</div>`}
+      <div class="exinfo">
+        ${(ex.flash || []).length ? `<div class="ir"><span class="il">Consigli</span><ul class="iv tipl" aria-label="Da ricordare">${ex.flash.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}
+        ${ex.setup === false ? "" : `<div class="ir setup"><label class="il" for="su-${ex.key}">Regolazioni</label><div class="iv"><input id="su-${ex.key}" autocomplete="off" placeholder="+ aggiungi (es. sedile 4)"></div></div>`}
+        ${ex.bw ? "" : `<div class="ir"><span class="il">Salto pesi${stp.auto && stp.v ? "<i>stimato</i>" : ""}</span><div class="iv stepsel" role="group" aria-label="Salto dei pesi">${STEPS.map(v => `<button type="button" data-step="${v}" aria-pressed="${stp.v === v}" class="${stp.v === v && stp.auto ? "auto" : ""}">${fmt(v)}</button>`).join("")}</div></div>`}
+      </div>
       <div class="sets"><div class="sh"><span>Serie</span><span>Ultima</span><span>${ex.bw ? "kg (opz.)" : "kg"}</span><span>Reps</span><span></span></div></div>
       <div class="exfoot"><button class="btn sm" data-copy>⚡ Usa kg suggeriti</button>
         ${manual ? `<button class="more" data-close>Chiudi</button>` : ""}
@@ -347,9 +349,6 @@ function renderLog() {
     const su = card.querySelector(".setup input");
     if (su) {
       su.value = ((D.setup[S.gym] || {})[ex.key]) || ""; su.oninput = () => { D.setup[S.gym] = D.setup[S.gym] || {}; D.setup[S.gym][ex.key] = su.value.trim(); save(); };
-      const box = su.closest(".setup"), gb = card.querySelector("[data-setup]");
-      su.onblur = () => { if (!su.value.trim()) { box.hidden = true; if (gb) gb.hidden = false; } };
-      if (gb) { gb.hidden = !box.hidden; gb.onclick = () => { box.hidden = false; gb.hidden = true; su.focus(); }; }
     }
     const cp = card.querySelector("[data-copy]");
     if (ex.bw || !rs || !refSets.some(r => r && r.kg != null)) cp.hidden = true;
