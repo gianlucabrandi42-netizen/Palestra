@@ -855,3 +855,39 @@ html[data-theme="sparta"] .dlive{color:var(--gold)}
 .altq{flex:none;display:flex;align-items:center;font-size:11.5px;font-weight:700;color:var(--accent);text-decoration:none;padding:0 4px;max-width:66px;text-align:center;line-height:1.2}
 .chip.pic{cursor:pointer;text-align:center}
 .exec.thumb.mpic img{width:100%;height:100%;object-fit:cover;border-radius:inherit}
+/* ===== Info ed esecuzione: riquadro che sale dal basso (17/11/2026) ===== */
+html.noscroll,html.noscroll body{overflow:hidden}
+.isheet{position:fixed;inset:0;z-index:45}
+.is-bg{position:absolute;inset:0;background:rgba(0,0,0,.55);opacity:0;transition:opacity .2s}
+.is-box{position:absolute;left:0;right:0;bottom:0;max-width:680px;margin:0 auto;height:calc(100% - max(44px,env(safe-area-inset-top,0px) + 30px));display:flex;flex-direction:column;
+  background:var(--surface);border:1px solid var(--line);border-bottom:0;border-radius:22px 22px 0 0;box-shadow:0 -18px 40px rgba(0,0,0,.5);transform:translateY(100%);transition:transform .22s cubic-bezier(.2,.8,.2,1)}
+.isheet.on .is-bg{opacity:1}
+.isheet.on .is-box{transform:none}
+.is-top{position:relative;flex:none;padding:10px 52px 10px 18px;border-bottom:1px solid var(--line);touch-action:none}
+.is-grab{display:block;width:40px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 8px}
+.is-h b{display:block;font-size:17px;font-weight:800;color:var(--ink)}
+.is-h .rx{margin-top:2px}
+.is-h .rx b{display:inline;font-size:14px}
+.is-x{position:absolute;right:12px;top:18px;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--raised);color:var(--muted);font-size:15px}
+.is-c{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:6px 0 calc(24px + env(safe-area-inset-bottom,0px))}
+.is-c .panel{border:0;margin:0;background:transparent}
+html[data-theme="sparta"] .is-box{border-top:2px solid color-mix(in srgb,var(--gold) 55%,var(--line))}
+html[data-theme="green"] .is-box{border-top:2px solid color-mix(in srgb,var(--accent) 50%,var(--line))}
+/* riquadro Info: prima le immagini, poi la descrizione; "Solo per oggi" a 3 riquadri puliti */
+.is-c .panel{display:flex;flex-direction:column;gap:14px;padding-top:12px}
+.is-c .pbody{display:contents}
+.is-c .gallery{order:-2}
+.is-c .panel>.note{order:-1}
+.is-c .exinfo{order:0;margin-top:0;padding-top:0}
+.is-c .today3{order:1}
+.is-c .muscles{order:2}
+.is-c .cues{order:3}
+.today3{margin:0 14px;display:grid;gap:7px}
+.t3k{font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.acts3{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;padding:3px;border-radius:14px;background:var(--bg);border:1px solid var(--line)}
+.acts3 button{border:0;background:transparent;color:var(--muted);border-radius:11px;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:12px;font-weight:700}
+.acts3 svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.acts3 button:active{background:var(--raised)}
+.acts3 button[aria-pressed="true"]{color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 40%,transparent)}
+.acts3 button[data-act="pain"][aria-pressed="true"]{color:var(--near);background:color-mix(in srgb,var(--near) 14%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--near) 40%,transparent)}
+.acts3 button span{font-size:11px;text-align:center;line-height:1.15}

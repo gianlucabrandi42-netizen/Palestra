@@ -83,6 +83,7 @@ const subOf = (s, k) => ((s && s.sub) || {})[k] || "";
 const sameSub = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
 const exHas = (s, k, sub = "") => sameSub(subOf(s, k), sub) && exSets(s, k).some(r => r && (r.kg != null || r.reps != null));
 const isSkip = (s, k) => !!((s && s.skip) || {})[k];
+const isLater = (s, k) => !!((s && s.later) || {})[k]; // macchina occupata: lo fai dopo
 const hasPain = (s, k) => !!((s && s.pain) || {})[k];
 const isBuddy = s => !!(s && s.buddy);
 // "Altra sede" (sessione.site, stringa = nome della sede; occasioni rare): macchine diverse → la seduta non fa da riferimento
@@ -241,9 +242,9 @@ function currentUnit(d, s, units) {
   let L = null; try { L = JSON.parse(localStorage.getItem(LKEY)); } catch (e) {}
   if (L && L.date === S.date && L.gym === S.gym && L.day === S.day) {
     const idx = d.ex.findIndex(e => e.key === L.key);
-    if (idx >= 0) { const t = nextSet(d, idx, L.i), u = units.find(x => x.keys.includes(t.k)); if (u && !u.done) return u; }
+    if (idx >= 0) { const t = nextSet(d, idx, L.i), u = units.find(x => x.keys.includes(t.k)); if (u && !u.done && !isLater(s, u.keys[0])) return u; }
   }
-  return units.find(x => !x.done) || null;
+  return units.find(x => !x.done && !isLater(s, x.keys[0])) || units.find(x => !x.done) || null;
 }
 const unitOpen = (u, cur) => u === cur || u.keys.some(k => S.exOpen.has(k));
 const shortName = n => n.length > 14 ? n.slice(0, 13).trim() + "." : n;
@@ -339,12 +340,43 @@ function saveMachinePic(n, file) {
     try { save(); toast("Foto salvata"); } catch (e) { toast("Spazio pieno: foto non salvata"); } renderLog(); };
   img.src = url;
 }
+// ---------- Info ed esecuzione in un riquadro che sale dal basso (17/11/2026) ----------
+// Il pannello .panel della scheda viene spostato dentro #isheet; si chiude toccando fuori, con ✕ o trascinando giù.
+function openSheet(key) {
+  const card = document.querySelector(`.ex[data-ex="${key}"]`), sh = $("isheet"); if (!card || !sh) return;
+  const ex = dayObj().ex.find(e => e.key === key), panel = card.querySelector(".panel"), pbody = panel.querySelector(".pbody");
+  if (!pbody.firstChild) fillPanel(pbody, ex);
+  const body = sh.querySelector(".is-c"); body.textContent = ""; panel.hidden = false; body.appendChild(panel);
+  sh.querySelector(".is-h").innerHTML = `<b>${esc(subOf(current(), key) || ex.name)}</b>${rxLine(ex)}`;
+  const was = !sh.hidden || S.sheet === key && sh.classList.contains("on"); S.sheet = key;
+  sh.hidden = false; document.documentElement.classList.add("noscroll");
+  if (!was) { sh.classList.remove("on"); void sh.offsetWidth; } sh.classList.add("on");
+}
+function closeSheet(keep) {
+  const sh = $("isheet"); if (!sh || sh.hidden) { if (!keep) S.sheet = null; return; }
+  if (!keep) S.sheet = null; const box = sh.querySelector(".is-box"); box.style.transform = "";
+  sh.classList.remove("on"); document.documentElement.classList.remove("noscroll");
+  const b = document.activeElement; if (b && sh.contains(b)) b.blur();
+  setTimeout(() => { if (!sh.classList.contains("on")) { sh.hidden = true; sh.querySelector(".is-c").textContent = ""; } }, 220);
+}
+(() => { // chiusura: tocco fuori, ✕, trascinamento verso il basso dalla barretta/intestazione
+  const sh = $("isheet"); if (!sh) return;
+  sh.querySelector(".is-bg").onclick = () => closeSheet();
+  sh.querySelector(".is-x").onclick = () => closeSheet();
+  const box = sh.querySelector(".is-box"), grab = sh.querySelector(".is-top"); let y0 = null, dy = 0;
+  grab.addEventListener("touchstart", e => { y0 = e.touches[0].clientY; dy = 0; box.style.transition = "none"; }, { passive: true });
+  grab.addEventListener("touchmove", e => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); box.style.transform = `translateY(${dy}px)`; }, { passive: true });
+  grab.addEventListener("touchend", () => { box.style.transition = ""; if (dy > 90) closeSheet(); else box.style.transform = ""; y0 = null; });
+})();
 // ---------- Oggi: sostituisci / fastidio / salta (per esercizio, per seduta) ----------
 function setExMap(field, key, val) { const x = JSON.parse(JSON.stringify(current())); x[field] = { ...(x[field] || {}) }; if (val == null || val === false) delete x[field][key]; else x[field][key] = val; x.updatedAt = Date.now(); D.sessions[x.id] = x; save(); renderLog(); }
 function exAct(ex, a, undo) {
-  const s = current();
+  const s = current(); closeSheet();
   if (a === "subx") { S.subEdit = null; return renderLog(); }
   if (a === "sub") { S.subEdit = null; if (undo || subOf(s, ex.key)) return setExMap("sub", ex.key, null); S.subEdit = ex.key; return renderLog(); }
+  if (a === "later") { setExMap("later", ex.key, undo ? null : !isLater(s, ex.key));
+    if (!undo && isLater(current(), ex.key)) { S.exOpen.delete(ex.key); const d = dayObj(), n = nextOpenUnit(d, d.ex.findIndex(e => e.key === ex.key));
+      renderLog(); if (n && n.k !== ex.key) { openUnit(n.k); toast(`Occupato: ${ex.name} lo fai dopo`); } else toast("È l'ultimo rimasto: fallo adesso"); } return; }
   if (a === "pain") return setExMap("pain", ex.key, undo ? null : !hasPain(s, ex.key));
   if (a === "skip") { setExMap("skip", ex.key, undo ? null : !isSkip(s, ex.key));
     if (!undo && isSkip(current(), ex.key)) { // saltato: si chiude e si passa al prossimo esercizio da fare
@@ -365,6 +397,7 @@ function todayBanners(s, ex, painRef, rs) {
     out.push(`<div class="xb sub"><p>↔ Oggi fai <b>${esc(subOf(s, ex.key))}</b>: ha il suo storico, quello di ${esc(ex.name)} non cambia.</p><div class="xbb"><label class="chip pic">📷 ${pic ? "Cambia foto" : "Foto macchina"}<input type="file" accept="image/*" capture="environment" hidden data-pic></label><button class="chip" data-undo="sub">Torna all'originale</button></div></div>`); }
   if (hasPain(s, ex.key)) out.push(`<div class="xb pain"><p>⚠ Fastidio segnato: la prossima volta il carico resta fermo. Se continua, dillo al PT.</p><button class="chip" data-undo="pain">Togli</button></div>`);
   else if (painRef) out.push(`<div class="xb pain"><p>⚠ Fastidio l'ultima volta (${fmtDate(rs.date).slice(0, 5)}): carico fermo. Se oggi va bene, non segnare niente e la prossima volta si riparte.</p></div>`);
+  if (isLater(s, ex.key) && !exSets(s, ex.key).some(r => r && r.reps != null)) out.push(`<div class="xb"><p>⏳ Macchina occupata: lo fai dopo gli altri. Quando lo inizi, l'app tiene conto dei muscoli già stanchi.</p><button class="chip" data-undo="later">Annulla</button></div>`);
   if (isSkip(s, ex.key)) out.push(`<div class="xb skip"><p>⤼ Saltato oggi: non conta come serie dimenticate.</p><button class="chip" data-undo="skip">Annulla</button></div>`);
   return out.join("");
 }
@@ -522,6 +555,11 @@ function recapCard(d, s, units) {
   return el;
 }
 function renderLog() {
+  if (S.sheet) $("isheet").querySelector(".is-c").textContent = "";
+  renderLog0();
+  if (S.sheet) { if (document.querySelector(`.ex[data-ex="${S.sheet}"]`)) openSheet(S.sheet); else closeSheet(); }
+}
+function renderLog0() {
   renderConsole(); renderWeek(); renderSite(); renderDur();
   const p = plan(), d = dayObj(), sess = current();
   // forma del giorno
@@ -611,17 +649,19 @@ function renderLog() {
       ${load ? `<p class="advice ${load.c}"><span>Consiglio</span>${load.t}</p>` : ""}
       <div class="exfoot"><button class="btn sm" data-copy>⚡ Usa kg suggeriti</button>
         ${manual ? `<button class="more" data-close>Chiudi</button>` : ""}
-        <button class="more" data-more aria-expanded="${open}">Info ed esecuzione<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></div>
-      <div class="panel" ${open ? "" : "hidden"}><div class="exinfo">
+        <button class="more" data-more aria-haspopup="dialog">Info ed esecuzione<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button></div>
+      <div class="panel" hidden><div class="exinfo">
+        ${ex.setup === false ? "" : `<div class="ir setup"><label class="il" for="su-${ex.key}">Regolazioni</label><div class="iv"><input id="su-${ex.key}" autocomplete="off" placeholder="+ aggiungi (es. sedile 4)"></div></div>`}
         ${ex.m && ((ex.m.p || []).length || ex.ml) ? `<div class="ir"><span class="il">Muscoli</span><div class="iv musv"><b>${esc(ex.ml || mnames(ex.m.p))}</b>${(ex.m.s || []).length ? `<small>anche ${esc(mnames(ex.m.s).toLowerCase())}</small>` : ""}</div></div>` : ""}
         ${ex.tec ? `<div class="ir"><span class="il">Schema</span><div class="iv tecv">${esc(ex.tec)}</div></div>` : ""}
-        ${ex.setup === false ? "" : `<div class="ir setup"><label class="il" for="su-${ex.key}">Regolazioni</label><div class="iv"><input id="su-${ex.key}" autocomplete="off" placeholder="+ aggiungi (es. sedile 4)"></div></div>`}
         ${ex.bw ? "" : `<div class="ir"><span class="il">Salto pesi${stp.auto && stp.v ? "<i>stimato</i>" : ""}</span><div class="iv stepsel" role="group" aria-label="Salto dei pesi">${STEPS.map(v => `<button type="button" data-step="${v}" aria-pressed="${stp.v === v}" class="${stp.v === v && stp.auto ? "auto" : ""}">${fmt(v)}</button>`).join("")}</div></div>`}
-        <div class="ir"><span class="il">Oggi</span><div class="iv acts">
-          <button type="button" class="chip" data-act="sub" aria-pressed="${!!sbN}">↔ Sostituisci</button>
-          <button type="button" class="chip" data-act="pain" aria-pressed="${hasPain(sess, ex.key)}">⚠ Fastidio</button>
-          <button type="button" class="chip" data-act="skip" aria-pressed="${isSkip(sess, ex.key)}">⤼ Salta</button></div></div>
-      </div><div class="pbody"></div></div>`;
+      </div>
+      <div class="today3"><span class="t3k">Solo per oggi</span><div class="acts3" role="group" aria-label="Solo per oggi">
+        <button type="button" data-act="sub" aria-pressed="${!!sbN}"><svg viewBox="0 0 24 24"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg><span>Sostituisci</span></button>
+        <button type="button" data-act="later" aria-pressed="${isLater(sess, ex.key)}"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span>Occupato</span></button>
+        <button type="button" data-act="pain" aria-pressed="${hasPain(sess, ex.key)}"><svg viewBox="0 0 24 24"><path d="M12 3.5 2.8 19.5h18.4z"/><path d="M12 10v4.2M12 17v.01"/></svg><span>Fastidio</span></button>
+        <button type="button" data-act="skip" aria-pressed="${isSkip(sess, ex.key)}"><svg viewBox="0 0 24 24"><path d="M5 6l8 6-8 6zM16 6v12"/></svg><span>Non lo faccio</span></button></div></div>
+      <div class="pbody"></div></div>`;
     const setsEl = card.querySelector(".sets"), cur = exSets(sess, ex.key);
     let sn = 0;
     ex.sets.forEach((st, i) => {
@@ -684,11 +724,11 @@ function renderLog() {
     if (ex.bw || !rs || !refSets.some(r => r && r.kg != null)) cp.hidden = true;
     cp.onclick = () => ex.sets.forEach((_, i) => { const a = advise2(refSets[i], prSets[i], tnum(ex.sets[i].t), stp.v, cond.f, nUp(i)), k = a && a.kg; if (k != null) { const el = $(`kg-${ex.key}-${i}`); el.value = fmt(k); edit(ex, i, "kg", el.value); el.dispatchEvent(new Event("input")); } });
     const panel = card.querySelector(".panel"), pbody = panel.querySelector(".pbody"); if (open) fillPanel(pbody, ex);
-    const openInfo = () => { panel.hidden = false; card.querySelector("[data-more]").setAttribute("aria-expanded", true); S.open.add(ex.key); if (!pbody.firstChild) fillPanel(pbody, ex); };
+    const openInfo = () => openSheet(ex.key);
     card.querySelectorAll("[data-more]").forEach(b => b.onclick = () => {
-      if (!panel.hidden) { panel.hidden = true; b.setAttribute("aria-expanded", false); S.open.delete(ex.key); } else openInfo();
+      openInfo();
     });
-    const es = card.querySelector("[data-editsetup]"); if (es) es.onclick = () => { openInfo(); const i = card.querySelector(".setup input"); if (i) { i.focus(); i.scrollIntoView({ block: "center", behavior: "smooth" }); } };
+    const es = card.querySelector("[data-editsetup]"); if (es) es.onclick = () => { openInfo(); const i = $("isheet").querySelector(".setup input"); if (i) { i.focus(); i.scrollIntoView({ block: "center", behavior: "smooth" }); } };
     const z = card.querySelector("[data-zoom]"); if (z) z.onclick = () => openLB(ex, -1);
     // Chiudi: la riga chiusa resta dove stavi guardando (o subito sotto la barra in alto se la scheda iniziava più su)
     card.querySelectorAll("[data-step]").forEach(b => b.onclick = () => { const v = +b.dataset.step; setStep(ex.key, stp.v === v && !stp.auto ? null : v); });
@@ -759,6 +799,7 @@ function miniCard(u, s) {
   let sub;
   if (u.circ) { const c = circCount(s, e.circ); sub = u.done ? `${c}/${e.sets.length} giri` : `${e.sets.length} giri · ${e.sets[0].t} reps · recupero ${fmtSec(restFor(u.circ ? d_last(u) : e))}`; }
   else if (u.skip && !u.started) sub = "⤼ saltato oggi";
+  else if (isLater(s, e.key) && !u.started) sub = "⏳ occupato · lo fai dopo";
   else if (u.started || u.done) sub = (u.skip ? "⤼ " : "") + (subOf(s, e.key) ? "↔ " : "") + (oooOff(s, e.key) ? "↕ " : "") + exSets(s, e.key).filter(r => r && (r.kg != null || r.reps != null)).map(r => `${r.kg != null ? fmt(r.kg) + "×" : ""}${r.reps ?? "–"}${r.dirty ? "~" : r.help ? "🤝" : ""}`).join(" · ");
   else { const l = lastBefore(e.key), mk = l ? maxKg(exSets(l, e.key)) : null; sub = `${e.sets.length} serie · ${e.sets.map(x => x.t).join("-")}${mk != null ? ` · ultima ${fmt(mk)} kg` : ""}`; }
   b.innerHTML = `<span class="mk">${u.done ? "✓" : exNum(u.n)}</span>${f ? `<img src="${f.src}" alt="" loading="lazy">` : ""}
@@ -920,7 +961,7 @@ function edit(ex, i, field, val) {
     else if (!r.at && s.date === todayISO()) { r.at = Date.now();
       const g = i > 0 && !circGroup(d, idx) ? restGap(s.ex[ex.key][i - 1], r) : null; if (isLong(g, restFor(ex), s.buddy)) r.lr = g; } }
   if (v != null && !["dirty", "eff"].includes(field) && !(s.ord || []).includes(ex.key)) s.ord = [...(s.ord || []), ex.key]; // ordine reale di esecuzione
-  if (v != null && !["dirty", "eff"].includes(field)) stampTime(s);
+  if (v != null && !["dirty", "eff"].includes(field)) { stampTime(s); if (s.later && s.later[ex.key]) delete s.later[ex.key]; }
   if (field === "kg" && FE && (FE.key !== ex.key || FE.i !== i)) closeFeel();
   if (v != null && !["dirty", "eff"].includes(field) && T.key && T.key !== tKey(ex) && (running() || T.left != null)) stopRest(); // altro esercizio: il recupero si ferma // passi alla serie dopo: la domanda sparisce
   s.updatedAt = Date.now(); D.sessions[s.id] = s; save(); updateProgress();
@@ -940,7 +981,7 @@ function nextSet(d, idx, i) {
 }
 // primo esercizio non finito dopo idx (poi dall'inizio): serve quando cambi ordine (es. macchina occupata)
 function nextOpenUnit(d, idx) {
-  const s = current(), us = dayUnitsList(d, s).filter(u => !u.done); if (!us.length) return null;
+  const s = current(), all = dayUnitsList(d, s).filter(u => !u.done), now = all.filter(u => !isLater(s, u.keys[0])), us = now.length ? now : all; if (!us.length) return null;
   const pos = u => d.ex.findIndex(e => e.key === u.keys[0]);
   const u = us.find(x => pos(x) > idx) || us[0];
   if (u.circ) return { k: u.keys[0], i: 0 };
@@ -1256,6 +1297,7 @@ function renderMore() {
 // ---------- navigazione ----------
 document.querySelectorAll(".tabbar button").forEach(b => b.onclick = () => { S.view = b.dataset.view; render(); scrollTo(0, 0); });
 function render() {
+  if (S.view !== "log") closeSheet();
   if (S.view !== "log" || (FE && !dayObj().ex.some(e => e.key === FE.key))) closeFeel();
   document.querySelectorAll(".tabbar button").forEach(b => b.toggleAttribute("aria-current", b.dataset.view === S.view));
   document.querySelectorAll(".tabbar button[aria-current]").forEach(b => b.setAttribute("aria-current", "page"));
