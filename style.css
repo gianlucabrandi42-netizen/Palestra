@@ -646,3 +646,5 @@ html[data-theme="sparta"] .dsel b{text-wrap:balance}
 /* riga MUSCOLI del blocco info */
 .exinfo .musv b{display:block;font-size:14px;font-weight:700;line-height:1.3;color:var(--ink)}
 .exinfo .musv small{display:block;font-size:12.5px;color:var(--muted);margin-top:1px}
+/* spazio tra il bordino in cima alla scheda e la foto/titolo */
+html[data-theme] .exh,html[data-theme] .exhead{padding-top:calc(var(--fh, 8px) + 12px)}
