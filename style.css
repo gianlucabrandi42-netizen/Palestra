@@ -692,3 +692,18 @@ html[data-theme] .gym button[aria-pressed="true"]::before{filter:drop-shadow(0 1
 .tipline span::before,.tipline span+span::before{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--accent);margin:0 7px 0 0;vertical-align:middle}
 /* riquadri della settimana: sfondo pieno, le foglie dei bordi restano dietro */
 .wk{background:var(--surface)}
+/* riquadri della settimana = selettore del giorno (17/11/2026: tolta la sezione "Giorno" dal pannello del titolo) */
+.wk{border:1px solid var(--line);border-radius:14px;padding:9px 10px 9px;min-height:84px;align-content:start;gap:2px;transition:border-color .2s,background .2s,box-shadow .2s}
+.wk b{font-size:22px;opacity:.9}
+.wk em{font-style:normal;font-size:11.5px;line-height:1.25;color:var(--muted);font-weight:500}
+.wk small{margin-top:3px;font-size:10.5px;font-weight:700;letter-spacing:.02em;color:var(--muted);opacity:.85}
+.wk:not(.done):not(.part) small{border-top:1px dashed var(--line);padding-top:3px;width:100%}
+.wk.done small{color:var(--accent);opacity:1}
+.wk.part small{color:var(--near);opacity:1}
+.wk.sel{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--surface));box-shadow:0 8px 22px -14px var(--accent)}
+.wk.sel b{color:var(--accent);opacity:1}
+.wk.sel em{color:var(--ink);opacity:.85}
+.wk.done:not(.sel){background:color-mix(in srgb,var(--accent) 6%,var(--surface));border-color:color-mix(in srgb,var(--accent) 35%,var(--line))}
+html[data-theme="green"] .wk.sel b,html[data-theme="green"] .wk.done b{color:var(--gt-title)}
+html[data-theme="sparta"] .wk b{font-family:var(--display);font-weight:700}
+html[data-theme="sparta"] .wk.sel b,html[data-theme="sparta"] .wk.done b{color:var(--gold)}

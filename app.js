@@ -180,8 +180,8 @@ function renderConsole() {
   $("gyms").innerHTML = GYMS.map(g => `<button data-g="${g.id}" aria-pressed="${g.id === S.gym}" aria-label="${esc(g.name)}">${esc(g.short || g.name.split(" ")[0])}</button>`).join("");
   $("gyms").querySelectorAll("button").forEach(b => b.onclick = () => { S.gym = b.dataset.g; persistPrefs(); render(); });
   const p = plan(); dayObj();
-  $("days").innerHTML = p.days.map(d => `<button data-d="${d.id}" aria-pressed="${d.id === S.day}"><b>${esc(d.id)}</b><small>${esc(d.name)}</small></button>`).join("");
-  $("days").querySelectorAll("button").forEach(b => b.onclick = () => { S.day = b.dataset.d; S.open.clear(); S.exOpen.clear(); togglePanel(false); persistPrefs(); render(); scrollTo(0, 0); });
+  if ($("days")) $("days").innerHTML = p.days.map(d => `<button data-d="${d.id}" aria-pressed="${d.id === S.day}"><b>${esc(d.id)}</b><small>${esc(d.name)}</small></button>`).join("");
+  if ($("days")) $("days").querySelectorAll("button").forEach(b => b.onclick = () => { S.day = b.dataset.d; S.open.clear(); S.exOpen.clear(); togglePanel(false); persistPrefs(); render(); scrollTo(0, 0); });
   $("date").value = S.date;
   const list = gymSessions(S.gym).filter(s => s.plan === p.id && s.day === S.day).slice(-12).reverse();
   const box = $("sessions"); box.textContent = "";
@@ -271,8 +271,9 @@ function renderWeek() {
   const box = $("week"); if (!box) return;
   const w = weekStatus(), left = w.filter(x => !x.done).length;
   box.innerHTML = `<div class="wk-h"><span>Questa settimana</span><b>${left ? `${left === 1 ? "manca" : "mancano"} ${left}` : "completa ✓"}</b></div>
-    <div class="wk-r">${w.map(x => `<button class="wk ${x.done ? "done" : x.part ? "part" : ""}${x.d.id === S.day ? " sel" : ""}" data-d="${x.d.id}">
+    <div class="wk-r" role="group" aria-label="Giorno">${w.map(x => `<button class="wk ${x.done ? "done" : x.part ? "part" : ""}${x.d.id === S.day ? " sel" : ""}" data-d="${x.d.id}" aria-pressed="${x.d.id === S.day}">
       <span class="wk-i">${x.done ? "✓" : x.part ? "◐" : ""}</span><b>${esc(x.d.id)}</b>
+      <em>${esc(x.d.name)}</em>
       <small>${x.done || x.part ? `${x.when} · ${esc(x.gym)}` : "da fare"}</small></button>`).join("")}</div>`;
   box.querySelectorAll("[data-d]").forEach(b => b.onclick = () => { if (b.dataset.d === S.day) return; S.day = b.dataset.d; S.open.clear(); S.exOpen.clear(); persistPrefs(); render(); scrollTo(0, 0); });
 }
