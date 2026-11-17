@@ -420,7 +420,7 @@ function todayBanners(s, ex, painRef, rs) {
 function rxLine(ex) {
   const ts = ex.sets.map(st => st.t + (st.type === "ced" ? " RP" : st.type === "strip" ? " strip" : "")), same = ts.every(t => t === ts[0]);
   // il recupero compare solo se il PT l'ha indicato nella scheda (campo "rest" in schede.js)
-  return `<div class="rx"><b>${same ? `${ts.length} × ${esc(ts[0])}` : `${ts.length} serie: ${ts.map(esc).join(" · ")}`}</b>${ex.rest ? `<span>recupero ${fmtSec(restFor(ex))}</span>` : ""}</div>`;
+  return `<div class="rx"><b>${same ? `${ts.length} × ${esc(ts[0])}` : `${ts.length} serie: ${ts.map(esc).join(" · ")}`}</b>${hasRest(ex) ? `<span>recupero ${fmtSec(restFor(ex))}</span>` : ""}</div>`;
 }
 // ---------- sensazione della serie: striscia "Com'era?" sopra il timer ----------
 const FEEL = { easy: { n: "Facile", b: 1 }, ok: { n: "Giusta", b: 2 }, hard: { n: "Al limite", b: 3 }, dirty: { n: "Sporca" }, help: { n: "Aiutata" } };
@@ -669,6 +669,7 @@ function renderLog0() {
       <div class="panel" hidden><div class="exinfo">
         ${ex.setup === false ? "" : `<div class="ir setup"${((D.setup[S.gym] || {})[ex.key]) ? "" : " hidden"}><label class="il" for="su-${ex.key}">Regolazioni</label><div class="iv"><input id="su-${ex.key}" autocomplete="off" placeholder="es. sedile 4, schienale 2"></div></div>`}
         ${ex.tec ? `<div class="ir"><span class="il">Schema</span><div class="iv tecv">${esc(ex.tec)}</div></div>` : ""}
+        <div class="ir"><span class="il">Recupero${hasRest(ex) ? "" : "<i>non indicato</i>"}</span><div class="iv restsel" role="group" aria-label="Recupero tra le serie">${REST_OPT.map(v => `<button type="button" data-rest-set="${v}" aria-pressed="${hasRest(ex) && restFor(ex) === v}">${fmtSec(v)}</button>`).join("")}</div></div>
         ${ex.bw ? "" : `<div class="ir"><span class="il">Salto pesi${stp.auto && stp.v ? "<i>stimato</i>" : ""}</span><div class="iv stepsel" role="group" aria-label="Salto dei pesi">${STEPS.map(v => `<button type="button" data-step="${v}" aria-pressed="${stp.v === v}" class="${stp.v === v && stp.auto ? "auto" : ""}">${fmt(v)}</button>`).join("")}</div></div>`}
         ${ex.setup === false || ((D.setup[S.gym] || {})[ex.key]) ? "" : `<button type="button" class="addsetup" data-addsetup>⚙ Aggiungi regolazioni della macchina</button>`}
         ${ex.bw ? "" : `<div class="ir"><span class="il">Kg suggeriti</span><div class="iv"><button type="button" class="chip" data-copy>⚡ Scrivili nelle serie</button></div></div>`}
@@ -733,6 +734,7 @@ function renderLog0() {
       su.value = ((D.setup[S.gym] || {})[ex.key]) || ""; su.oninput = () => { D.setup[S.gym] = D.setup[S.gym] || {}; D.setup[S.gym][ex.key] = su.value.trim(); save(); S.setupDirty = true; const t = card.querySelector("[data-editsetup]"); if (t) t.textContent = su.value.trim() || "—"; };
     }
     card.querySelectorAll("[data-act]").forEach(b => b.onclick = () => exAct(ex, b.dataset.act));
+    card.querySelectorAll("[data-rest-set]").forEach(b => b.onclick = () => { const v = +b.dataset.restSet; setRest(ex.key, (D.rest || {})[ex.key] === v ? null : v); toast((D.rest || {})[ex.key] ? `Recupero ${ex.name}: ${fmtSec(v)}` : "Recupero tolto: torna quello di base"); });
     card.querySelectorAll("[data-addsetup]").forEach(b => b.onclick = () => { const r = b.parentNode.querySelector(".ir.setup"); if (r) { r.hidden = false; b.remove(); const i = r.querySelector("input"); i.focus(); i.scrollIntoView({ block: "center", behavior: "smooth" }); } });
     card.querySelectorAll("[data-undo]").forEach(b => b.onclick = () => exAct(ex, b.dataset.undo, true));
     card.querySelectorAll("[data-alt]").forEach(b => b.onclick = () => { S.subEdit = null; setExMap("sub", ex.key, b.dataset.alt); });
@@ -1303,6 +1305,7 @@ $("bkFile").onchange = async e => {
     for (const [id, s] of Object.entries(inc.sessions || {})) { const l = D.sessions[id]; if (!l || (s.updatedAt || 0) > (l.updatedAt || 0)) { D.sessions[id] = s; added++; } }
     for (const g of Object.keys(inc.setup || {})) D.setup[g] = { ...(inc.setup[g] || {}), ...(D.setup[g] || {}) };
     for (const g of Object.keys(inc.steps || {})) { D.steps = D.steps || {}; D.steps[g] = { ...(inc.steps[g] || {}), ...(D.steps[g] || {}) }; }
+    D.rest = { ...(inc.rest || {}), ...(D.rest || {}) };
     for (const g of Object.keys(inc.machines || {})) { D.machines = D.machines || {}; D.machines[g] = { ...(inc.machines[g] || {}), ...(D.machines[g] || {}) }; }
     save(true); $("bkMsg").textContent = `Ripristino fatto: ${added} sedute importate o aggiornate.`; toast("Backup ripristinato"); render();
   } catch (err) { $("bkMsg").textContent = "Questo file non è un backup dell'app Palestra."; }
@@ -1353,7 +1356,11 @@ function parseRest(r) {
   if ((m = s.match(/^(\d+)/))) return +m[1];                                         // 90" · 90
   return null;
 }
-const restFor = ex => parseRest(ex && ex.rest) || tPrefs().sec;
+// recupero: quello impostato dall'utente nei dettagli (D.rest[key], quando il PT glielo dice) > quello in schede.js > base
+const restFor = ex => (ex && (D.rest || {})[ex.key]) || parseRest(ex && ex.rest) || tPrefs().sec;
+const hasRest = ex => !!(ex && ((D.rest || {})[ex.key] || ex.rest));
+const REST_OPT = [45, 60, 75, 90, 120, 150, 180];
+function setRest(key, v) { D.rest = { ...(D.rest || {}) }; if (v == null) delete D.rest[key]; else D.rest[key] = v; save(); renderLog(); }
 // circuito: esercizi consecutivi con lo stesso "circ" → {start, end, last}
 function circGroup(d, idx) {
   const c = d.ex[idx] && d.ex[idx].circ; if (!c) return null;

@@ -948,3 +948,8 @@ html[data-theme="sparta"] .gdots i.on{background:var(--gold)}
 .lb footer{display:grid;gap:10px}
 .lbtrack{transition:transform .2s}
 .lbclose2{width:100%;height:48px;border-radius:14px;border:0;background:rgba(255,255,255,.14);color:#fff;font-weight:800;font-size:15px}
+/* recupero impostabile nei dettagli */
+.restsel{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.restsel button{height:36px;border-radius:10px;border:1px solid var(--line);background:var(--raised);color:var(--ink);font-weight:700;font-size:13.5px;font-variant-numeric:tabular-nums}
+.restsel button[aria-pressed="true"]{background:var(--grad);color:var(--on-accent);border-color:transparent}
+.exinfo .il i{display:block;font-style:normal;font-size:10px;letter-spacing:.04em;text-transform:none;font-weight:600;color:var(--muted);opacity:.8}
