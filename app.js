@@ -346,7 +346,8 @@ function openSheet(key) {
   const card = document.querySelector(`.ex[data-ex="${key}"]`), sh = $("isheet"); if (!card || !sh) return;
   const ex = dayObj().ex.find(e => e.key === key), panel = card.querySelector(".panel"), pbody = panel.querySelector(".pbody");
   if (!pbody.firstChild) fillPanel(pbody, ex);
-  const body = sh.querySelector(".is-c"); body.textContent = ""; panel.hidden = false; body.appendChild(panel);
+  if (!panel) return;
+  const body = sh.querySelector(".is-c"); body.textContent = ""; panel.hidden = false; body.appendChild(panel); sh._card = card;
   sh.querySelector(".is-h").innerHTML = `<b>${esc(subOf(current(), key) || ex.name)}</b>${rxLine(ex)}`;
   const was = !sh.hidden || S.sheet === key && sh.classList.contains("on"); S.sheet = key;
   sh.hidden = false; document.documentElement.classList.add("noscroll");
@@ -357,7 +358,9 @@ function closeSheet(keep) {
   if (!keep) S.sheet = null; const box = sh.querySelector(".is-box"); box.style.transform = "";
   sh.classList.remove("on"); document.documentElement.classList.remove("noscroll");
   const b = document.activeElement; if (b && sh.contains(b)) b.blur();
-  setTimeout(() => { if (!sh.classList.contains("on")) { sh.hidden = true; sh.querySelector(".is-c").textContent = ""; } }, 220);
+  // il pannello torna nella sua scheda, così il tasto si può riaprire
+  const back = () => { const p = sh.querySelector(".is-c .panel"), c = sh._card; if (p && c && document.contains(c)) { p.hidden = true; c.appendChild(p); } sh.querySelector(".is-c").textContent = ""; sh._card = null; };
+  setTimeout(() => { if (!sh.classList.contains("on")) { sh.hidden = true; back(); } }, 220);
 }
 (() => { // chiusura: tocco fuori, ✕, trascinamento verso il basso dalla barretta/intestazione
   const sh = $("isheet"); if (!sh) return;
@@ -562,7 +565,7 @@ function recapCard(d, s, units) {
   return el;
 }
 function renderLog() {
-  if (S.sheet) $("isheet").querySelector(".is-c").textContent = "";
+  if (S.sheet || $("isheet")._card) { $("isheet").querySelector(".is-c").textContent = ""; $("isheet")._card = null; }
   renderLog0();
   if (S.sheet) { if (document.querySelector(`.ex[data-ex="${S.sheet}"]`)) openSheet(S.sheet); else closeSheet(); }
 }
