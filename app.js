@@ -657,13 +657,14 @@ function renderLog0() {
       </div>` : ""}
       <div class="sets"><div class="sh"><span>Serie</span><span>Ultima</span><span>${ex.bw ? "kg (opz.)" : "kg"}</span><span>Reps</span><span></span></div></div>
       ${load ? `<p class="advice ${load.c}"><span>Consiglio</span>${load.t}</p>` : ""}
-      <div class="exfoot"><button class="btn sm" data-copy>⚡ Usa kg suggeriti</button>
+      <div class="exfoot${manual ? " two" : ""}">
         ${manual ? `<button class="more" data-close>Chiudi</button>` : ""}
         <button class="infobtn" data-more aria-haspopup="dialog"><svg viewBox="0 0 24 24" class="ib-i"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.01"/></svg><span><b>Info ed esecuzione</b><small>foto · muscoli · regolazioni</small></span><svg viewBox="0 0 24 24" class="ib-c"><path d="M9 6l6 6-6 6"/></svg></button></div>
       <div class="panel" hidden><div class="exinfo">
         ${ex.setup === false ? "" : `<div class="ir setup"><label class="il" for="su-${ex.key}">Regolazioni</label><div class="iv"><input id="su-${ex.key}" autocomplete="off" placeholder="+ aggiungi (es. sedile 4)"></div></div>`}
         ${ex.tec ? `<div class="ir"><span class="il">Schema</span><div class="iv tecv">${esc(ex.tec)}</div></div>` : ""}
         ${ex.bw ? "" : `<div class="ir"><span class="il">Salto pesi${stp.auto && stp.v ? "<i>stimato</i>" : ""}</span><div class="iv stepsel" role="group" aria-label="Salto dei pesi">${STEPS.map(v => `<button type="button" data-step="${v}" aria-pressed="${stp.v === v}" class="${stp.v === v && stp.auto ? "auto" : ""}">${fmt(v)}</button>`).join("")}</div></div>`}
+        ${ex.bw ? "" : `<div class="ir"><span class="il">Kg suggeriti</span><div class="iv"><button type="button" class="chip" data-copy>⚡ Scrivili nelle serie</button></div></div>`}
       </div>
       <div class="today3"><span class="t3k">Solo per oggi</span><div class="acts3" role="group" aria-label="Solo per oggi">
         <button type="button" data-act="sub" aria-pressed="${!!sbN}"><svg viewBox="0 0 24 24"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg><span>Sostituisci</span></button>
@@ -729,9 +730,9 @@ function renderLog0() {
     card.querySelectorAll("[data-alt]").forEach(b => b.onclick = () => { S.subEdit = null; setExMap("sub", ex.key, b.dataset.alt); });
     const pin = card.querySelector("[data-pic]"); if (pin) pin.onchange = () => { if (pin.files[0]) saveMachinePic(subOf(current(), ex.key), pin.files[0]); };
     const sbi = card.querySelector(".subin input"); if (sbi) { sbi.onkeydown = e => { if (e.key === "Enter") sbi.blur(); }; sbi.onchange = () => { S.subEdit = null; setExMap("sub", ex.key, sbi.value.trim() || null); }; setTimeout(() => sbi.focus(), 60); }
-    const cp = card.querySelector("[data-copy]");
-    if (ex.bw || !rs || !refSets.some(r => r && r.kg != null)) cp.hidden = true;
-    cp.onclick = () => ex.sets.forEach((_, i) => { const a = advise2(refSets[i], prSets[i], tnum(ex.sets[i].t), stp.v, cond.f, nUp(i)), k = a && a.kg; if (k != null) { const el = $(`kg-${ex.key}-${i}`); el.value = fmt(k); edit(ex, i, "kg", el.value); el.dispatchEvent(new Event("input")); } });
+    const cp = card.querySelector("[data-copy]") || { set hidden(v) {} };
+    if (ex.bw || !rs || !refSets.some(r => r && r.kg != null)) { const row = cp.closest && cp.closest(".ir"); if (row) row.remove(); }
+    cp.onclick = () => (closeSheet(), ex.sets).forEach((_, i) => { const a = advise2(refSets[i], prSets[i], tnum(ex.sets[i].t), stp.v, cond.f, nUp(i)), k = a && a.kg; if (k != null) { const el = $(`kg-${ex.key}-${i}`); el.value = fmt(k); edit(ex, i, "kg", el.value); el.dispatchEvent(new Event("input")); } });
     const panel = card.querySelector(".panel"), pbody = panel.querySelector(".pbody"); if (open) fillPanel(pbody, ex);
     const openInfo = () => openSheet(ex.key);
     card.querySelectorAll("[data-more]").forEach(b => b.onclick = () => {

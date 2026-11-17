@@ -449,7 +449,9 @@ window.SCHEDE = [
       "img": {
        "local": [
         "crunch-f1.webp",
-        "crunch-f2.webp"
+        "crunch-f2.webp",
+        "crunch-d1.webp",
+        "crunch-d2.webp"
        ]
       },
       "ref": {},
@@ -619,7 +621,9 @@ window.SCHEDE = [
       "img": {
        "local": [
         "rematore-f1.webp",
-        "rematore-f2.webp"
+        "rematore-f2.webp",
+        "rematore-d1.webp",
+        "rematore-d2.webp"
        ]
       },
       "ref": {},
@@ -974,7 +978,9 @@ window.SCHEDE = [
       "img": {
        "local": [
         "crunch-f1.webp",
-        "crunch-f2.webp"
+        "crunch-f2.webp",
+        "crunch-d1.webp",
+        "crunch-d2.webp"
        ]
       },
       "ref": {},
@@ -1555,7 +1561,9 @@ window.SCHEDE = [
       "img": {
        "local": [
         "crunch-f1.webp",
-        "crunch-f2.webp"
+        "crunch-f2.webp",
+        "crunch-d1.webp",
+        "crunch-d2.webp"
        ]
       },
       "ref": {},

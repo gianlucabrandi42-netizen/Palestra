@@ -913,3 +913,13 @@ html[data-theme="green"] .is-box{border-top:2px solid color-mix(in srgb,var(--ac
 .infobtn .ib-i{width:24px;height:24px;color:var(--accent)}
 .infobtn .ib-c{width:18px;height:18px;color:var(--accent)}
 html[data-theme="sparta"] .infobtn .ib-i,html[data-theme="sparta"] .infobtn .ib-c{color:var(--gold)}
+/* "Info ed esecuzione" pieno nel colore della palestra (verde giada / bronzo); "Usa kg suggeriti" spostato nel riquadro Info */
+.exfoot{grid-template-columns:1fr}
+.exfoot.two{grid-template-columns:1fr auto;align-items:center}
+.exfoot.two .infobtn{grid-column:auto}
+.exfoot .infobtn{order:0}
+.infobtn{background:var(--grad);border:0;color:var(--on-accent);box-shadow:0 8px 22px -12px var(--accent)}
+.infobtn:active{filter:brightness(.92);background:var(--grad)}
+.infobtn small{color:var(--on-accent);opacity:.72}
+.infobtn .ib-i,.infobtn .ib-c,html[data-theme="sparta"] .infobtn .ib-i,html[data-theme="sparta"] .infobtn .ib-c{color:var(--on-accent)}
+.exfoot.two [data-close]{order:1;padding:0 6px}
