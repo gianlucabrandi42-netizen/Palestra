@@ -370,8 +370,13 @@ function closeSheet(keep) {
   sh.querySelector(".is-close").onclick = () => closeSheet();
   // trascinando giù il contenuto quando è già in cima, il riquadro scende e si chiude
   const cont = sh.querySelector(".is-c"); let cy = null, cd = 0;
-  cont.addEventListener("touchstart", e => { cy = cont.scrollTop <= 0 ? e.touches[0].clientY : null; cd = 0; }, { passive: true });
-  cont.addEventListener("touchmove", e => { if (cy == null) return; cd = e.touches[0].clientY - cy; if (cd > 0 && cont.scrollTop <= 0) { box.style.transition = "none"; box.style.transform = `translateY(${cd}px)`; } else if (cd < 0) { cy = null; box.style.transform = ""; } }, { passive: true });
+  let cx = 0, lock = null;
+  cont.addEventListener("touchstart", e => { const g = e.target.closest && e.target.closest(".gallery, .acts3, .stepsel");
+    cy = !g && cont.scrollTop <= 0 ? e.touches[0].clientY : null; cx = e.touches[0].clientX; cd = 0; lock = null; }, { passive: true });
+  cont.addEventListener("touchmove", e => { if (cy == null) return; const t = e.touches[0];
+    if (!lock) { const ax = Math.abs(t.clientX - cx), ay = Math.abs(t.clientY - cy); if (ax < 6 && ay < 6) return; lock = ax > ay ? "x" : "y"; }
+    if (lock === "x") { cy = null; box.style.transform = ""; return; } // movimento orizzontale: non è una chiusura
+    cd = t.clientY - cy; if (cd > 0 && cont.scrollTop <= 0) { box.style.transition = "none"; box.style.transform = `translateY(${cd}px)`; } else if (cd < 0) { cy = null; box.style.transform = ""; } }, { passive: true });
   cont.addEventListener("touchend", () => { if (cy == null) return; box.style.transition = ""; if (cd > 110) closeSheet(); else box.style.transform = ""; cy = null; });
   const grab = sh.querySelector(".is-top"); let y0 = null, dy = 0;
   grab.addEventListener("touchstart", e => { y0 = e.touches[0].clientY; dy = 0; box.style.transition = "none"; }, { passive: true });
@@ -414,7 +419,7 @@ function todayBanners(s, ex, painRef, rs) {
 // Prescrizione del PT, sempre in evidenza sotto il nome: "3 × 10 reps" o "3 serie: 10 · 8 · 8 reps" + recupero
 function rxLine(ex) {
   const ts = ex.sets.map(st => st.t + (st.type === "ced" ? " RP" : st.type === "strip" ? " strip" : "")), same = ts.every(t => t === ts[0]);
-  return `<div class="rx"><b>${same ? `${ts.length} × ${esc(ts[0])}` : `${ts.length} serie: ${ts.map(esc).join(" · ")}`}</b><span>reps · recupero ${fmtSec(restFor(ex))}</span></div>`;
+  return `<div class="rx"><b>${same ? `${ts.length} × ${esc(ts[0])}` : `${ts.length} serie: ${ts.map(esc).join(" · ")}`}</b></div>`;
 }
 // ---------- sensazione della serie: striscia "Com'era?" sopra il timer ----------
 const FEEL = { easy: { n: "Facile", b: 1 }, ok: { n: "Giusta", b: 2 }, hard: { n: "Al limite", b: 3 }, dirty: { n: "Sporca" }, help: { n: "Aiutata" } };
@@ -957,6 +962,9 @@ function fillPanel(panel, ex) {
     <div class="cues">${(ex.cues || []).length ? `<h4>Esecuzione</h4><ol>${ex.cues.map(x => `<li>${esc(x)}</li>`).join("")}</ol>` : ""}
       ${(ex.errors || []).length ? `<h4>Errori da evitare</h4><ul>${ex.errors.map(x => `<li><span>${esc(x)}</span></li>`).join("")}</ul>` : ""}</div>`;
   panel.querySelectorAll(".shot").forEach(b => b.onclick = () => openLB(ex, +b.dataset.i));
+  const gal = panel.querySelector(".gallery"), n = a.length;
+  if (gal && n > 1) { const dots = document.createElement("div"); dots.className = "gdots"; dots.innerHTML = a.map((_, i) => `<i${i ? "" : ' class="on"'}></i>`).join(""); gal.after(dots);
+    gal.addEventListener("scroll", () => { const sh = [...gal.children], c = gal.scrollLeft + gal.clientWidth / 2; let k = 0, best = 1e9; sh.forEach((el, i) => { const d = Math.abs(el.offsetLeft + el.offsetWidth / 2 - c); if (d < best) { best = d; k = i; } }); dots.querySelectorAll("i").forEach((d, i) => d.classList.toggle("on", i === k)); }, { passive: true }); }
 }
 
 // ---------- scrittura ----------

@@ -923,3 +923,22 @@ html[data-theme="sparta"] .infobtn .ib-i,html[data-theme="sparta"] .infobtn .ib-
 .infobtn small{color:var(--on-accent);opacity:.72}
 .infobtn .ib-i,.infobtn .ib-c,html[data-theme="sparta"] .infobtn .ib-i,html[data-theme="sparta"] .infobtn .ib-c{color:var(--on-accent)}
 .exfoot.two [data-close]{order:1;padding:0 6px}
+/* galleria nel riquadro: scorrimento orizzontale fluido, una foto alla volta, puntini */
+.is-c .gallery{touch-action:pan-x;scroll-snap-type:x mandatory;scroll-padding:0 14px;overscroll-behavior-x:contain}
+.is-c .shot{width:84%;max-width:420px;scroll-snap-align:center;scroll-snap-stop:always}
+.is-c .shot.draw{width:60%;max-width:300px}
+.gdots{display:flex;justify-content:center;gap:6px;margin-top:-6px}
+.gdots i{width:6px;height:6px;border-radius:50%;background:var(--line);transition:background .2s,width .2s}
+.gdots i.on{width:16px;border-radius:3px;background:var(--accent)}
+html[data-theme="sparta"] .gdots i.on{background:var(--gold)}
+.is-c .gdots{order:-2}
+.is-c .gallery{order:-3}
+/* "Solo per oggi": ogni pulsante col suo colore */
+.acts3 button[data-act="sub"]{--bc:#7FB2E8}
+.acts3 button[data-act="later"]{--bc:#E9B949}
+.acts3 button[data-act="pain"]{--bc:#F07C5C}
+.acts3 button[data-act="skip"]{--bc:#B9A4E6}
+.acts3 button{color:color-mix(in srgb,var(--bc) 75%,var(--ink));background:color-mix(in srgb,var(--bc) 9%,transparent)}
+.acts3 button svg{color:var(--bc)}
+.acts3 button[aria-pressed="true"],.acts3 button[data-act="pain"][aria-pressed="true"]{color:#111;background:var(--bc);box-shadow:none}
+.acts3 button[aria-pressed="true"] svg{color:#111}
