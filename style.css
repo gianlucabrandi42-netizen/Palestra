@@ -609,3 +609,6 @@ html[data-theme] .ctop .gym button::before,html[data-theme] .ctop .gym button[ar
 .lbtrack .av img.draw{padding:12px}
 .lbtrack .av img+img{animation:flip 2.6s steps(1,end) infinite}
 .lbtrack.zoomed .av{touch-action:none}
+/* ultima volta sporca: valore nel colore "sporca" con la tilde ben visibile */
+.prev .lv.dirty{color:var(--near)}
+.prev .lv.dirty i{font-style:normal;font-weight:900;margin-left:2px}
