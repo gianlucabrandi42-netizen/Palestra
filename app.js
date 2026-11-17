@@ -133,10 +133,12 @@ const allClean = sets => !sets.some(r => r && r.dirty);
 // Kg suggeriti = un peso che puoi caricare davvero: ultimo carico ± salti interi (step, per esercizio e palestra).
 // Aumento = un salto (scelta dell'utente: si sale subito e si accettano 1-2 reps in meno). Riduzioni (giornata no,
 // rientro, serie sporca sotto target −5%) = peso disponibile più vicino VERSO IL BASSO. Senza salto noto: +2,5% / 0,5 kg.
+// Regola dell'utente (17/11/2026): OGNI serie fatta pulita e a target (o oltre) sale di un salto già la volta dopo.
+function setUp(ls, t) { return !!ls && ls.kg != null && t != null && ls.reps != null && ls.reps >= t && !ls.dirty; }
 function suggestKg(ls, hit, f, t, step) {
   if (!ls || ls.kg == null) return null; const b = ls.kg; let k = b;
   if (ls.dirty && t != null && ls.reps != null && ls.reps < t) k = b * 0.95;
-  else if (hit && f >= 1) k = step ? b + step : Math.max(b * 1.025, b + 1);
+  else if (setUp(ls, t) && f >= 1) k = step ? b + step : Math.max(b * 1.025, b + 1);
   k *= f;
   if (!step) return roundKg(k);
   if (k >= b - 1e-9) return roundKg(b + Math.round((k - b) / step) * step);
@@ -280,9 +282,14 @@ function renderLog() {
     // riga "CARICO" del blocco info: cosa fare oggi con il peso e perché
     let pills = "", load = null;
     if (rs && cond.f < 1) load = { c: "near", t: `↓ Oggi −${Math.round((1 - cond.f) * 100)}%: ${esc(cond.why)}` };
-    else if (rs) load = hit ? { c: "up", t: `↑ ${ex.bw ? "Aumenta" : stp.v ? `+${fmt(stp.v)} kg` : "Aumenta"}: 2 volte di fila a target e pulite.${stp.v ? " Ok anche 1-2 reps in meno." : ""}` }
-      : !allClean(refSets) ? { c: "near", t: "~ Serie sporche l'ultima volta: stesso carico, falle pulite." }
-      : hit1 ? { c: "", t: "= Stesso carico. A target e pulite 1 volta: alla 2ª aumenti." } : { c: "", t: "= Stesso carico dell'ultima volta." };
+    else if (rs) {
+      const lab = i => { let n = 0, out = ""; ex.sets.forEach((st, j) => { if (!st.type || ["std", "alte", "pausa", "risc"].includes(st.type)) n++; if (j === i) out = st.type === "ced" ? "RP" : st.type === "strip" ? "ST" : st.type === "super" ? "SS" : "S" + n; }); return out; };
+      const ix = f => ex.sets.map((st, i) => f(refSets[i], tnum(st.t)) ? i : -1).filter(i => i >= 0), names = a => listIt(a.map(lab));
+      const up = ix(setUp), dirty = ix(r => r && r.dirty), all = up.length === ex.sets.length, inc = ex.bw ? "aumenta" : stp.v ? `+${fmt(stp.v)} kg` : "sali un po'";
+      if (up.length) load = { c: "up", t: `↑ ${all ? "Tutte le serie" : names(up)} a target e pulit${all || up.length > 1 ? "e" : "a"}: ${inc}${all ? "" : `; ${up.length === ex.sets.length - 1 ? "l'altra" : "le altre"} stesso carico`}.${stp.v ? " Ok anche 1-2 reps in meno." : ""}${dirty.length ? ` ${names(dirty)} sporc${dirty.length > 1 ? "he: falle pulite" : "a: falla pulita"}.` : ""}` };
+      else if (dirty.length) load = { c: "near", t: "~ Serie sporche l'ultima volta: stesso carico, falle pulite." };
+      else load = { c: "", t: "= Stesso carico: l'ultima volta nessuna serie a target." };
+    }
     else if (ref) load = { c: "", t: `Scheda precedente: ${fmt(ref)} kg` };
     const cg = circGroup(d, idx);
     if (cg) pills += cg.last ? `<span class="pill circ">Circuito · recupero ${fmtSec(restFor(ex))} a fine giro</span>` : `<span class="pill circ">Circuito · subito il prossimo</span>`;
