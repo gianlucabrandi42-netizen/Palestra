@@ -891,3 +891,10 @@ html[data-theme="green"] .is-box{border-top:2px solid color-mix(in srgb,var(--ac
 .acts3 button[aria-pressed="true"]{color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 40%,transparent)}
 .acts3 button[data-act="pain"][aria-pressed="true"]{color:var(--near);background:color-mix(in srgb,var(--near) 14%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--near) 40%,transparent)}
 .acts3 button span{font-size:11px;text-align:center;line-height:1.15}
+/* riquadro più basso (più spazio per toccare fuori), "Chiudi" in fondo a portata di pollice; mappa muscoli subito dopo le foto */
+.is-box{height:84%}
+.is-foot{flex:none;padding:8px 14px calc(8px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);background:var(--surface)}
+.is-close{width:100%;height:46px;border-radius:14px;border:1px solid var(--line);background:var(--raised);color:var(--ink);font-weight:800;font-size:15px}
+.is-c{padding-bottom:12px}
+.is-c .muscles{order:-1}
+.is-x{width:40px;height:40px;top:14px;font-size:17px}

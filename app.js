@@ -361,9 +361,16 @@ function closeSheet(keep) {
 }
 (() => { // chiusura: tocco fuori, ✕, trascinamento verso il basso dalla barretta/intestazione
   const sh = $("isheet"); if (!sh) return;
+  const box = sh.querySelector(".is-box");
   sh.querySelector(".is-bg").onclick = () => closeSheet();
   sh.querySelector(".is-x").onclick = () => closeSheet();
-  const box = sh.querySelector(".is-box"), grab = sh.querySelector(".is-top"); let y0 = null, dy = 0;
+  sh.querySelector(".is-close").onclick = () => closeSheet();
+  // trascinando giù il contenuto quando è già in cima, il riquadro scende e si chiude
+  const cont = sh.querySelector(".is-c"); let cy = null, cd = 0;
+  cont.addEventListener("touchstart", e => { cy = cont.scrollTop <= 0 ? e.touches[0].clientY : null; cd = 0; }, { passive: true });
+  cont.addEventListener("touchmove", e => { if (cy == null) return; cd = e.touches[0].clientY - cy; if (cd > 0 && cont.scrollTop <= 0) { box.style.transition = "none"; box.style.transform = `translateY(${cd}px)`; } else if (cd < 0) { cy = null; box.style.transform = ""; } }, { passive: true });
+  cont.addEventListener("touchend", () => { if (cy == null) return; box.style.transition = ""; if (cd > 110) closeSheet(); else box.style.transform = ""; cy = null; });
+  const grab = sh.querySelector(".is-top"); let y0 = null, dy = 0;
   grab.addEventListener("touchstart", e => { y0 = e.touches[0].clientY; dy = 0; box.style.transition = "none"; }, { passive: true });
   grab.addEventListener("touchmove", e => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); box.style.transform = `translateY(${dy}px)`; }, { passive: true });
   grab.addEventListener("touchend", () => { box.style.transition = ""; if (dy > 90) closeSheet(); else box.style.transform = ""; y0 = null; });
@@ -652,7 +659,6 @@ function renderLog0() {
         <button class="more" data-more aria-haspopup="dialog">Info ed esecuzione<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button></div>
       <div class="panel" hidden><div class="exinfo">
         ${ex.setup === false ? "" : `<div class="ir setup"><label class="il" for="su-${ex.key}">Regolazioni</label><div class="iv"><input id="su-${ex.key}" autocomplete="off" placeholder="+ aggiungi (es. sedile 4)"></div></div>`}
-        ${ex.m && ((ex.m.p || []).length || ex.ml) ? `<div class="ir"><span class="il">Muscoli</span><div class="iv musv"><b>${esc(ex.ml || mnames(ex.m.p))}</b>${(ex.m.s || []).length ? `<small>anche ${esc(mnames(ex.m.s).toLowerCase())}</small>` : ""}</div></div>` : ""}
         ${ex.tec ? `<div class="ir"><span class="il">Schema</span><div class="iv tecv">${esc(ex.tec)}</div></div>` : ""}
         ${ex.bw ? "" : `<div class="ir"><span class="il">Salto pesi${stp.auto && stp.v ? "<i>stimato</i>" : ""}</span><div class="iv stepsel" role="group" aria-label="Salto dei pesi">${STEPS.map(v => `<button type="button" data-step="${v}" aria-pressed="${stp.v === v}" class="${stp.v === v && stp.auto ? "auto" : ""}">${fmt(v)}</button>`).join("")}</div></div>`}
       </div>
