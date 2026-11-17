@@ -663,9 +663,11 @@ function renderLog() {
         if (num(rp.value) == null || S.date !== todayISO() || !tPrefs().auto) return;
         const g = circGroup(d, idx);
         if (g && !g.last) { toast(`Subito: ${d.ex[idx + 1].name}`); return; } // circuito: niente recupero tra gli esercizi
-        if (g) { const after = d.ex[g.end + 1]; startRest(restFor(ex), i < ex.sets.length - 1 ? `Giro ${i + 1} finito · poi giro ${i + 2}` : after ? `Circuito finito · poi ${after.name}` : "Circuito finito"); return; }
-        const nx =i < ex.sets.length - 1 ? `${ex.name} · poi serie ${i + 2}` : (() => { const n = nextOpenUnit(d, idx); if (!n) return "Ultima serie del giorno"; const ni = d.ex.findIndex(e => e.key === n.k), g2 = isCircNoLog(d, ni); return `Poi: ${g2 ? "Circuito " + d.ex[ni].circ : d.ex[ni].name}`; })();
-        startRest(restFor(ex), nx);
+        // ultima serie (o ultimo giro): tra un esercizio e l'altro il recupero NON parte (scelta dell'utente, 17/11/2026);
+        // riparte dopo la prima serie dell'esercizio successivo
+        if (i === ex.sets.length - 1) { if (running() || T.left != null) stopRest(); toast("Esercizio finito · recupero in pausa fino alla prima serie del prossimo"); return; }
+        if (g) { startRest(restFor(ex), `Giro ${i + 1} finito · poi giro ${i + 2}`, tKey(ex)); return; }
+        startRest(restFor(ex), `${ex.name} · poi serie ${i + 2}`, tKey(ex));
       });
       upd(); setsEl.appendChild(row);
     });
@@ -919,7 +921,8 @@ function edit(ex, i, field, val) {
       const g = i > 0 && !circGroup(d, idx) ? restGap(s.ex[ex.key][i - 1], r) : null; if (isLong(g, restFor(ex), s.buddy)) r.lr = g; } }
   if (v != null && !["dirty", "eff"].includes(field) && !(s.ord || []).includes(ex.key)) s.ord = [...(s.ord || []), ex.key]; // ordine reale di esecuzione
   if (v != null && !["dirty", "eff"].includes(field)) stampTime(s);
-  if (field === "kg" && FE && (FE.key !== ex.key || FE.i !== i)) closeFeel(); // passi alla serie dopo: la domanda sparisce
+  if (field === "kg" && FE && (FE.key !== ex.key || FE.i !== i)) closeFeel();
+  if (v != null && !["dirty", "eff"].includes(field) && T.key && T.key !== tKey(ex) && (running() || T.left != null)) stopRest(); // altro esercizio: il recupero si ferma // passi alla serie dopo: la domanda sparisce
   s.updatedAt = Date.now(); D.sessions[s.id] = s; save(); updateProgress();
   if (field === "reps") try { localStorage.setItem(LKEY, JSON.stringify({ gym: S.gym, day: S.day, date: S.date, key: ex.key, i })); } catch (e) {}
 }
@@ -1290,9 +1293,10 @@ const tSave = () => { try { localStorage.setItem(TKEY, JSON.stringify(T)); } cat
 const running = () => !!T.end && T.left == null;
 const remaining = () => T.left != null ? T.left : T.end ? (T.end - Date.now()) / 1000 : 0;
 
-function startRest(sec, label) {
+const tKey = ex => ex.circ ? "c:" + ex.circ : ex.key;
+function startRest(sec, label, key) {
   unlockAudio();
-  T = { end: Date.now() + sec * 1000, dur: sec, label: label || "Recupero" }; tDone = 0; tWarned = sec <= 6; tSave();
+  T = { end: Date.now() + sec * 1000, dur: sec, label: label || "Recupero", key: key || null }; tDone = 0; tWarned = sec <= 6; tSave();
   notifSchedule(); keepAwake(true); audioKeep(true); tickLoop(); drawTimer();
 }
 function stopRest() { notifCancel(); T = {}; tSave(); keepAwake(false); audioKeep(false); clearInterval(tIv); tIv = null; drawTimer(); }
