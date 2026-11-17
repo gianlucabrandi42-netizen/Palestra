@@ -690,7 +690,9 @@ function autoReps(e, rp) {
   if (!e || !e.isTrusted) return; clearTimeout(rp._t);
   if (isDel(e)) { rp._fix = true; return; }
   const v = rp.value.trim(); if (num(v) == null) return;
-  rp._t = setTimeout(() => { if (document.activeElement === rp) toNextSet(rp); }, rp._fix ? 1200 : v.replace(/\D/g, "").length >= 2 ? 300 : 700);
+  // ultima serie dell'esercizio: 1,5" prima di passare all'esercizio dopo (scelta dell'utente, 17/11/2026)
+  const m = rp.id.match(/^rp-(.+)-(\d+)$/), d = dayObj(), idx = m ? d.ex.findIndex(x => x.key === m[1]) : -1, nx = idx >= 0 ? nextSet(d, idx, +m[2]) : null, last = !nx || nx.k !== m[1];
+  rp._t = setTimeout(() => { if (document.activeElement === rp) toNextSet(rp); }, last ? 1500 : rp._fix ? 1200 : v.replace(/\D/g, "").length >= 2 ? 300 : 700);
 }
 // Dopo le reps: se la prossima serie è dello stesso esercizio, il cursore va ai suoi kg (tastiera aperta; il recupero
 // parte comunque con l'evento "change"); se mancano già i kg ma non le reps, alle reps. Esercizio finito → tastiera giù.
