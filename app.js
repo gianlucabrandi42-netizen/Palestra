@@ -346,7 +346,10 @@ function exAct(ex, a, undo) {
   if (a === "subx") { S.subEdit = null; return renderLog(); }
   if (a === "sub") { S.subEdit = null; if (undo || subOf(s, ex.key)) return setExMap("sub", ex.key, null); S.subEdit = ex.key; return renderLog(); }
   if (a === "pain") return setExMap("pain", ex.key, undo ? null : !hasPain(s, ex.key));
-  if (a === "skip") { setExMap("skip", ex.key, undo ? null : !isSkip(s, ex.key)); if (!undo && isSkip(current(), ex.key)) { S.exOpen.delete(ex.key); renderLog(); } }
+  if (a === "skip") { setExMap("skip", ex.key, undo ? null : !isSkip(s, ex.key));
+    if (!undo && isSkip(current(), ex.key)) { // saltato: si chiude e si passa al prossimo esercizio da fare
+      S.exOpen.delete(ex.key); S.open.delete(ex.key); const d = dayObj(), n = nextOpenUnit(d, d.ex.findIndex(e => e.key === ex.key));
+      renderLog(); if (n) { openUnit(n.k); toast(`Saltato: ${ex.name}`); } else toast("Saltato: allenamento completato"); } }
 }
 function todayBanners(s, ex, painRef, rs) {
   const out = [];
