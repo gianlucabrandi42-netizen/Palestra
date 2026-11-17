@@ -298,11 +298,12 @@ function renderLog() {
           ${fr.map(f => `<img src="${f.src}" alt="${esc(ex.name)} — ${esc(f.cap)}" class="${f.draw ? "draw" : ""}" loading="lazy">`).join("")}
           <span class="zoom"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></span></button>` : ""}
         <div class="t"><div class="exk">${exNum(exN)}${isCur ? " · Adesso" : ""} · Recupero ${fmtSec(restFor(ex))}</div>
-          <h3 class="exname">${esc(ex.name)}</h3><div class="tec">${esc(ex.tec || "")}</div></div>
+          <h3 class="exname">${esc(ex.name)}</h3></div>
       </div>
       ${pills ? `<div class="pills">${pills}</div>` : ""}
       ${oi ? oooBox(oi, prosp) : ""}
       <div class="exinfo">
+        ${ex.tec ? `<div class="ir"><span class="il">Schema</span><div class="iv tecv">${esc(ex.tec)}</div></div>` : ""}
         ${load ? `<div class="ir"><span class="il">Carico</span><div class="iv load ${load.c}">${load.t}</div></div>` : ""}
         ${(ex.flash || []).length ? `<div class="ir"><span class="il">Consigli</span><ul class="iv tipl" aria-label="Da ricordare">${ex.flash.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}
         ${ex.setup === false ? "" : `<div class="ir setup"><label class="il" for="su-${ex.key}">Regolazioni</label><div class="iv"><input id="su-${ex.key}" autocomplete="off" placeholder="+ aggiungi (es. sedile 4)"></div></div>`}
@@ -362,7 +363,7 @@ function renderLog() {
       const isOpen = !panel.hidden; panel.hidden = isOpen; card.querySelector(".more").setAttribute("aria-expanded", !isOpen);
       if (isOpen) S.open.delete(ex.key); else { S.open.add(ex.key); if (!panel.firstChild) fillPanel(panel, ex); }
     });
-    const z = card.querySelector("[data-zoom]"); if (z) z.onclick = () => openLB(ex, 0);
+    const z = card.querySelector("[data-zoom]"); if (z) z.onclick = () => openLB(ex, -1);
     // Chiudi: la riga chiusa resta dove stavi guardando (o subito sotto la barra in alto se la scheda iniziava più su)
     card.querySelectorAll("[data-step]").forEach(b => b.onclick = () => { const v = +b.dataset.step; setStep(ex.key, stp.v === v && !stp.auto ? null : v); });
     const ob = card.querySelector("[data-ooo]"); if (ob) ob.onclick = () => toggleOrderOk(oi.key);
@@ -464,7 +465,7 @@ function circCard(d, g, n, isCur) {
     <div class="giri"><span>Giri</span>${Array.from({ length: giri }, (_, k) => `<button class="giro ${k < cnt ? "on" : ""}" data-g="${k + 1}" aria-label="Giro ${k + 1}">${k + 1}</button>`).join("")}</div>
     <div class="circbtns"><button class="btn primary" data-play ${cnt >= giri ? "disabled" : ""}>${cnt >= giri ? "✓ Circuito completato" : `▶ Giro fatto <small>${cnt + 1}/${giri}</small>`}</button>
       <button class="btn" data-rest>⏱ ${fmtSec(rest)}</button></div>`;
-  card.querySelectorAll("[data-z]").forEach(b => b.onclick = () => openLB(mem[+b.dataset.z], 0));
+  card.querySelectorAll("[data-z]").forEach(b => b.onclick = () => openLB(mem[+b.dataset.z], -1));
   card.querySelectorAll("[data-m]").forEach(b => { const e = mem[+b.dataset.m], panel = b.closest("li").querySelector(".panel"); if (!panel.hidden) fillPanel(panel, e);
     b.onclick = () => { const open = panel.hidden; panel.hidden = !open; b.setAttribute("aria-expanded", open); if (open) { S.open.add(e.key); if (!panel.firstChild) fillPanel(panel, e); } else S.open.delete(e.key); }; });
   const setCirc = k => {
@@ -649,10 +650,13 @@ function openLB(ex, i) {
   const a = imgs(ex); if (!a.length) return;
   $("lbt").textContent = ex.name;
   const tr = $("lbtrack");
-  tr.innerHTML = a.map(f => `<figure><img src="${f.src}" alt="${esc(ex.name)} — ${esc(f.cap)}" draggable="false"></figure>`).join("");
+  const fr = execFrames(ex), anim = fr.length >= 2;
+  tr.innerHTML = (anim ? `<figure class="anim"><div class="av zt">${fr.map(f => `<img src="${f.src}" alt="${esc(ex.name)} — movimento" class="${f.draw ? "draw" : ""}" draggable="false">`).join("")}</div></figure>` : "")
+    + a.map(f => `<figure><img class="zt" src="${f.src}" alt="${esc(ex.name)} — ${esc(f.cap)}" draggable="false"></figure>`).join("");
+  i = i < 0 ? 0 : i + (anim ? 1 : 0); // -1 = parti dall'animazione (miniatura); n = n-esima immagine della galleria
   $("lb").hidden = false; document.body.style.overflow = "hidden";
   requestAnimationFrame(() => { tr.scrollLeft = tr.clientWidth * i; });
-  tr.querySelectorAll("img").forEach(setupZoom);
+  tr.querySelectorAll(".zt").forEach(setupZoom);
   $("lbclose").focus();
 }
 function closeLB() { $("lb").hidden = true; document.body.style.overflow = ""; $("lbtrack").classList.remove("zoomed"); }
