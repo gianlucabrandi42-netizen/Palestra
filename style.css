@@ -836,3 +836,8 @@ html[data-theme="sparta"] .dlive{color:var(--gold)}
 .seg.buddy{display:inline-flex;gap:3px;padding:3px;border-radius:12px;background:var(--surface);border:1px solid var(--line);margin-right:8px;margin-bottom:6px}
 .seg.buddy button{border:0;background:transparent;color:var(--muted);font-weight:700;font-size:13px;padding:6px 12px;border-radius:9px}
 .seg.buddy button[aria-pressed="true"]{background:var(--grad);color:var(--on-accent)}
+/* cancella seduta */
+.chip.del{color:var(--muted)}
+.chip.del.arm{color:#fff;background:#B5473A;border-color:#B5473A}
+#toast button{margin-left:10px;border:0;background:transparent;color:var(--accent);font-weight:800;font-size:inherit;padding:0}
+.rc-h small .rc-dur{font-family:inherit;font-size:inherit;color:var(--ink);font-weight:700}

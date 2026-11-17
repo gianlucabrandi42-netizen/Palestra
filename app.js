@@ -397,11 +397,29 @@ const fmtDur = ms => { const m = Math.max(1, Math.round(ms / 60000)); return m <
 const live = s => s.t0 && !s.tEnd && s.date === todayISO() && Date.now() - (s.t1 || s.t0) < 45 * 60000;
 function durTxt(s, done) { if (!s || !s.t0) return ""; const end = s.tEnd || (live(s) && !done ? Date.now() : (s.t1 || s.t0)); return fmtDur(end - s.t0); }
 const hhmm = t => new Date(t).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+// Cancella una seduta iniziata per sbaglio: due tocchi (il secondo entro 4"), poi "Annulla" per 8" nel messaggio
+let delArm = 0, delUndo = null;
+function delButton() {
+  const s = current(); if (!D.sessions[s.id] || !(hasData(s) || s.t0)) return "";
+  return `<button class="chip del${Date.now() - delArm < 4000 ? " arm" : ""}" id="sessDel">${Date.now() - delArm < 4000 ? "Tocca di nuovo per cancellare" : "🗑 Cancella seduta"}</button>`;
+}
+function delSession() {
+  const s = current();
+  if (Date.now() - delArm > 4000) { delArm = Date.now(); renderDur(); setTimeout(() => { if (Date.now() - delArm >= 4000) renderDur(); }, 4100); return; }
+  delArm = 0; delUndo = JSON.parse(JSON.stringify(D.sessions[s.id])); delete D.sessions[s.id]; save();
+  try { const L = JSON.parse(localStorage.getItem(LKEY)); if (L && L.date === s.date && L.gym === s.gym && L.day === s.day) localStorage.removeItem(LKEY); } catch (e) {}
+  if (running() || T.left != null) stopRest();
+  closeFeel(); togglePanel(false); renderLog(); scrollTo({ top: 0 });
+  const el = $("toast"); el.innerHTML = `Seduta cancellata <button type="button" id="undoDel">Annulla</button>`; el.hidden = false; clearTimeout(toastT);
+  $("undoDel").onclick = () => { if (delUndo) { D.sessions[delUndo.id] = delUndo; delUndo = null; save(); renderLog(); } el.hidden = true; };
+  toastT = setTimeout(() => { el.hidden = true; delUndo = null; }, 8000);
+}
 function renderDur() {
   const box = $("dur"); if (!box) return; const s = current(), today = S.date === todayISO();
   box.innerHTML = s.t0
     ? `<span class="durv">⏱ <b>${durTxt(s)}</b> · dalle ${hhmm(s.t0)}${s.tEnd ? ` alle ${hhmm(s.tEnd)}` : s.t1 && !live(s) ? ` alle ${hhmm(s.t1)}` : ""}</span>${s.tEnd ? `<button class="chip" id="durGo">Riprendi</button>` : today ? `<button class="chip" id="durEnd">🏁 Fine allenamento</button>` : ""}`
     : today ? `<span class="durv">⏱ parte da solo alla prima serie</span><button class="chip" id="durStart">▶ Inizia ora</button>` : "";
+  box.insertAdjacentHTML("beforeend", delButton()); const dl = $("sessDel"); if (dl) dl.onclick = delSession;
   const st = $("durStart"), en = $("durEnd"), go = $("durGo");
   if (st) st.onclick = () => setSess({ t0: Date.now() });
   if (en) en.onclick = () => { setSess({ tEnd: Date.now(), t1: Date.now() }); togglePanel(false); scrollTo({ top: 0, behavior: "smooth" }); };
@@ -410,6 +428,7 @@ function renderDur() {
 setInterval(() => { const s = current && current(); if (s && live(s) && S.view !== "prog") { renderConsole(); renderDur(); } }, 30000);
 // ---------- recap a fine allenamento (tutti gli esercizi fatti, oppure "Fine allenamento") ----------
 const e1 = (r, bw) => !r || r.reps == null ? 0 : bw || !r.kg ? r.reps : r.kg * (1 + r.reps / 30);
+const durWords = m => { m = Math.max(1, m || 0); const h = Math.floor(m / 60), r = m % 60; return `${h} ${h === 1 ? "ora" : "ore"} e ${r} ${r === 1 ? "minuto" : "minuti"}`; };
 function recapCard(d, s, units) {
   const done = units.filter(u => u.done).length;
   if (!hasData(s) || (done < units.length && !s.tEnd)) return null;
@@ -465,11 +484,11 @@ function recapCard(d, s, units) {
     : sc >= -2 ? ["⚠️", "Oggi si poteva fare meglio", "niente drammi, ma sistema questo:"]
     : ["😤", "Così non cresci", "serve più testa in sala:"];
   const el = document.createElement("section"); el.className = "recap" + (sc <= 0 && !special ? " meh" : "");
-  el.innerHTML = `<div class="rc-h"><span class="rc-k">Recap · ${esc(d.id)}${bud ? " · 👥 in 2" : ""}${isAway(s) ? " · 📍 " + esc(s.site || "altra sede") : ""}</span><b>🏁 Allenamento completato</b>${s.t0 ? `<small>dalle ${hhmm(s.t0)} alle ${hhmm(s.tEnd || s.t1)}</small>` : ""}</div>
+  el.innerHTML = `<div class="rc-h"><span class="rc-k">Recap · ${esc(d.id)}${bud ? " · 👥 in 2" : ""}${isAway(s) ? " · 📍 " + esc(s.site || "altra sede") : ""}</span><b>🏁 Allenamento completato</b>${s.t0 ? `<small>Durata <b class="rc-dur">${durWords(durMin)}</b> · dalle ${hhmm(s.t0)} alle ${hhmm(s.tEnd || s.t1)}</small>` : ""}</div>
     <div class="rc-v"><p><span>${head[0]}</span><b>${head[1]}</b> ${head[2]}</p>
       ${good.slice(0, 2).map(x => `<p class="g">✓ ${esc(x)}</p>`).join("")}${bad.slice(0, 3).map(x => `<p class="b">! ${esc(x)}</p>`).join("")}</div>
     <div class="rc-g">
-      <div><span>Durata</span><b>${durMin != null ? (durMin < 60 ? `${Math.max(1, durMin)}<i> min</i>` : `${Math.floor(durMin / 60)}<i> h </i>${String(durMin % 60).padStart(2, "0")}`) : "—"}</b>${usual && durMin ? `<small class="${durMin <= usual ? "up" : "dn"}">${durMin <= usual ? "−" : "+"}${Math.abs(Math.round(durMin - usual))} min vs solito</small>` : ""}</div>
+      <div><span>Durata</span><b>${durMin != null ? `${Math.floor(durMin / 60)}<i> h </i>${String(Math.max(durMin < 60 ? 1 : 0, durMin % 60)).padStart(2, "0")}<i> min</i>` : "—"}</b>${usual && durMin ? `<small class="${durMin <= usual ? "up" : "dn"}">${durMin <= usual ? "−" : "+"}${Math.abs(Math.round(durMin - usual))} min vs solito</small>` : ""}</div>
       <div><span>Serie</span><b>${nDone}<i>/${nSet}</i></b>${avgR != null ? `<small>recupero ~${fmtSec(Math.round(avgR / 5) * 5)}</small>` : ""}</div>
       <div><span>Pulite</span><b>${Math.round(cp * 100)}<i>%</i></b></div>
       <div><span>Volume</span><b>${Math.round(vol).toLocaleString("it-IT")}<i> kg</i></b>${vd != null ? `<small class="${vd >= 0 ? "up" : "dn"}">${vd >= 0 ? "+" : "−"}${Math.abs(vd).toFixed(0)}% vs ${new Date(prevDay.date + "T12:00").toLocaleDateString("it-IT", { day: "numeric", month: "short" })}</small>` : ""}</div>
