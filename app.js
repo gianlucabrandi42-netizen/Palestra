@@ -139,7 +139,7 @@ const allClean = sets => !sets.some(r => r && r.dirty);
 // Regola dell'utente (17/11/2026): OGNI serie fatta pulita e a target (o oltre) sale di un salto già la volta dopo.
 // Sensazione della serie (17/11/2026): r.eff = "easy" (Facile, 2+ reps in canna) | "hard" (Al limite, pulita ma 0 in canna) | assente = Giusta.
 // Al limite a target → stesso carico (consolidi). Facile a target due volte di fila → due salti.
-function setUp(ls, t) { return !!ls && ls.kg != null && t != null && ls.reps != null && ls.reps >= t && !ls.dirty && ls.eff !== "hard"; }
+function setUp(ls, t) { return !!ls && ls.kg != null && t != null && ls.reps != null && ls.reps >= t && !ls.dirty && ls.eff !== "hard" && !lrOn(ls); }
 const atLimit = (ls, t) => !!ls && !ls.dirty && ls.eff === "hard" && t != null && ls.reps != null && ls.reps >= t;
 const easy2 = (ls, pl, t) => setUp(ls, t) && ls.eff === "easy" && setUp(pl, t) && pl.eff === "easy";
 function suggestKg(ls, hit, f, t, step, n = 1) {
@@ -159,6 +159,7 @@ function advise(r, pl, t, step, f, n = 1) {
   if (f >= 1 && t != null && r.reps != null) {
     if (pl && pl.kg != null && pl.kg < r.kg && r.reps < t * 0.6)
       return { kg: pl.kg, reps: Math.min(t + 2, Math.max(t, pl.reps || t) + 1), why: "Il peso nuovo era troppo: torna a quello di prima e aggiungi reps", mode: "reps" };
+    if (lrOn(r) && !r.dirty && r.reps >= t) return { kg: r.kg, reps: t, why: "Recupero troppo lungo l'ultima volta: stesso carico, rifallo col recupero giusto", mode: "rest" };
     const rebuild = !!pl && pl.kg != null && pl.kg > r.kg && pl.reps != null && pl.reps < t * 0.6, big = !!step && step / r.kg >= 0.1;
     if ((big || rebuild) && !r.dirty && r.reps >= t) {
       if (r.reps >= t + 2 && r.eff !== "hard") return { kg: roundKg(r.kg + step), reps: t, why: "Reps in più fatte: prova il peso nuovo", mode: "jump" };
@@ -245,7 +246,8 @@ function drawHeader(d, s, units, cur) {
   // va a capo solo DOPO un "·" (mai una riga che inizia con "·"): spazio non separabile prima di ogni puntino
   $("dtitle").textContent = `${d.id} · ${d.name}`.replace(/ · /g, "\u202F·\u2009"); // spazi sottili: compatto e simmetrico
   const r = s.readiness || "ok", when = S.date === todayISO() ? "oggi" : new Date(S.date + "T12:00").toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" });
-  $("dsub").textContent = `${left ? (left === 1 ? "manca 1 esercizio" : `mancano ${left} esercizi`) : "allenamento completato"} · ${when}${r !== "ok" ? " · " + READY[r].n : ""}${isAway(current()) ? " · 📍 " + (current().site || "altra sede") : ""}${durTxt(s, !left) ? " · ⏱ " + durTxt(s, !left) : ""} ▾`.replace(/ · oggi(?= · ⏱)/, "");
+  const dt = durTxt(s, !left);
+  $("dsub").innerHTML = `${dt ? `<span class="dlive">⏱ ${dt}</span> · ` : ""}${left ? (left === 1 ? "manca 1 esercizio" : `mancano ${left} esercizi`) : "completato"}${dt && when === "oggi" ? "" : " · " + when}${r !== "ok" ? " · " + READY[r].n : ""}${isAway(current()) ? " · 📍 " + esc(current().site || "altra sede") : ""} ▾`;
   const strip = $("strip");
   strip.innerHTML = units.map(u => { const f = execFrames(u.circ ? u.ex : u.ex)[0], c = u === cur;
     return `<button class="schip${u.done ? " d" : ""}${c ? " c" : ""}${u.started && !u.done ? " p" : ""}" data-k="${u.keys[0]}" aria-label="${esc(u.name)}${u.done ? ", fatto" : ""}">${f ? `<img src="${f.src}" alt="" loading="lazy">` : ""}<span>${u.done ? "✓ " : ""}${u.n}${c ? " " + esc(shortName(u.name)) : ""}</span></button>`; }).join("");
@@ -348,6 +350,14 @@ function openFeel(ex, i, label) {
   placeTimer();
 }
 function closeFeel() { FE = null; const box = $("feel"); if (box && !box.hidden) { box.hidden = true; placeTimer(); } }
+// ---------- recupero reale tra le serie (17/11/2026) ----------
+// r.at = quando hai scritto le reps; recupero ≈ tempo tra le reps di due serie consecutive − SET_SEC (durata della serie).
+// Recupero lungo (> 1,5× il previsto e > +30"): r.lr = secondi; le reps di quella serie non contano per salire.
+// "Non ha influito" → r.lrOk.
+const SET_SEC = 40;
+const restGap = (a, b) => a && b && a.at && b.at && b.at > a.at ? Math.max(0, Math.round((b.at - a.at) / 1000) - SET_SEC) : null;
+const isLong = (sec, plan) => sec != null && sec > plan * 1.5 && sec > plan + 30;
+const lrOn = r => !!(r && r.lr && !r.lrOk);
 // ---------- durata dell'allenamento: dal primo inserimento all'ultimo (sessione.t0 / t1), tasti Inizia / Fine (tEnd) ----------
 function stampTime(s) { if (s.date !== todayISO()) return; const n = Date.now(); if (!s.t0) s.t0 = n; s.t1 = n; }
 const fmtDur = ms => { const m = Math.max(1, Math.round(ms / 60000)); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")} min`; };
@@ -370,11 +380,14 @@ const e1 = (r, bw) => !r || r.reps == null ? 0 : bw || !r.kg ? r.reps : r.kg * (
 function recapCard(d, s, units) {
   const done = units.filter(u => u.done).length;
   if (!hasData(s) || (done < units.length && !s.tEnd)) return null;
-  let nSet = 0, nDone = 0, clean = 0, vol = 0, volPrev = 0, nE = 0, nH = 0; const upEx = []; const better = [], worse = [], recs = [];
+  let nSet = 0, nDone = 0, clean = 0, vol = 0, volPrev = 0, nE = 0, nH = 0, nEx = 0; const upEx = [], better = [], worse = [], recs = [], rests = [];
   const prevDay = gymSessions(S.gym).filter(x => x.day === s.day && x.date < s.date && home(x) && hasData(x)).pop();
-  for (const ex of d.ex) {
-    const cur = exSets(s, ex.key); if (!cur.some(r => r && r.reps != null)) continue;
-    ex.sets.forEach((st, i) => { nSet++; const r = cur[i]; if (r && r.reps != null) { nDone++; if (!r.dirty) { clean++; if (r.eff === "easy") nE++; if (r.eff === "hard") nH++; } vol += (r.kg || 0) * r.reps; } });
+  d.ex.forEach((ex, idx) => {
+    if (isCircNoLog(d, idx)) return;
+    const cur = exSets(s, ex.key); nEx++;
+    ex.sets.forEach((st, i) => { nSet++; const r = cur[i]; if (r && r.reps != null) { nDone++; if (!r.dirty) { clean++; if (r.eff === "easy") nE++; if (r.eff === "hard") nH++; } vol += (r.kg || 0) * r.reps; }
+      if (i > 0 && !circGroup(d, idx)) { const g = restGap(cur[i - 1], r); if (g != null) rests.push({ g, p: restFor(ex), long: lrOn(r) }); } });
+    if (!cur.some(r => r && r.reps != null)) return;
     if (!ex.bw) { const stv = stepFor(ex.key).v, pv = gymSessions(S.gym).filter(x => x.date < s.date && home(x) && exHas(x, ex.key)).pop(), ps = pv ? exSets(pv, ex.key) : [];
       if (ex.sets.some((st, i) => { const r = cur[i], a = r && r.reps != null ? advise(r, ps[i], tnum(st.t), stv, 1) : null; return a && a.kg > r.kg; })) upEx.push(ex.name); }
     if (prevDay) exSets(prevDay, ex.key).forEach(r => { if (r && r.reps != null) volPrev += (r.kg || 0) * r.reps; });
@@ -384,21 +397,46 @@ function recapCard(d, s, units) {
     const allBest = Math.max(0, ...before.flatMap(x => exSets(x, ex.key).filter(r => r && !r.dirty).map(r => e1(r, ex.bw))));
     if (best && lb) { const pc = (best / lb - 1) * 100; if (pc >= 0.5) better.push({ n: ex.name, pc }); else if (pc <= -0.5) worse.push({ n: ex.name, pc }); }
     if (best && allBest && best > allBest + 1e-9) recs.push(ex.name);
-  }
+  });
   const pcs = x => `${x.pc > 0 ? "+" : "−"}${Math.abs(x.pc).toFixed(Math.abs(x.pc) < 10 ? 1 : 0).replace(".", ",")}%`;
-  const vd = prevDay && volPrev ? (vol / volPrev - 1) * 100 : null;
-  const el = document.createElement("section"); el.className = "recap";
-  el.innerHTML = `<div class="rc-h"><span class="rc-k">Recap · ${esc(d.id)}${isAway(s) ? " · 📍 " + esc(s.site || "altra sede") : ""}</span><b>🏁 Allenamento completato</b>${s.t0 ? `<small>in ${durTxt(s, true)} · dalle ${hhmm(s.t0)} alle ${hhmm(s.tEnd || s.t1)}</small>` : ""}</div>
+  const vd = prevDay && volPrev ? (vol / volPrev - 1) * 100 : null, dirty = nDone - clean, cp = nDone ? clean / nDone : 1, miss = nSet - nDone;
+  const nLong = rests.filter(x => x.long).length, avgR = rests.length ? rests.reduce((a, x) => a + x.g, 0) / rests.length : null, avgP = rests.length ? rests.reduce((a, x) => a + x.p, 0) / rests.length : null;
+  const durMin = s.t0 ? Math.round(((s.tEnd || s.t1 || s.t0) - s.t0) / 60000) : null;
+  const pastD = gymSessions(S.gym).filter(x => x.day === s.day && x.date < s.date && x.t0 && x.t1).slice(-5).map(x => ((x.tEnd || x.t1) - x.t0) / 60000);
+  const usual = pastD.length >= 2 ? pastD.reduce((a, b) => a + b, 0) / pastD.length : null, special = isOffDay(s) || isAway(s);
+  // ---- il verdetto: incoraggia o cazzia, con i motivi concreti ----
+  let sc = 0; const good = [], bad = [];
+  if (recs.length) { sc += Math.min(4, recs.length * 2); good.push(`${recs.length === 1 ? "Un record" : recs.length + " record"}: ${listIt(recs)}`); }
+  if (better.length && better.length >= Math.ceil(nEx / 2)) { sc += 2; good.push(`Meglio dell'ultima volta in ${better.length} esercizi su ${nEx}`); }
+  if (nDone && cp >= 0.9) { sc += 1; good.push(`Esecuzione pulita: ${Math.round(cp * 100)}% delle serie`); }
+  if (rests.length >= 4 && !nLong) { sc += 1; good.push("Recuperi rispettati"); }
+  if (!miss) sc += 1;
+  if (dirty >= 3 || (nDone >= 6 && cp < 0.85)) { sc -= 2; bad.push(`${dirty} serie sporche: stai caricando più di quello che controlli. Prima la tecnica, poi il peso.`); }
+  if (nLong >= 3 || (rests.length >= 4 && nLong / rests.length >= 0.25)) { sc -= 2; bad.push(`Hai riposato troppo in ${nLong} serie (media ${fmtSec(Math.round(avgR))} invece di ${fmtSec(Math.round(avgP))}). Rispetta il timer: le reps devono venire dal muscolo, non dalla pausa.`); }
+  else if (nLong) bad.push(`${nLong === 1 ? "Una serie" : nLong + " serie"} con recupero lungo: quelle reps non contano per salire.`);
+  if (miss >= 2) { sc -= 2; bad.push(`${miss} serie non fatte: la scheda va chiusa tutta.`); }
+  if (worse.length >= 2 && !special) { sc -= worse.length >= 3 ? 2 : 1; bad.push(`Sotto l'ultima volta in ${worse.length} esercizi. Se eri stanco segnalo in "Come stai oggi": l'app abbassa i carichi e non ti penalizza.`); }
+  if (nDone >= 6 && nE / nDone >= 0.4) { sc -= 1; bad.push(`${nE} serie facili: ti stai risparmiando. La prossima volta spingi, i carichi salgono.`); }
+  if (nDone >= 6 && (nH + dirty) / nDone >= 0.5) { sc -= 1; bad.push("Metà delle serie al limite o sporche: carichi troppo alti per oggi, consolida prima di salire."); }
+  if (usual && durMin && durMin > usual * 1.25 && durMin - usual >= 10) bad.push(`${Math.round(durMin - usual)} minuti più del solito: occhio alle pause tra un esercizio e l'altro.`);
+  const head = special ? ["🙂", "Giornata particolare", "conta esserci stato: i dati di oggi non pesano sui progressi."]
+    : sc >= 4 ? ["🔥", "Allenamento da applausi", "così si cresce. Continua così."]
+    : sc >= 1 ? ["👍", "Buon allenamento", bad.length ? "ma c'è margine: guarda sotto." : "solido, avanti così."]
+    : sc >= -2 ? ["⚠️", "Oggi si poteva fare meglio", "niente drammi, ma sistema questo:"]
+    : ["😤", "Così non cresci", "serve più testa in sala:"];
+  const el = document.createElement("section"); el.className = "recap" + (sc <= 0 && !special ? " meh" : "");
+  el.innerHTML = `<div class="rc-h"><span class="rc-k">Recap · ${esc(d.id)}${isAway(s) ? " · 📍 " + esc(s.site || "altra sede") : ""}</span><b>🏁 Allenamento completato</b>${s.t0 ? `<small>dalle ${hhmm(s.t0)} alle ${hhmm(s.tEnd || s.t1)}</small>` : ""}</div>
+    <div class="rc-v"><p><span>${head[0]}</span><b>${head[1]}</b> ${head[2]}</p>
+      ${good.slice(0, 2).map(x => `<p class="g">✓ ${esc(x)}</p>`).join("")}${bad.slice(0, 3).map(x => `<p class="b">! ${esc(x)}</p>`).join("")}</div>
     <div class="rc-g">
-      <div><span>Serie</span><b>${nDone}<i>/${nSet}</i></b></div>
-      <div><span>Pulite</span><b>${nDone ? Math.round(clean / nDone * 100) : 0}<i>%</i></b></div>
+      <div><span>Durata</span><b>${durMin != null ? (durMin < 60 ? `${Math.max(1, durMin)}<i> min</i>` : `${Math.floor(durMin / 60)}<i> h </i>${String(durMin % 60).padStart(2, "0")}`) : "—"}</b>${usual && durMin ? `<small class="${durMin <= usual ? "up" : "dn"}">${durMin <= usual ? "−" : "+"}${Math.abs(Math.round(durMin - usual))} min vs solito</small>` : ""}</div>
+      <div><span>Serie</span><b>${nDone}<i>/${nSet}</i></b>${avgR != null ? `<small>recupero ~${fmtSec(Math.round(avgR / 5) * 5)}</small>` : ""}</div>
+      <div><span>Pulite</span><b>${Math.round(cp * 100)}<i>%</i></b></div>
       <div><span>Volume</span><b>${Math.round(vol).toLocaleString("it-IT")}<i> kg</i></b>${vd != null ? `<small class="${vd >= 0 ? "up" : "dn"}">${vd >= 0 ? "+" : "−"}${Math.abs(vd).toFixed(0)}% vs ${new Date(prevDay.date + "T12:00").toLocaleDateString("it-IT", { day: "numeric", month: "short" })}</small>` : ""}</div>
     </div>
-    ${recs.length ? `<p class="rc-l rec">🏆 <b>Record:</b> ${esc(listIt(recs))}</p>` : ""}
     ${better.length ? `<p class="rc-l up">↑ <b>Meglio dell'ultima volta:</b> ${better.sort((a, b) => b.pc - a.pc).map(x => `${esc(x.n)} ${pcs(x)}`).join(" · ")}</p>` : ""}
-    ${worse.length ? `<p class="rc-l dn">↓ <b>Sotto l'ultima volta:</b> ${worse.map(x => `${esc(x.n)} ${pcs(x)}`).join(" · ")}${isAway(s) || isOffDay(s) ? " (giornata particolare, non conta)" : ""}</p>` : ""}
-    <div class="rc-feel" aria-label="Com'erano le serie">${["easy", "ok", "hard", "dirty"].map(f => { const n = f === "easy" ? nE : f === "hard" ? nH : f === "dirty" ? nDone - clean : clean - nE - nH; return n ? `<span data-f="${f}" style="flex:${n} 0 auto"><i>${feelIcon(f)}</i>${n} ${FEEL[f].n.toLowerCase()}</span>` : ""; }).join("")}</div>
-    ${nDone - clean ? `<p class="rc-l">~ ${nDone - clean} ${nDone - clean === 1 ? "serie sporca" : "serie sporche"}: la prossima volta stesso carico, falle pulite.</p>` : ""}
+    ${worse.length ? `<p class="rc-l dn">↓ <b>Sotto l'ultima volta:</b> ${worse.map(x => `${esc(x.n)} ${pcs(x)}`).join(" · ")}${special ? " (giornata particolare, non conta)" : ""}</p>` : ""}
+    <div class="rc-feel" aria-label="Com'erano le serie">${["easy", "ok", "hard", "dirty"].map(f => { const n = f === "easy" ? nE : f === "hard" ? nH : f === "dirty" ? dirty : clean - nE - nH; return n ? `<span data-f="${f}"><i>${feelIcon(f)}</i>${n} ${FEEL[f].n.toLowerCase()}</span>` : ""; }).join("")}</div>
     <p class="rc-l nx">→ <b>Prossima volta:</b> ${!upEx.length ? "stessi carichi, punta alle reps piene" : upEx.length <= 3 ? `carico su in ${esc(listIt(upEx))}` : `carico su in ${upEx.length} esercizi`}.</p>`;
   return el;
 }
@@ -516,6 +554,12 @@ function renderLog() {
       const upd = () => {
         const cr = exSets(current(), ex.key)[i] || {}, fv = feelOf(cr);
         judge(kg, rp, fb, tn, rr, jc, isDirty(), cr.eff, goal);
+        if (lrOn(cr) && num(rp.value) != null && !cr.dirty) {
+          fb.className = "fb prog"; fb.hidden = false;
+          fb.innerHTML = `⏱ Recupero lungo (~${fmtSec(cr.lr)} invece di ${fmtSec(restFor(ex))}): reps aiutate dalla pausa, non contano per salire. <button type="button" class="lrok">Non ha influito</button>`;
+          const b = fb.querySelector(".lrok"); b.onmousedown = e => e.preventDefault();
+          b.onclick = () => { const s2 = JSON.parse(JSON.stringify(current())); s2.ex[ex.key][i] = { ...s2.ex[ex.key][i], lrOk: true }; s2.updatedAt = Date.now(); D.sessions[s2.id] = s2; save(); upd(); };
+        }
         const has = num(rp.value) != null;
         dq.classList.toggle("off", !has); dq.disabled = !has; dq.dataset.f = fv; dq.innerHTML = feelIcon(fv);
         dq.setAttribute("aria-label", `Serie ${FEEL[fv].n.toLowerCase()}: tocca per cambiare`);
@@ -774,6 +818,10 @@ function edit(ex, i, field, val) {
   while (s.ex[ex.key].length < ex.sets.length) s.ex[ex.key].push({ kg: null, reps: null });
   const v = field === "dirty" ? (val ? true : undefined) : field === "eff" ? (val || undefined) : num(val);
   s.ex[ex.key][i] = { ...s.ex[ex.key][i], [field]: v };
+  if (field === "reps") { const r = s.ex[ex.key][i], d = dayObj(), idx = d.ex.findIndex(e => e.key === ex.key);
+    if (v == null) { delete r.at; delete r.lr; delete r.lrOk; }
+    else if (!r.at && s.date === todayISO()) { r.at = Date.now();
+      const g = i > 0 && !circGroup(d, idx) ? restGap(s.ex[ex.key][i - 1], r) : null; if (isLong(g, restFor(ex))) r.lr = g; } }
   if (v != null && !["dirty", "eff"].includes(field) && !(s.ord || []).includes(ex.key)) s.ord = [...(s.ord || []), ex.key]; // ordine reale di esecuzione
   if (v != null && !["dirty", "eff"].includes(field)) stampTime(s);
   if (field === "kg" && FE && (FE.key !== ex.key || FE.i !== i)) closeFeel(); // passi alla serie dopo: la domanda sparisce
