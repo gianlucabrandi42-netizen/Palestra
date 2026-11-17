@@ -656,7 +656,7 @@ function renderLog0() {
       ${load ? `<p class="advice ${load.c}"><span>Consiglio</span>${load.t}</p>` : ""}
       <div class="exfoot"><button class="btn sm" data-copy>⚡ Usa kg suggeriti</button>
         ${manual ? `<button class="more" data-close>Chiudi</button>` : ""}
-        <button class="more" data-more aria-haspopup="dialog">Info ed esecuzione<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button></div>
+        <button class="infobtn" data-more aria-haspopup="dialog"><svg viewBox="0 0 24 24" class="ib-i"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.01"/></svg><span><b>Info ed esecuzione</b><small>foto · muscoli · regolazioni</small></span><svg viewBox="0 0 24 24" class="ib-c"><path d="M9 6l6 6-6 6"/></svg></button></div>
       <div class="panel" hidden><div class="exinfo">
         ${ex.setup === false ? "" : `<div class="ir setup"><label class="il" for="su-${ex.key}">Regolazioni</label><div class="iv"><input id="su-${ex.key}" autocomplete="off" placeholder="+ aggiungi (es. sedile 4)"></div></div>`}
         ${ex.tec ? `<div class="ir"><span class="il">Schema</span><div class="iv tecv">${esc(ex.tec)}</div></div>` : ""}
