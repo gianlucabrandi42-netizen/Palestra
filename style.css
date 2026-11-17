@@ -668,3 +668,6 @@ html[data-theme] .exh,html[data-theme] .exhead{padding-top:calc(var(--fh, 8px) +
 .wk.sel{box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 45%,transparent)}
 html[data-theme="green"] .wk b{font-family:Didot,"Bodoni 72","Latin Modern Roman Demi",serif;font-weight:700}
 html[data-theme="green"] .wk.done b,html[data-theme="green"] .wk.done .wk-i{color:var(--gt-title)}
+/* icone del selettore palestre: piene e colorate anche quando non attive; ombra sul pulsante attivo */
+html[data-theme] .gym button[aria-pressed="false"]::before{opacity:.95;filter:none}
+html[data-theme] .gym button[aria-pressed="true"]::before{filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.55))}

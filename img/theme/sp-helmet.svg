@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 220">
 <defs><mask id="t" maskUnits="userSpaceOnUse" x="0" y="0" width="200" height="220"><rect width="200" height="220" fill="white"/>
 <path d="M44 112 C60 104 80 104 92 108 L92 220 L108 220 L108 108 C120 104 140 104 156 112 C150 122 136 126 114 126 L114 220 L86 220 L86 126 C64 126 50 122 44 112 Z" fill="black"/></mask>
-<linearGradient id="br" x1="0" x2="1"><stop offset="0" stop-color="#8E6A24"/><stop offset=".45" stop-color="#E3BE6A"/><stop offset="1" stop-color="#9C7429"/></linearGradient>
-<linearGradient id="cr" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8A6A2C"/><stop offset="1" stop-color="#4A3612"/></linearGradient></defs>
+<linearGradient id="br" x1="0" x2="1"><stop offset="0" stop-color="#6B4512"/><stop offset=".3" stop-color="#C98E2E"/><stop offset=".5" stop-color="#F4D27E"/><stop offset=".72" stop-color="#C98E2E"/><stop offset="1" stop-color="#6B4512"/></linearGradient>
+<linearGradient id="cr" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#D2722A"/><stop offset=".55" stop-color="#9A4517"/><stop offset="1" stop-color="#5A240A"/></linearGradient></defs>
 <path d="M30 78 C30 30 62 4 100 4 C138 4 170 30 170 78 C150 62 126 56 100 56 C74 56 50 62 30 78 Z" fill="url(#cr)"/>
 <g stroke="#2A1E08" stroke-width="2" opacity=".45" fill="none"><path d="M50 62 C52 36 70 18 92 12"/><path d="M70 56 C72 36 84 22 100 16"/><path d="M130 56 C128 36 116 22 100 16"/><path d="M150 62 C148 36 130 18 108 12"/></g>
 <g mask="url(#t)"><path d="M100 50 C146 50 172 80 172 124 C172 152 168 176 172 206 C160 216 142 216 128 208 C126 190 120 178 114 170 L86 170 C80 178 74 190 72 208 C58 216 40 216 28 206 C32 176 28 152 28 124 C28 80 54 50 100 50 Z" fill="url(#br)"/></g>
