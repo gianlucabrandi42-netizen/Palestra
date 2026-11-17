@@ -526,8 +526,17 @@ function toNextSet(rp) {
 }
 // Tastiera aperta (qualsiasi campo di testo): via il menu in basso, timer compatto appena sopra la tastiera.
 const isField = el => el && el.matches && el.matches("input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=date]), textarea");
-document.addEventListener("focusin", e => { if (isField(e.target)) document.body.classList.add("kb"); });
-document.addEventListener("focusout", () => setTimeout(() => { if (!isField(document.activeElement)) document.body.classList.remove("kb"); }, 80));
+document.addEventListener("focusin", e => { if (isField(e.target)) { document.body.classList.add("kb"); placeTimer(); setTimeout(placeTimer, 350); } });
+document.addEventListener("focusout", () => setTimeout(() => { if (!isField(document.activeElement)) { document.body.classList.remove("kb"); placeTimer(); } }, 80));
+// Su iPhone la tastiera copre il fondo dello schermo (i "fixed" in basso finiscono dietro): con la tastiera aperta il timer
+// si aggancia al bordo alto dell'area visibile sopra la tastiera (visualViewport) e si riposiziona a ogni scorrimento.
+function placeTimer() {
+  const tm = $("timer"), vv = window.visualViewport; if (!tm) return;
+  if (!document.body.classList.contains("kb") || !vv) { tm.style.top = ""; tm.style.bottom = ""; return; }
+  tm.style.bottom = "auto"; tm.style.top = Math.max(0, vv.offsetTop + vv.height - tm.offsetHeight) + "px";
+}
+if (window.visualViewport) { visualViewport.addEventListener("resize", placeTimer); visualViewport.addEventListener("scroll", placeTimer); }
+addEventListener("scroll", () => { if (document.body.classList.contains("kb")) placeTimer(); }, { passive: true });
 // Tocco su un campo già compilato: il numero si seleziona tutto, così scrivi direttamente quello nuovo.
 document.addEventListener("focusin", e => {
   const el = e.target; if (!el.matches || !el.matches(".set input")) return;
