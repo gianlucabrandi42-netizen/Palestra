@@ -510,3 +510,18 @@ html[data-theme="green"] .vines{display:block;position:fixed;inset:0;z-index:-1;
 html[data-theme="green"] .vines::before,html[data-theme="green"] .vines::after{content:"";position:absolute;top:0;bottom:0;width:120px;background:url(img/theme/gt-side.svg) left top/120px auto repeat-y;opacity:.45}
 html[data-theme="green"] .vines::before{left:0}
 html[data-theme="green"] .vines::after{right:0;transform:scaleX(-1);background-position:left 380px}
+/* ultima volta leggibile + carico di oggi con freccia */
+.prev .lv{display:block;font-size:16px;font-weight:800;color:var(--ink);letter-spacing:-.01em}
+.prev .lv.none{color:var(--muted);font-weight:600}
+.prev .sug{display:block;font-size:12.5px;font-weight:800;color:var(--accent);margin-top:1px}
+.prev .sug.eq{color:var(--muted)}
+.prev .sug.dn{color:var(--near)}
+html[data-theme="green"] .prev .sug.up{color:var(--leaf)}
+/* salto dei pesi */
+.stepsel{display:flex;align-items:center;gap:5px;margin:-4px 14px 10px;flex-wrap:wrap}
+.stepsel span{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-right:3px}
+.stepsel span i{font-style:normal;text-transform:none;letter-spacing:0;font-weight:600;opacity:.8}
+.stepsel button{min-width:36px;min-height:30px;padding:3px 7px;border-radius:9px;border:1px solid var(--line);background:var(--raised);color:var(--muted);font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+.stepsel button[aria-pressed="true"]{border-color:var(--accent);color:var(--ink);background:color-mix(in srgb,var(--accent) 22%,var(--raised))}
+.stepsel button.auto{border-style:dashed}
+@media (max-width:380px){.stepsel{margin:-4px 12px 10px}}

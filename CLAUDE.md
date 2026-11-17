@@ -78,10 +78,13 @@ Muscoli disponibili per `m`: CHEST, FRONT_DELTOIDS, BACK_DELTOIDS, TRICEPS, BICE
 - **Rientro dopo una pausa**, calcolato automaticamente sui giorni dall'ultimo allenamento in qualsiasi palestra:
   - 10–20 gg = −10%; 21–34 gg = −15%; 35+ gg = −25%;
   - c'è il tasto "Non è un rientro".
-- **Kg suggeriti:**
+- **Kg suggeriti = pesi caricabili davvero** (17/11/2026: dischi e pacchi pesi vanno a scatti, diversi per palestra):
+  - **Salto pesi** per esercizio e palestra (`D.steps[gym][key]`, nel backup): riga "Salto pesi 1 · 2 · 2,5 · 5 · 10" sotto Regolazioni. Se non scelto, **stimato** dai pesi già usati (`stepAuto`: differenza più piccola tra due carichi diversi, agganciata ai salti tipici; bordo tratteggiato + "stimato"); tocco = fissa, ritocco sul fisso = torna stimato.
   - base = ultima seduta normale (salta fino a 2 giornate no o di rientro);
-  - +2,5% (minimo +1 kg) solo se **le ultime 2 sedute normali di fila** avevano tutte le serie a target e pulite (`prevRef`); dopo 1 sola il pill dice "Stesso carico: a target e pulite 1 volta, alla 2ª aumenti";
-  - poi × fattore forma/pausa, arrotondato a 0,5 kg.
+  - **aumento = esattamente un salto** solo se **le ultime 2 sedute normali di fila** avevano tutte le serie a target e pulite (`prevRef`). **Scelta dell'utente (opzione B):** si sale subito e si accettano 1-2 reps in meno (pill "↑ +5 kg: … · ok anche 1-2 reps in meno"; la serie è valutata azzurra "carico salito"); poi stesso carico finché si torna a target. Dopo 1 sola seduta a target: "Stesso carico: a target e pulite 1 volta, alla 2ª aumenti";
+  - riduzioni (forma/pausa, serie sporca sotto target −5%) → peso disponibile più vicino **verso il basso** (ultimo carico − n salti);
+  - senza salto noto (un solo peso mai cambiato): vecchio metodo +2,5% (min +1 kg), arrotondato a 0,5 kg.
+- **Riga della serie leggibile:** colonna "Ultima" con **`45 × 8`** grande e chiaro (~ se sporca) e sotto il carico di oggi con freccia: `↑ 50 kg` (colore palestra), `= 45 kg` (grigio), `↓ 40 kg` (giallo).
 - **Progressi:** per ogni esercizio un indice per seduta (Σ kg×reps, o totale reps a corpo libero), più grafico e trend. Le giornate no e i rientri sono **esclusi dal trend**.
 - **Storico collegato per `key`** tra schede diverse e per palestra.
 - **Serie sporca** (ultime reps fatte male / carico troppo alto): dopo le reps compare il tasto **Pulita** sotto la serie; un tocco → **~ Sporca** (arancione, `r.dirty = true`). Effetti: la serie non è mai verde (messaggio su cosa succede la prossima volta); niente +2,5% se nell'ultima seduta di riferimento c'è anche solo una serie sporca (pill "~ Serie sporche l'ultima volta: stesso carico, falle pulite"); serie sporca a target → la volta dopo stesso carico; serie sporca **e** sotto target → la volta dopo **−5% su quella serie**; "ultima volta" mostra `40 × 8~`; in Progressi "ultima volta N serie sporche"; nel CSV colonna "sporca". L'indice kg×reps resta invariato (il lavoro è stato fatto).

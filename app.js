@@ -130,12 +130,28 @@ function toggleOrderOk(key) { const s = JSON.parse(JSON.stringify(current())); s
 const roundKg = x => Math.round(x * 2) / 2;
 // Serie "sporca" (ultime reps fatte male / carico troppo alto): niente aumento; se era anche sotto target, −5% su quella serie.
 const allClean = sets => !sets.some(r => r && r.dirty);
-function suggestKg(ls, hit, f, t) {
-  if (!ls || ls.kg == null) return null; let k = ls.kg;
-  if (ls.dirty && t != null && ls.reps != null && ls.reps < t) k = ls.kg * 0.95;
-  else if (hit && f >= 1) k = Math.max(k * 1.025, k + 1);
-  return roundKg(k * f);
+// Kg suggeriti = un peso che puoi caricare davvero: ultimo carico ± salti interi (step, per esercizio e palestra).
+// Aumento = un salto (scelta dell'utente: si sale subito e si accettano 1-2 reps in meno). Riduzioni (giornata no,
+// rientro, serie sporca sotto target −5%) = peso disponibile più vicino VERSO IL BASSO. Senza salto noto: +2,5% / 0,5 kg.
+function suggestKg(ls, hit, f, t, step) {
+  if (!ls || ls.kg == null) return null; const b = ls.kg; let k = b;
+  if (ls.dirty && t != null && ls.reps != null && ls.reps < t) k = b * 0.95;
+  else if (hit && f >= 1) k = step ? b + step : Math.max(b * 1.025, b + 1);
+  k *= f;
+  if (!step) return roundKg(k);
+  if (k >= b - 1e-9) return roundKg(b + Math.round((k - b) / step) * step);
+  const d = roundKg(b - Math.ceil((b - k) / step - 1e-9) * step); return d > 0 ? d : b;
 }
+// ---------- salto dei pesi ----------
+const STEPS = [1, 2, 2.5, 5, 10];
+// stimato dai pesi già usati in questa palestra: la differenza più piccola tra due carichi diversi, agganciata ai salti tipici
+function stepAuto(key, gym) {
+  const ks = [...new Set(gymSessions(gym).flatMap(s => exSets(s, key).map(r => r && r.kg).filter(v => v != null && v > 0)))].sort((a, b) => a - b);
+  let m = null; for (let i = 1; i < ks.length; i++) { const d = ks[i] - ks[i - 1]; if (d >= 0.9 && (m == null || d < m)) m = d; }
+  return m == null ? null : STEPS.reduce((best, x) => Math.abs(x - m) < Math.abs(best - m) ? x : best, STEPS[0]);
+}
+function stepFor(key) { const v = ((D.steps || {})[S.gym] || {})[key]; return v ? { v, auto: false } : { v: stepAuto(key, S.gym), auto: true }; }
+function setStep(key, v) { D.steps = D.steps || {}; D.steps[S.gym] = { ...(D.steps[S.gym] || {}) }; if (v == null) delete D.steps[S.gym][key]; else D.steps[S.gym][key] = v; save(); renderLog(); }
 const e1rm = (kg, reps) => kg * (1 + reps / 30);
 const maxKg = sets => { const k = sets.filter(r => r && r.kg != null).map(r => r.kg); return k.length ? Math.max(...k) : null; };
 const doneSets = (s, ex) => ex.sets.filter((_, i) => { const r = exSets(s, ex.key)[i]; return r && r.reps != null; }).length;
@@ -259,11 +275,11 @@ function renderLog() {
     if (cg0) { list.appendChild(circCard(d, cg0, exN, u === curU)); return; }
     const last = lastBefore(ex.key), lastSets = last ? exSets(last, ex.key) : [];
     const rs = lastRef(ex.key), refSets = rs ? exSets(rs, ex.key) : [], hit1 = rs ? allHit(refSets, ex) && allClean(refSets) : false, pr = hit1 ? prevRef(ex.key, rs) : null,
-      hit = hit1 && !!pr && allHit(exSets(pr, ex.key), ex) && allClean(exSets(pr, ex.key)), cond = condition(sess);
+      hit = hit1 && !!pr && allHit(exSets(pr, ex.key), ex) && allClean(exSets(pr, ex.key)), cond = condition(sess), stp = ex.bw ? { v: null } : stepFor(ex.key);
     const ref = ex.ref && ex.ref[S.gym];
     let pills = "";
     if (rs && cond.f < 1) pills += `<span class="pill near">Oggi −${Math.round((1 - cond.f) * 100)}% · ${esc(cond.why)}</span>`;
-    else if (rs) pills += hit ? `<span class="pill up">↑ Aumenta${ex.bw ? "" : " carico"}: 2 volte di fila a target e pulite</span>` : !allClean(refSets) ? `<span class="pill near">~ Serie sporche l'ultima volta: stesso carico, falle pulite</span>` : hit1 ? `<span class="pill">= Stesso carico: a target e pulite 1 volta, alla 2ª aumenti</span>` : `<span class="pill">= Stesso carico</span>`;
+    else if (rs) pills += hit ? `<span class="pill up">↑ ${ex.bw ? "Aumenta" : stp.v ? `+${fmt(stp.v)} kg` : "Aumenta carico"}: 2 volte di fila a target e pulite${stp.v ? " · ok anche 1-2 reps in meno" : ""}</span>` : !allClean(refSets) ? `<span class="pill near">~ Serie sporche l'ultima volta: stesso carico, falle pulite</span>` : hit1 ? `<span class="pill">= Stesso carico: a target e pulite 1 volta, alla 2ª aumenti</span>` : `<span class="pill">= Stesso carico</span>`;
     else if (ref) pills += `<span class="pill">Rif. scheda prec. ${fmt(ref)} kg</span>`;
     const cg = circGroup(d, idx);
     if (cg) pills += cg.last ? `<span class="pill circ">Circuito · recupero ${fmtSec(restFor(ex))} a fine giro</span>` : `<span class="pill circ">Circuito · subito il prossimo</span>`;
@@ -285,6 +301,7 @@ function renderLog() {
       ${(ex.flash || []).length ? `<ul class="flash" aria-label="Da ricordare">${ex.flash.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
       ${oi ? oooBox(oi, prosp) : ""}
       ${ex.setup === false ? "" : `<div class="setup"><label for="su-${ex.key}">Regolazioni</label><input id="su-${ex.key}" autocomplete="off" placeholder="es. sedile 4 · schienale 2"></div>`}
+      ${ex.bw ? "" : `<div class="stepsel" role="group" aria-label="Salto dei pesi"><span>Salto pesi${stp.auto && stp.v ? " <i>stimato</i>" : ""}</span>${STEPS.map(v => `<button type="button" data-step="${v}" aria-pressed="${stp.v === v}" class="${stp.v === v && stp.auto ? "auto" : ""}">${fmt(v)}</button>`).join("")}</div>`}
       <div class="sets"><div class="sh"><span>Serie</span><span>Ultima</span><span>${ex.bw ? "kg (opz.)" : "kg"}</span><span>Reps</span><span></span></div></div>
       <div class="exfoot"><button class="btn sm" data-copy>⚡ Usa kg suggeriti</button>
         ${manual ? `<button class="more" data-close>Chiudi</button>` : ""}
@@ -296,10 +313,11 @@ function renderLog() {
       const ty = TYPES[st.type] || TYPES.std; if (!st.type || st.type === "std" || st.type === "alte" || st.type === "pausa" || st.type === "risc") sn++;
       const label = st.type === "ced" ? "RP" : st.type === "strip" ? "ST" : st.type === "super" ? "SS" : "S" + sn;
       const r = cur[i] || {}, lr = lastSets[i], tn = tnum(st.t), rr = refSets[i];
-      const sug = ex.bw ? null : suggestKg(rr, hit, cond.f, tn);
+      const sug = ex.bw ? null : suggestKg(rr, hit, cond.f, tn, stp.v), lk = lr && lr.kg != null ? lr.kg : null;
+      const dir = sug == null || lk == null ? "" : sug > lk + 1e-9 ? "up" : sug < lk - 1e-9 ? "dn" : "eq";
       const row = document.createElement("div"); row.className = "set";
       row.innerHTML = `<div class="sn" style="--tc:var(${ty.c})">${label}<small>${esc(st.t)}${ex.bw && tn != null ? "" : ""} reps</small>${ty.n || st.note ? `<em>${esc([ty.n, st.note].filter(Boolean).join(" · "))}</em>` : ""}</div>
-        <div class="prev">${lr && (lr.kg != null || lr.reps != null) ? `${lr.kg != null ? fmt(lr.kg) + " × " : ""}${lr.reps ?? "–"}${lr.dirty ? "~" : ""}` : "—"}${sug != null ? `<b class="sug">oggi ${fmt(sug)} kg</b>` : ""}</div>
+        <div class="prev">${lr && (lr.kg != null || lr.reps != null) ? `<b class="lv">${lr.kg != null ? fmt(lr.kg) + " × " : ""}${lr.reps ?? "–"}${lr.dirty ? "~" : ""}</b>` : `<b class="lv none">—</b>`}${sug != null ? `<span class="sug ${dir}">${{ up: "↑", dn: "↓", eq: "=" }[dir] || "oggi"} ${fmt(sug)} kg</span>` : ""}</div>
         <input id="kg-${ex.key}-${i}" inputmode="decimal" enterkeyhint="next" autocomplete="off" aria-label="${esc(ex.name)} serie ${i + 1} kg" placeholder="${sug != null ? fmt(sug) : lr && lr.kg != null ? fmt(lr.kg) : "kg"}">
         <input id="rp-${ex.key}-${i}" inputmode="numeric" enterkeyhint="next" autocomplete="off" aria-label="${esc(ex.name)} serie ${i + 1} ripetizioni" placeholder="${tn != null ? tn : "max"}">
         <button type="button" class="dq">~</button><div class="fb"></div>`;
@@ -330,7 +348,7 @@ function renderLog() {
     if (su) { su.value = ((D.setup[S.gym] || {})[ex.key]) || ""; su.oninput = () => { D.setup[S.gym] = D.setup[S.gym] || {}; D.setup[S.gym][ex.key] = su.value.trim(); save(); }; }
     const cp = card.querySelector("[data-copy]");
     if (ex.bw || !rs || !refSets.some(r => r && r.kg != null)) cp.hidden = true;
-    cp.onclick = () => ex.sets.forEach((_, i) => { const k = suggestKg(refSets[i], hit, cond.f, tnum(ex.sets[i].t)); if (k != null) { const el = $(`kg-${ex.key}-${i}`); el.value = fmt(k); edit(ex, i, "kg", el.value); el.dispatchEvent(new Event("input")); } });
+    cp.onclick = () => ex.sets.forEach((_, i) => { const k = suggestKg(refSets[i], hit, cond.f, tnum(ex.sets[i].t), stp.v); if (k != null) { const el = $(`kg-${ex.key}-${i}`); el.value = fmt(k); edit(ex, i, "kg", el.value); el.dispatchEvent(new Event("input")); } });
     const panel = card.querySelector(".panel"); if (open) fillPanel(panel, ex);
     card.querySelectorAll("[data-more]").forEach(b => b.onclick = () => {
       const isOpen = !panel.hidden; panel.hidden = isOpen; card.querySelector(".more").setAttribute("aria-expanded", !isOpen);
@@ -338,6 +356,7 @@ function renderLog() {
     });
     const z = card.querySelector("[data-zoom]"); if (z) z.onclick = () => openLB(ex, 0);
     // Chiudi: la riga chiusa resta dove stavi guardando (o subito sotto la barra in alto se la scheda iniziava più su)
+    card.querySelectorAll("[data-step]").forEach(b => b.onclick = () => { const v = +b.dataset.step; setStep(ex.key, stp.v === v && !stp.auto ? null : v); });
     const ob = card.querySelector("[data-ooo]"); if (ob) ob.onclick = () => toggleOrderOk(oi.key);
     const cl = card.querySelector("[data-close]"); if (cl) cl.onclick = () => {
       const top = card.getBoundingClientRect().top, hb = $("console").getBoundingClientRect().bottom + 8;
@@ -827,6 +846,7 @@ $("bkFile").onchange = async e => {
     const inc = j.data; let added = 0;
     for (const [id, s] of Object.entries(inc.sessions || {})) { const l = D.sessions[id]; if (!l || (s.updatedAt || 0) > (l.updatedAt || 0)) { D.sessions[id] = s; added++; } }
     for (const g of Object.keys(inc.setup || {})) D.setup[g] = { ...(inc.setup[g] || {}), ...(D.setup[g] || {}) };
+    for (const g of Object.keys(inc.steps || {})) { D.steps = D.steps || {}; D.steps[g] = { ...(inc.steps[g] || {}), ...(D.steps[g] || {}) }; }
     save(true); $("bkMsg").textContent = `Ripristino fatto: ${added} sedute importate o aggiornate.`; toast("Backup ripristinato"); render();
   } catch (err) { $("bkMsg").textContent = "Questo file non è un backup dell'app Palestra."; }
   e.target.value = "";
