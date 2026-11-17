@@ -619,3 +619,30 @@ body.kb .tbox{padding:3px;box-shadow:0 2px 10px rgba(0,0,0,.45)}
 body.kb .tb{height:38px;width:38px}
 body.kb .tmain{height:38px}
 body.kb .tmain b{font-size:22px}
+
+/* ===== Green Theory · stile GIADA (scelto il 17/11/2026): giada metallica come il bronzo di Sparta, titoli Didot ===== */
+html[data-theme="green"]{--accent:#34A874;--a1:#34A874;--a2:#34A874;--leaf:#7FD6AA;--grad:linear-gradient(160deg,#A8EACB,#3FAF7E 45%,#1B6B47);--on-accent:#062115;--ok:#8EE6C1;--ok-bg:#0F2E22;--t-std:#34A874;
+  --done:url(img/theme/gt-done.svg);--side:url(img/theme/gt-side.svg);--frieze:url(img/theme/gt-frieze.svg);--fw:26px;--fh:12px;--gt-title:#9FDFBF}
+html[data-theme="green"] body.g1{--accent:#34A874}
+html[data-theme="green"] .console::before{background-image:url(img/theme/gt-leaves.svg);opacity:0.6}
+html[data-theme="green"] .vines::before,html[data-theme="green"] .vines::after{opacity:0.5}
+html[data-theme="green"] body::after{background-image:url(img/theme/gt-corner.svg);opacity:0.3}
+html[data-theme="green"] .hero::after{background-image:url(img/theme/gt-leaves.svg)}
+html[data-theme="green"] .ex.cur::before{display:none}
+html[data-theme="green"] h2::before,html[data-theme="green"] .hero .k::before{background-image:url(img/theme/gt-leaf.svg)}
+html[data-theme="green"] .gym button[data-g="PA"]::before{background-image:url(img/theme/gt-leaf.svg)}
+html[data-theme="green"] h2,html[data-theme="green"] .hero h1{font-family:Didot,"Bodoni 72","Latin Modern Roman Demi","Latin Modern Roman",serif;text-transform:uppercase;letter-spacing:.08em;font-weight:700;font-style:normal;color:var(--gt-title)}
+html[data-theme="green"] .dsel b{font-family:Didot,"Bodoni 72","Latin Modern Roman Demi","Latin Modern Roman",serif;font-size:17px;font-weight:700;letter-spacing:.01em;color:var(--ink)}
+html[data-theme="green"] .hero h1{font-size:34px}
+html[data-theme="green"] h2{font-size:19px}
+html[data-theme="green"] .num,html[data-theme="green"] .exmini .mk,html[data-theme="green"] .ring b{font-family:Didot,"Bodoni 72","Latin Modern Roman Demi","Latin Modern Roman",serif;font-style:normal;font-weight:700;color:var(--gt-title)}
+html[data-theme="green"] .exk,html[data-theme="green"] .hero .k{font-family:Didot,"Bodoni 72","Latin Modern Roman Demi","Latin Modern Roman",serif;letter-spacing:.06em;font-size:12px;color:var(--gt-title)}
+html[data-theme="green"] .ring .s1{stop-color:#7FD6AA} html[data-theme="green"] .ring .s2{stop-color:#34A874}
+html[data-theme="green"] .console::after{background:linear-gradient(90deg,transparent,#34A874,transparent)}
+html[data-theme="green"] .ex:not(.cur){box-shadow:inset 0 1px 0 color-mix(in srgb,#34A874 25%,transparent)}
+
+html[data-theme="green"] .dsel b{text-wrap:balance}
+html[data-theme="sparta"] .dsel b{text-wrap:balance}
+/* riga MUSCOLI del blocco info */
+.exinfo .musv b{display:block;font-size:14px;font-weight:700;line-height:1.3;color:var(--ink)}
+.exinfo .musv small{display:block;font-size:12.5px;color:var(--muted);margin-top:1px}

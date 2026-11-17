@@ -219,7 +219,8 @@ function drawHeader(d, s, units, cur) {
   const tot = units.length, done = units.filter(x => x.done).length, left = tot - done, C = 2 * Math.PI * 18;
   $("ring").innerHTML = `<svg viewBox="0 0 44 44"><defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="s1"/><stop offset="1" class="s2"/></linearGradient></defs><circle cx="22" cy="22" r="18" class="rb"/><circle cx="22" cy="22" r="18" class="rf" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - (tot ? done / tot : 0))).toFixed(1)}"/></svg><b>${left ? left : "✓"}</b>`;
   $("ring").classList.toggle("all", !left && tot > 0);
-  $("dtitle").textContent = `${d.id} · ${d.name}`;
+  // va a capo solo DOPO un "·" (mai una riga che inizia con "·"): spazio non separabile prima di ogni puntino
+  $("dtitle").textContent = `${d.id} · ${d.name}`.replace(/ · /g, "\u202F·\u2009"); // spazi sottili: compatto e simmetrico
   const r = s.readiness || "ok", when = S.date === todayISO() ? "oggi" : new Date(S.date + "T12:00").toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" });
   $("dsub").textContent = `${left ? (left === 1 ? "manca 1 esercizio" : `mancano ${left} esercizi`) : "allenamento completato"} · ${when}${r !== "ok" ? " · " + READY[r].n : ""} ▾`;
   const strip = $("strip");
@@ -310,6 +311,7 @@ function renderLog() {
       ${pills ? `<div class="pills">${pills}</div>` : ""}
       ${oi ? oooBox(oi, prosp) : ""}
       <div class="exinfo">
+        ${ex.m && ((ex.m.p || []).length || ex.ml) ? `<div class="ir"><span class="il">Muscoli</span><div class="iv musv"><b>${esc(ex.ml || mnames(ex.m.p))}</b>${(ex.m.s || []).length ? `<small>anche ${esc(mnames(ex.m.s).toLowerCase())}</small>` : ""}</div></div>` : ""}
         ${ex.tec ? `<div class="ir"><span class="il">Schema</span><div class="iv tecv">${esc(ex.tec)}</div></div>` : ""}
         ${load ? `<div class="ir"><span class="il">Carico</span><div class="iv load ${load.c}">${load.t}</div></div>` : ""}
         ${(ex.flash || []).length ? `<div class="ir"><span class="il">Consigli</span><ul class="iv tipl" aria-label="Da ricordare">${ex.flash.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}
