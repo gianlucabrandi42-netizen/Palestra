@@ -319,6 +319,11 @@ function renderSite() {
   if (off) off.onclick = () => { const x = JSON.parse(JSON.stringify(current())); delete x.site; x.updatedAt = Date.now(); D.sessions[x.id] = x; save(); renderLog(); };
   if (nm) nm.oninput = () => { const x = JSON.parse(JSON.stringify(current())); x.site = nm.value.trim(); x.updatedAt = Date.now(); D.sessions[x.id] = x; save(); renderConsole(); };
 }
+// Prescrizione del PT, sempre in evidenza sotto il nome: "3 × 10 reps" o "3 serie: 10 · 8 · 8 reps" + recupero
+function rxLine(ex) {
+  const ts = ex.sets.map(st => st.t + (st.type === "ced" ? " RP" : st.type === "strip" ? " strip" : "")), same = ts.every(t => t === ts[0]);
+  return `<div class="rx"><b>${same ? `${ts.length} × ${esc(ts[0])}` : `${ts.length} serie: ${ts.map(esc).join(" · ")}`}</b><span>reps · recupero ${fmtSec(restFor(ex))}</span></div>`;
+}
 // ---------- sensazione della serie: striscia "Com'era?" sopra il timer ----------
 const FEEL = { easy: { n: "Facile", b: 1 }, ok: { n: "Giusta", b: 2 }, hard: { n: "Al limite", b: 3 }, dirty: { n: "Sporca" } };
 const feelOf = r => !r ? "ok" : r.dirty ? "dirty" : r.eff === "easy" ? "easy" : r.eff === "hard" ? "hard" : "ok";
@@ -514,17 +519,17 @@ function renderLog() {
         ${fr.length ? `<button class="exec thumb" data-zoom aria-label="Ingrandisci le immagini di ${esc(ex.name)}">
           ${fr.map(f => `<img src="${f.src}" alt="${esc(ex.name)} — ${esc(f.cap)}" class="${f.draw ? "draw" : ""}" loading="lazy">`).join("")}
           <span class="zoom"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></span></button>` : ""}
-        <div class="t"><div class="exk">${exNum(exN)}${isCur ? " · Adesso" : ""} · Recupero ${fmtSec(restFor(ex))}</div>
-          <h3 class="exname">${esc(ex.name)}</h3></div>
+        <div class="t"><div class="exk">${exNum(exN)}${isCur ? " · Adesso" : ""}</div>
+          <h3 class="exname">${esc(ex.name)}</h3>${rxLine(ex)}</div>
       </div>
       ${(ex.flash || []).length ? `<p class="tipline" aria-label="Da ricordare">${ex.flash.map(x => `<span>${esc(x)}</span>`).join("")}</p>` : ""}
       ${pills ? `<div class="pills">${pills}</div>` : ""}
       ${oi ? oooBox(oi, prosp) : ""}
-      ${load || ((D.setup[S.gym] || {})[ex.key]) ? `<div class="exinfo top">
-        ${load ? `<div class="ir"><span class="il">Carico</span><div class="iv load ${load.c}">${load.t}</div></div>` : ""}
-        ${((D.setup[S.gym] || {})[ex.key]) ? `<div class="ir"><span class="il">Regolazioni</span><button type="button" class="iv setv" data-editsetup>${esc(D.setup[S.gym][ex.key])}</button></div>` : ""}
+      ${((D.setup[S.gym] || {})[ex.key]) ? `<div class="exinfo top">
+        <div class="ir"><span class="il">Regolazioni</span><button type="button" class="iv setv" data-editsetup>${esc(D.setup[S.gym][ex.key])}</button></div>
       </div>` : ""}
       <div class="sets"><div class="sh"><span>Serie</span><span>Ultima</span><span>${ex.bw ? "kg (opz.)" : "kg"}</span><span>Reps</span><span></span></div></div>
+      ${load ? `<p class="advice ${load.c}"><span>Consiglio</span>${load.t}</p>` : ""}
       <div class="exfoot"><button class="btn sm" data-copy>⚡ Usa kg suggeriti</button>
         ${manual ? `<button class="more" data-close>Chiudi</button>` : ""}
         <button class="more" data-more aria-expanded="${open}">Info ed esecuzione<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></div>
@@ -543,10 +548,10 @@ function renderLog() {
       const adv = ex.bw ? null : advise(rr, prSets[i], tn, stp.v, cond.f, nUp(i)), sug = adv ? adv.kg : null, goal = adv && adv.reps != null && tn != null && adv.reps > tn ? adv.reps : null, lk = lr && lr.kg != null ? lr.kg : null;
       const dir = sug == null || lk == null ? "" : sug > lk + 1e-9 ? "up" : sug < lk - 1e-9 ? "dn" : "eq";
       const row = document.createElement("div"); row.className = "set";
-      row.innerHTML = `<div class="sn" style="--tc:var(${ty.c})">${label}<small>${esc(st.t)}${ex.bw && tn != null ? "" : ""} reps</small>${ty.n || st.note ? `<em>${esc([ty.n, st.note].filter(Boolean).join(" · "))}</em>` : ""}</div>
+      row.innerHTML = `<div class="sn" style="--tc:var(${ty.c})">${label}<small>×${esc(st.t)}</small>${ty.n || st.note ? `<em>${esc([ty.n, st.note].filter(Boolean).join(" · "))}</em>` : ""}</div>
         <div class="prev">${lr && (lr.kg != null || lr.reps != null) ? `<b class="lv${lr.dirty ? " dirty" : ""}"${lr.dirty ? ' title="Sporca l\'ultima volta"' : ""}>${lr.kg != null ? fmt(lr.kg) + " × " : ""}${lr.reps ?? "–"}${lr.dirty ? "<i>~</i>" : ""}</b>` : `<b class="lv none">—</b>`}${sug != null ? `<span class="sug ${dir}">${{ up: "↑", dn: "↓", eq: "=" }[dir] || "oggi"} ${goal ? `${fmt(sug)} × ${goal}` : `${fmt(sug)} kg`}</span>` : ""}</div>
         <input id="kg-${ex.key}-${i}" inputmode="decimal" enterkeyhint="next" autocomplete="off" aria-label="${esc(ex.name)} serie ${i + 1} kg" placeholder="${sug != null ? fmt(sug) : lr && lr.kg != null ? fmt(lr.kg) : ref ? fmt(ref) : "kg"}">
-        <input id="rp-${ex.key}-${i}" inputmode="numeric" enterkeyhint="next" autocomplete="off" aria-label="${esc(ex.name)} serie ${i + 1} ripetizioni" placeholder="${goal || (tn != null ? tn : "max")}">
+        <input id="rp-${ex.key}-${i}" inputmode="numeric" enterkeyhint="next" autocomplete="off" aria-label="${esc(ex.name)} serie ${i + 1} ripetizioni" placeholder="${tn != null ? tn : "max"}">
         <button type="button" class="dq" aria-label="Com'era la serie?"></button><div class="fb"></div>`;
       const [kg, rp] = row.querySelectorAll("input"); kg.value = fmt(r.kg); rp.value = r.reps ?? "";
       const fb = row.querySelector(".fb"), dq = row.querySelector(".dq");
