@@ -541,7 +541,7 @@ html[data-theme="sparta"]{--t-std:#C19A52}
 /* bordino in cima a ogni scheda aperta (esercizio o circuito): greca a Sparta, fregio di foglie alla Green Theory */
 html[data-theme] .ex::after{content:"";position:absolute;left:0;right:0;top:0;height:var(--fh);background:var(--frieze) left top/var(--fw) var(--fh) repeat-x;opacity:.8;pointer-events:none;z-index:2}
 html[data-theme="sparta"]{--frieze:url(img/theme/sp-frieze.svg);--fw:14px;--fh:7px}
-html[data-theme="green"]{--frieze:url(img/theme/gt-frieze.svg);--fw:25px;--fh:10px}
+html[data-theme="green"]{--frieze:url(img/theme/gt-frieze.svg);--fw:24px;--fh:8px}
 html[data-theme] .exhead{padding-top:18px}
 /* selettore palestre più grande (17/11/2026) */
 html[data-theme] .ctop .gym{padding:4px}
