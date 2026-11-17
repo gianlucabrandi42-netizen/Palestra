@@ -94,16 +94,29 @@ const tnum = t => { const n = parseFloat(String(t)); return isFinite(n) ? n : nu
 function allHit(sets, ex) { return ex.sets.every((st, i) => { const tn = tnum(st.t); if (tn == null) return true; return sets[i] && sets[i].reps != null && sets[i].reps >= tn; }); }
 function index(sets) { const k = sets.some(r => r && r.kg != null); let t = 0; for (const r of sets) { if (!r) continue; t += k ? (r.kg || 0) * (r.reps || 0) : (r.reps || 0); } return t; }
 // ---------- forma del giorno e rientro dopo una pausa ----------
-// Fattori prudenziali (stime, non regole fisse): stanco −10%; pausa 10-20 gg −10%, 21-34 gg −15%, 35+ gg −25%.
+// Stanco −10%. Rientro dopo una pausa (≥10 gg, 17/11/2026, scelta dell'utente): NIENTE riduzione, si rifanno i carichi
+// dell'ultima volta senza aumenti (hold); se una serie viene ≥3 reps sotto il target, l'app dice di scendere di un salto.
 const READY = { top: { n: "Al top", f: 1 }, ok: { n: "Normale", f: 1 }, low: { n: "Stanco / giù", f: 0.9 } };
 function lastWorkoutBefore(date) { const l = Object.values(D.sessions).filter(s => s.date < date && hasData(s)).sort((a, b) => a.date < b.date ? -1 : 1); return l[l.length - 1] || null; }
-function pauseInfo(date) { const l = lastWorkoutBefore(date); if (!l) return { days: null, f: 1 }; const days = Math.round((new Date(date) - new Date(l.date)) / 864e5); return { days, f: days >= 35 ? 0.75 : days >= 21 ? 0.85 : days >= 10 ? 0.9 : 1 }; }
+function pauseInfo(date) { const l = lastWorkoutBefore(date); if (!l) return { days: null, f: 1 }; const days = Math.round((new Date(date) - new Date(l.date)) / 864e5); return { days, f: 1, back: days >= 10 }; }
 function condition(s) {
   const r = READY[s.readiness || "ok"] || READY.ok, p = s.ignorePause ? { days: null, f: 1 } : pauseInfo(s.date);
-  const why = [r.f < 1 ? "giornata no" : "", p.f < 1 ? `rientro dopo ${p.days} giorni` : ""].filter(Boolean).join(" + ");
-  return { r, p, f: r.f * p.f, why };
+  const dl = typeof isDeload === "function" && isDeload(s);
+  const why = [r.f < 1 ? "giornata no" : "", p.back ? `rientro dopo ${p.days} giorni` : "", dl ? "settimana di scarico" : ""].filter(Boolean).join(" + ");
+  return { r, p, f: r.f * (dl ? DELOAD_F : 1), hold: !!p.back && !dl, deload: dl, why };
 }
-const isOffDay = s => condition(s).f < 1;
+const isOffDay = s => { const c = condition(s); return c.f < 1 || c.hold; };
+// Settimana di scarico (17/11/2026): D.prefs.deload = lunedì della settimana scelta → carichi −35%, 2 serie consigliate; esclusa dai progressi.
+const DELOAD_F = 0.65;
+const isDeload = s => !!(D.prefs && D.prefs.deload && s && weekStart(s.date) === D.prefs.deload);
+// Stallo: sedute normali (palestra, sede abituale, niente giornate no/fuori ordine/sostituzioni) in cui la serie migliore
+// (forza stimata) non supera la migliore di prima: "fermo da N sedute" se N ≥ 2 sedute dopo l'ultimo record (= 3 sedute piatte).
+function stallInfo(ex, gym, before) {
+  const ss = gymSessions(gym).filter(s => (!before || s.date < before) && home(s) && !isOffDay(s) && !oooOff(s, ex.key) && exHas(s, ex.key, ""));
+  let best = 0, since = 0;
+  for (const s of ss) { const b = bestSet(exSets(s, ex.key), ex.bw); if (!b) continue; if (b.v > best * 1.005) { best = b.v; since = 0; } else since++; }
+  return since >= 2 ? { n: since + 1 } : null;
+}
 // seduta normale precedente a "rs" per questo esercizio (per l'aumento serve 2 volte di fila a target e pulite)
 function prevRef(k, rs) { const l = gymSessions(S.gym).filter(s => s.date < rs.date && exHas(s, k, subOf(rs, k)) && home(s) && !isOffDay(s) && !oooOff(s, k)); return l[l.length - 1] || null; }
 // Riferimento per i suggerimenti: l'ultima seduta "normale" (salta fino a 2 giornate no o di rientro).
@@ -306,12 +319,13 @@ function planAge() {
   const C = 2 * Math.PI * 16, f = Math.min(1, n / PLAN_DAYS);
   return `<div class="pl-age${over ? " over" : ""}" aria-label="Scheda in uso da ${n} giorni">
     <svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" class="tr"/><circle cx="20" cy="20" r="16" class="pg" stroke-dasharray="${(C * f).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 20 20)"/><text x="20" y="24.5" text-anchor="middle">${n}</text></svg>
-    <div><span>Scheda da ${n === 1 ? "1 giorno" : n + " giorni"}</span><small>${over ? "4 settimane passate: chiedi la nuova al PT" : `settimana ${wk} di ${PLAN_DAYS / 7}`}</small></div></div>`;
+    <div><span>Scheda da ${n === 1 ? "1 giorno" : n + " giorni"}</span><small>${over ? "4 settimane passate: chiedi la nuova al PT" : `settimana ${wk} di ${PLAN_DAYS / 7}`}</small>${n >= 21 ? `<button type="button" class="chip rep-go" data-report>📋 Report per il PT</button>` : ""}</div></div>`;
 }
 function renderWeek() {
   const box = $("week"); if (!box) return;
   const w = weekStatus(), left = w.filter(x => !x.done).length;
   box.innerHTML = `<div class="wk-h">${planAge()}<div class="wk-s"><span>Questa settimana</span><b>${left ? `${left === 1 ? "manca" : "mancano"} ${left}` : "completa ✓"}</b></div></div>
+  { const rb = box.querySelector("[data-report]"); if (rb) rb.onclick = openReport; }
     <div class="wk-r" role="group" aria-label="Giorno">${w.map(x => `<button class="wk ${x.done ? "done" : x.part ? "part" : ""}${x.d.id === S.day ? " sel" : ""}" data-d="${x.d.id}" aria-pressed="${x.d.id === S.day}">
       <span class="wk-i">${x.done ? "✓" : x.part ? "◐" : ""}</span><b>${esc(x.d.id)}</b>
       <em>${esc(x.d.name)}</em>
@@ -383,6 +397,61 @@ function closeSheet(keep) {
   grab.addEventListener("touchmove", e => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); box.style.transform = `translateY(${dy}px)`; }, { passive: true });
   grab.addEventListener("touchend", () => { box.style.transition = ""; if (dy > 90) closeSheet(); else box.style.transform = ""; y0 = null; });
 })();
+// ---------- Report per il PT a fine scheda (17/11/2026): testo da mandare (WhatsApp/mail) prima della scheda nuova ----------
+function ptReport() {
+  const p = plan(), all = Object.values(D.sessions).filter(s => s.plan === p.id && hasData(s)).sort((a, b) => a.date < b.date ? -1 : 1);
+  const gn = g => (GYMS.find(x => x.id === g) || {}).name || g, short = g => gn(g).split(" ")[0];
+  const dd = iso => new Date(iso + "T12:00").toLocaleDateString("it-IT", { day: "numeric", month: "numeric" });
+  const n = all.length, days = p.from ? Math.max(1, Math.round((new Date(todayISO()) - new Date(p.from)) / 864e5) + 1) : null;
+  const perGym = GYMS.map(g => `${short(g.id)} ${all.filter(s => s.gym === g.id).length}`).join(" · ");
+  const L = [`📋 REPORT ${p.name.toUpperCase()}`, `Dal ${dd(p.from || (all[0] || {}).date || todayISO())} al ${dd(todayISO())}${days ? ` · ${Math.ceil(days / 7)} ${Math.ceil(days / 7) === 1 ? "settimana" : "settimane"}` : ""} · ${n} sedute (${perGym})`];
+  const subs = {}, skips = {}, pains = {}; let rN = 0, rS = 0, rP = 0, buddy = 0, backs = 0;
+  for (const d of p.days) {
+    const ds = all.filter(s => s.day === d.id); L.push("", `${d.id} · ${d.name} (${ds.length} ${ds.length === 1 ? "volta" : "volte"})`);
+    for (const ex of d.ex) {
+      if (ex.nolog) continue;
+      const parts = [];
+      for (const g of GYMS) {
+        const ss = ds.filter(s => s.gym === g.id && home(s) && !isOffDay(s) && !oooOff(s, ex.key) && exHas(s, ex.key, ""));
+        const bs = ss.map(s => bestSet(exSets(s, ex.key), ex.bw)).filter(Boolean); if (!bs.length) continue;
+        const a = bs[0], b = bs[bs.length - 1], pc = a.v ? (b.v / a.v - 1) * 100 : 0;
+        const f = r => r.kg != null ? `${fmt(r.kg)}×${r.reps}` : `${r.reps} reps`;
+        parts.push(`${short(g.id)} ${bs.length > 1 ? `${f(a.r)} → ${f(b.r)} (${pc >= 0 ? "+" : "−"}${Math.abs(pc).toFixed(0)}%)` : f(a.r)}${!ex.bw && stallInfo(ex, g.id) ? " ⏸ fermo" : ""}`);
+      }
+      let done = 0, clean = 0, hard = 0, easy = 0;
+      for (const s of ds) { if (subOf(s, ex.key)) { const k = subOf(s, ex.key); subs[`${ex.name} → ${k}`] = (subs[`${ex.name} → ${k}`] || 0) + 1; continue; }
+        if (isSkip(s, ex.key)) skips[ex.name] = (skips[ex.name] || 0) + 1; if (hasPain(s, ex.key)) pains[ex.name] = (pains[ex.name] || 0) + 1;
+        exSets(s, ex.key).forEach((r, i) => { if (!r || r.reps == null) return; done++; if (!r.dirty) clean++; if (r.eff === "hard") hard++; if (r.eff === "easy") easy++;
+          if (i > 0) { const gp = restGap(exSets(s, ex.key)[i - 1], r, ex, i); if (gp != null) { rN++; rS += gp; rP += restFor(ex); } } }); }
+      if (!done && !parts.length) { L.push(`• ${ex.name}: non fatto`); continue; }
+      const notes = [done ? `pulite ${Math.round(clean / done * 100)}%` : "", hard ? `al limite ${hard}` : "", easy ? `facili ${easy}` : "", pains[ex.name] ? `⚠ fastidio ${pains[ex.name]}×` : ""].filter(Boolean).join(", ");
+      L.push(`• ${ex.name}: ${parts.join(" · ") || "—"}${notes ? `\n   ${notes}` : ""}`);
+    }
+  }
+  all.forEach(s => { if (isBuddy(s)) buddy++; if (condition(s).hold) backs++; });
+  const extra = [
+    Object.keys(subs).length ? `Sostituiti: ${Object.entries(subs).map(([k, v]) => `${k} (${v})`).join("; ")}` : "",
+    Object.keys(skips).length ? `Non fatti: ${Object.entries(skips).map(([k, v]) => `${k} (${v})`).join("; ")}` : "",
+    Object.keys(pains).length ? `Fastidi: ${Object.entries(pains).map(([k, v]) => `${k} (${v})`).join("; ")}` : "",
+    rN ? `Recupero medio tra le serie: ~${fmtSec(Math.round(rS / rN / 5) * 5)} (previsto ~${fmtSec(Math.round(rP / rN / 5) * 5)})` : "",
+    buddy ? `Sedute in 2: ${buddy}` : "", backs ? `Rientri dopo pause: ${backs}` : "",
+    D.prefs.deload ? `Settimana di scarico fatta dal ${dd(D.prefs.deload)}` : ""
+  ].filter(Boolean);
+  if (extra.length) L.push("", "Note", ...extra.map(x => "• " + x));
+  L.push("", "Legenda: kg×reps della serie migliore pulita, prima → ultima seduta; % = forza stimata. ⏸ = nessun miglioramento nelle ultime 3 sedute.");
+  return L.join("\n");
+}
+function openReport() {
+  const sh = $("isheet"), txt = ptReport(); closeSheet(); S.sheet = null;
+  setTimeout(() => {
+    sh.querySelector(".is-h").innerHTML = `<b>Report per il PT</b><div class="rx"><span>da mandargli prima della scheda nuova</span></div>`;
+    sh.querySelector(".is-c").innerHTML = `<div class="rep"><div class="rep-b"><button type="button" class="btn primary" id="repShare">Condividi</button><button type="button" class="btn" id="repCopy">Copia</button></div><pre>${esc(txt)}</pre></div>`;
+    sh.hidden = false; document.documentElement.classList.add("noscroll"); sh.classList.remove("on"); void sh.offsetWidth; sh.classList.add("on");
+    $("repShare").onclick = async () => { try { if (navigator.share) { await navigator.share({ title: "Report scheda", text: txt }); return; } } catch (e) { if (e && e.name === "AbortError") return; } copyText(txt); };
+    $("repCopy").onclick = () => copyText(txt);
+  }, 230);
+}
+function copyText(t) { (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast("Report copiato"), () => { const a = document.createElement("textarea"); a.value = t; document.body.appendChild(a); a.select(); try { document.execCommand("copy"); toast("Report copiato"); } catch (e) {} a.remove(); }); }
 // ---------- Oggi: sostituisci / fastidio / salta (per esercizio, per seduta) ----------
 function setExMap(field, key, val) { const x = JSON.parse(JSON.stringify(current())); x[field] = { ...(x[field] || {}) }; if (val == null || val === false) delete x[field][key]; else x[field][key] = val; x.updatedAt = Date.now(); D.sessions[x.id] = x; save(); renderLog(); }
 function exAct(ex, a, undo) {
@@ -573,6 +642,7 @@ function recapCard(d, s, units) {
     ${worse.length ? `<p class="rc-l dn">↓ <b>Sotto l'ultima volta:</b> ${worse.map(x => `${esc(x.n)} ${pcs(x)}`).join(" · ")}${special ? " (giornata particolare, non conta)" : ""}</p>` : ""}
     ${skipEx.length ? `<p class="rc-l">⤼ <b>Saltati oggi:</b> ${esc(listIt(skipEx))}</p>` : ""}
     <div class="rc-feel" aria-label="Com'erano le serie">${["easy", "ok", "hard", "dirty", "help"].map(f => { const n = f === "easy" ? nE : f === "hard" ? nH : f === "dirty" ? dirty : f === "help" ? nA : clean - nE - nH - nA; return n ? `<span data-f="${f}"><i>${feelIcon(f)}</i>${n} ${FEEL[f].n.toLowerCase()}</span>` : ""; }).join("")}</div>
+    ${needBackup() ? `<button type="button" class="rc-bk" data-bk>💾 Salva il backup <small>File → iCloud Drive · i dati sono solo su questo telefono</small></button>` : ""}
     <p class="rc-l nx">→ <b>Prossima volta:</b> ${!upEx.length ? "stessi carichi, punta alle reps piene" : upEx.length <= 3 ? `carico su in ${esc(listIt(upEx))}` : `carico su in ${upEx.length} esercizi`}.</p>`;
   return el;
 }
@@ -589,17 +659,25 @@ function renderLog0() {
   $("ready").innerHTML = Object.entries(READY).map(([k, v]) => `<button data-r="${k}" aria-pressed="${(sess.readiness || "ok") === k}">${v.n}</button>`).join("");
   $("ready").querySelectorAll("button").forEach(b => b.onclick = () => { setSess({ readiness: b.dataset.r }); togglePanel(false); });
   const pi = pauseInfo(S.date);
-  $("pauseNag").innerHTML = pi.f < 1 && !sess.ignorePause
-    ? `<div class="nag info"><span><b>Rientro dopo ${pi.days} giorni.</b> Carichi suggeriti ridotti del ${Math.round((1 - pi.f) * 100)}%: riprendi gradualmente.</span><button class="btn sm" id="noPause">Non è un rientro</button></div>`
-    : sess.ignorePause && pi.f < 1 ? `<div class="nag info"><span>Pausa di ${pi.days} giorni ignorata.</span><button class="btn sm" id="noPause">Riattiva</button></div>` : "";
+  $("pauseNag").innerHTML = pi.back && !sess.ignorePause
+    ? `<div class="nag info"><span><b>Rientro dopo ${pi.days} giorni.</b> Oggi rifai i carichi dell'ultima volta, senza aumenti. Se una serie viene 3 reps o più sotto il target, scendi di un salto nella serie dopo.${pi.days >= 35 ? " Dopo più di 5 settimane usa la prima serie come prova." : ""} Non conta per i progressi.</span><button class="btn sm" id="noPause">Non è un rientro</button></div>`
+    : sess.ignorePause && pi.back ? `<div class="nag info"><span>Pausa di ${pi.days} giorni ignorata.</span><button class="btn sm" id="noPause">Riattiva</button></div>` : "";
   if ($("noPause")) $("noPause").onclick = () => setSess({ ignorePause: !sess.ignorePause });
+  { const wk = weekStart(todayISO()), stalls = plan().days.flatMap(dd => dd.ex.filter(e => !e.nolog && stallInfo(e, S.gym)).map(e => e.name));
+    let h = "";
+    if (D.prefs.deload === wk) h = `<div class="nag info"><span><b>Settimana di scarico.</b> Carichi −35% e 2 serie per esercizio invece di 3. Non conta per i progressi: serve a recuperare e ripartire più forte.</span><button class="btn sm" id="dlOff">Annulla</button></div>`;
+    else if (stalls.length >= 3 && D.prefs.deloadAsk !== wk) h = `<div class="nag"><span>⏸ <b>${stalls.length} esercizi fermi da 3 sedute.</b> Valuta una settimana di scarico (meglio sentire il PT).</span><button class="btn sm" id="dlOn">Scarico</button><button class="btn sm ghost" id="dlNo">Non ora</button></div>`;
+    $("pauseNag").insertAdjacentHTML("beforeend", h);
+    if ($("dlOff")) $("dlOff").onclick = () => { delete D.prefs.deload; save(); renderLog(); };
+    if ($("dlOn")) $("dlOn").onclick = () => { D.prefs.deload = wk; save(); renderLog(); toast("Settimana di scarico attiva"); };
+    if ($("dlNo")) $("dlNo").onclick = () => { D.prefs.deloadAsk = wk; save(); renderLog(); }; }
   // promemoria backup
-  const ds = daysSince(D.prefs.lastBackup), nSess = Object.keys(D.sessions).length;
-  $("backupNag").innerHTML = nSess >= 3 && (ds == null || ds >= 14) ? `<div class="nag"><span>${ds == null ? "Non hai ancora fatto un backup." : `Ultimo backup ${ds} giorni fa.`}</span><button class="btn sm" id="nagBk">Backup</button></div>` : "";
+  const ds = daysSince(D.prefs.lastBackup), nSess = Object.keys(D.sessions).length, since = sessSinceBackup();
+  $("backupNag").innerHTML = nSess >= 1 && needBackup() ? `<div class="nag"><span>💾 ${ds == null ? "Non hai ancora un backup." : `Ultimo backup ${ds} ${ds === 1 ? "giorno" : "giorni"} fa`}${since ? ` · ${since} ${since === 1 ? "seduta nuova" : "sedute nuove"}` : ""}. I dati stanno solo su questo telefono: salvalo in File → iCloud Drive.</span><button class="btn sm" id="nagBk">Salva</button></div>` : "";
   if ($("nagBk")) $("nagBk").onclick = exportBackup;
 
   const list = $("list"); list.textContent = "";
-  { const rc = recapCard(d, sess, dayUnitsList(d, sess)); if (rc) list.appendChild(rc); }
+  { const rc = recapCard(d, sess, dayUnitsList(d, sess)); if (rc) { list.appendChild(rc); const bk = rc.querySelector("[data-bk]"); if (bk) bk.onclick = exportBackup; } }
   const units = dayUnitsList(d, sess), curU = currentUnit(d, sess, units);
   S.sig = units.filter(u => unitOpen(u, curU)).map(u => u.keys[0]).join(",") + "|" + (curU ? curU.keys[0] : "");
   let exN = 0;
@@ -615,11 +693,25 @@ function renderLog0() {
       hit = hit1 && !!pr && allHit(exSets(pr, ex.key), ex) && allClean(exSets(pr, ex.key)), cond = condition(sess), sbN = subOf(sess, ex.key), stp = ex.bw || sbN ? { v: null } : stepFor(ex.key);
     const pr2 = rs ? prevRef(ex.key, rs) : null, prSets = pr2 ? exSets(pr2, ex.key) : [], nUp = i => easy2(refSets[i], prSets[i], tnum(ex.sets[i].t)) ? 2 : 1;
     const painRef = rs && hasPain(rs, ex.key);
-    const advise2 = (r, pl, t, step, f, n) => { const a = advise(r, pl, t, step, f, n); return a && painRef && r && a.kg > r.kg ? { kg: r.kg, reps: t, why: "Fastidio l'ultima volta: carico fermo finché non passa", mode: "pain" } : a; };
+    const advise2 = (r, pl, t, step, f, n) => { const a = advise(r, pl, t, step, f, n);
+      if (a && cond.hold && r && r.kg != null && a.kg > r.kg) return { kg: r.kg, reps: t, why: "Rientro: stessi carichi dell'ultima volta", mode: "back" };
+      return a && painRef && r && a.kg > r.kg ? { kg: r.kg, reps: t, why: "Fastidio l'ultima volta: carico fermo finché non passa", mode: "pain" } : a; };
     const ref = sbN ? null : ex.ref && ex.ref[S.gym];
+    const stl = ex.bw ? null : stallInfo(ex, S.gym, S.date);
+    // riscaldamento: primo esercizio del giorno o primo che lavora muscoli nuovi; 50%×10 · 70%×5 · 85%×2 del carico di S1, al salto disponibile
+    const warm = (() => {
+      if (ex.bw || sbN || isCircNoLog(d, idx)) return "";
+      const before = d.ex.slice(0, idx).filter(e => !e.nolog), seen = new Set(before.flatMap(e => (e.m && e.m.p) || []));
+      if (before.length && ((ex.m && ex.m.p) || []).some(m => seen.has(m))) return "";
+      const a0 = refSets[0] ? advise2(refSets[0], prSets[0], tnum(ex.sets[0].t), stp.v, cond.f, nUp(0)) : null, base = a0 && a0.kg;
+      if (!base || base < 15) return "";
+      const st = stp.v || 2.5, out = []; for (const [p, r] of [[0.5, 10], [0.7, 5], [0.85, 2]]) { const k = Math.floor(base * p / st) * st; if (k > 0 && !out.some(o => o.k === k)) out.push({ k, r }); }
+      return out.map(o => `<em><b>${fmt(o.k)}</b> kg × ${o.r}</em>`).join("");
+    })();
     // riga "CARICO" del blocco info: cosa fare oggi con il peso e perché
     let pills = "", load = null;
     if (rs && cond.f < 1) load = { c: "near", t: `↓ Oggi −${Math.round((1 - cond.f) * 100)}%: ${esc(cond.why)}` };
+    else if (rs && cond.hold) load = { c: "", t: `= Rientro dopo ${cond.p.days} giorni: stessi carichi dell'ultima volta, niente aumenti oggi.` };
     else if (rs) {
       const lab = i => { let n = 0, out = ""; ex.sets.forEach((st, j) => { if (!st.type || ["std", "alte", "pausa", "risc"].includes(st.type)) n++; if (j === i) out = st.type === "ced" ? "RP" : st.type === "strip" ? "ST" : st.type === "super" ? "SS" : "S" + n; }); return out; };
       const ix = f => ex.sets.map((st, i) => f(refSets[i], tnum(st.t)) ? i : -1).filter(i => i >= 0), names = a => listIt(a.map(lab));
@@ -667,8 +759,10 @@ function renderLog0() {
       ${((D.setup[S.gym] || {})[ex.key]) ? `<div class="exinfo top">
         <div class="ir"><span class="il">Regolazioni</span><button type="button" class="iv setv" data-editsetup>${esc(D.setup[S.gym][ex.key])}</button></div>
       </div>` : ""}
+      ${warm ? `<p class="warm"><span>🔥 Riscaldamento <i>· non si registra</i></span>${warm}</p>` : ""}
       <div class="sets"><div class="sh"><span>Serie</span><span>Ultima</span><span>${ex.bw ? "kg (opz.)" : "kg"}</span><span>Reps</span><span></span></div></div>
       ${load ? `<p class="advice ${load.c}"><span>Consiglio</span>${load.t}</p>` : ""}
+      ${stl && !sbN && !cond.deload ? `<p class="advice stall"><span>Fermo</span>⏸ Nessun miglioramento da ${stl.n} sedute. Prova: salto più piccolo o una rep in più invece del peso, recuperi pieni, tecnica pulita. Se continua, dillo al PT.</p>` : ""}
       <div class="exfoot${manual ? " two" : ""}">
         ${manual ? `<button class="more" data-close>Chiudi</button>` : ""}
         <button class="infobtn" data-more aria-haspopup="dialog"><svg viewBox="0 0 24 24" class="ib-i"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.01"/></svg><span><b>Info ed esecuzione</b><small>foto · muscoli · regolazioni</small></span><svg viewBox="0 0 24 24" class="ib-c"><path d="M9 6l6 6-6 6"/></svg></button></div>
@@ -706,6 +800,9 @@ function renderLog0() {
       const upd = () => {
         const cr = exSets(current(), ex.key)[i] || {}, fv = feelOf(cr);
         judge(kg, rp, fb, tn, rr, jc, isDirty(), cr.eff, goal);
+        if (cond.hold && num(rp.value) != null && tn != null && num(rp.value) <= tn - 3 && i < ex.sets.length - 1 && num(kg.value) != null) {
+          const st = stp.v || 2.5, low = Math.max(0, num(kg.value) - st); fb.className = "fb near"; fb.hidden = false;
+          fb.textContent = `Rientro: ${num(rp.value)} su ${tn}. Nella prossima serie scendi a ${fmt(low)} kg, poi riprendi piano.`; }
         if (cr.help && num(rp.value) != null && !cr.dirty) { fb.className = "fb prog"; fb.hidden = false; fb.textContent = "🤝 Aiutata: conta per il volume, non per salire. La prossima volta stesso carico, prova a farla da solo"; }
         if (lrOn(cr) && num(rp.value) != null && !cr.dirty) {
           fb.className = "fb prog"; fb.hidden = false;
@@ -938,7 +1035,7 @@ document.addEventListener("focusout", e => { const el = e.target; if (el.matches
 // Forza stimata (formula di Epley): kg × (1 + reps/30), confrontata con la stessa serie dell'ultima volta.
 const repsTxt = n => n === 1 ? "manca 1 rep" : `mancano ${n} reps`;
 function judge(kgEl, rpEl, fb, t, lr, cond, dirty, eff, goal) {
-  const kg = num(kgEl.value), reps = num(rpEl.value), f = cond ? cond.f : 1, off = f < 1 || !!(cond && cond.ooo);
+  const kg = num(kgEl.value), reps = num(rpEl.value), f = cond ? cond.f : 1, off = f < 1 || !!(cond && (cond.ooo || cond.hold));
   let cls = "", msg = "";
   if (reps != null && t != null) {
     const miss = t - reps, pct = reps / t, missTxt = miss === 1 ? "1 rep" : miss + " reps";
@@ -1144,6 +1241,7 @@ function setTheme() {
 // ---------- progressi ----------
 function renderProg() {
   const p = plan(); S.pday = S.pday || S.day;
+  if (!$("progReport")) { $("pdays").insertAdjacentHTML("beforebegin", `<button type="button" class="infobtn rep-btn" id="progReport"><span><b>📋 Report per il PT</b><small>progressi, fastidi e sostituzioni della scheda, da mandargli</small></span><svg viewBox="0 0 24 24" class="ib-c"><path d="M9 6l6 6-6 6"/></svg></button>`); $("progReport").onclick = openReport; }
   const d = p.days.find(x => x.id === S.pday) || p.days[0];
   document.body.classList.toggle("g1", GYMS.findIndex(g => g.id === S.gym) === 1); setTheme();
   $("pk").textContent = `${GYMS.find(g => g.id === S.gym).name} · ${p.name}`;
@@ -1292,6 +1390,10 @@ function renderPlans() {
 
 // ---------- backup ----------
 function backupData() { return JSON.stringify({ app: "palestra", v: 1, exportedAt: new Date().toISOString(), data: D }, null, 1); }
+// Promemoria backup (17/11/2026): dopo 3 sedute nuove o 7 giorni dall'ultimo; anche nel recap. Il telefono non deve cancellare i dati da solo.
+const sessSinceBackup = () => { const t = D.prefs.lastBackup ? Date.parse(D.prefs.lastBackup) : 0; return Object.values(D.sessions).filter(s => hasData(s) && (s.updatedAt || 0) > t && s.date >= (D.prefs.lastBackup || "").slice(0, 10)).length; };
+const needBackup = () => { const ds = daysSince(D.prefs.lastBackup); return Object.values(D.sessions).some(hasData) && (ds == null || ds >= 7 || sessSinceBackup() >= 3); };
+try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
 async function exportBackup() {
   const name = `palestra-backup-${todayISO()}.json`, blob = new Blob([backupData()], { type: "application/json" });
   let ok = false;
