@@ -503,15 +503,26 @@ function autoKg(e, kg, rp) {
   if (!e || !e.isTrusted) return; clearTimeout(kg._t);
   if (isDel(e)) { kg._fix = true; return; }
   const v = kg.value.trim(); if (!v || /[.,]$/.test(v) || num(v) == null) return;
-  // attesa in base a quanto è "completo" il numero: 3 cifre o decimale scritto → 0,3"; 2 cifre → 0,6" (può arrivare la 3ª); 1 cifra → 0,8"
-  const dg = v.replace(/[^\d]/g, "").length, wait = /[.,]\d/.test(v) || dg >= 3 ? 300 : dg === 2 ? 600 : 800;
-  kg._t = setTimeout(() => { if (document.activeElement === kg && rp.value === "") rp.focus(); }, kg._fix ? 1200 : wait);
+  // dopo i kg: 1" senza scrivere → reps della stessa serie (scelta dell'utente del 17/11/2026)
+  kg._t = setTimeout(() => { if (document.activeElement === kg && rp.value === "") rp.focus(); }, kg._fix ? 1200 : 1000);
 }
 function autoReps(e, rp) {
   if (!e || !e.isTrusted) return; clearTimeout(rp._t);
   if (isDel(e)) { rp._fix = true; return; }
   const v = rp.value.trim(); if (num(v) == null) return;
-  rp._t = setTimeout(() => { if (document.activeElement === rp) rp.blur(); }, rp._fix ? 1200 : v.replace(/\D/g, "").length >= 2 ? 300 : 700);
+  rp._t = setTimeout(() => { if (document.activeElement === rp) toNextSet(rp); }, rp._fix ? 1200 : v.replace(/\D/g, "").length >= 2 ? 300 : 700);
+}
+// Dopo le reps: se la prossima serie è dello stesso esercizio, il cursore va ai suoi kg (tastiera aperta; il recupero
+// parte comunque con l'evento "change"); se mancano già i kg ma non le reps, alle reps. Esercizio finito → tastiera giù.
+function toNextSet(rp) {
+  const m = rp.id.match(/^rp-(.+)-(\d+)$/), d = dayObj(), idx = m ? d.ex.findIndex(x => x.key === m[1]) : -1;
+  if (idx < 0) return rp.blur();
+  const t = nextSet(d, idx, +m[2]);
+  const nk = t.k === m[1] && t.i !== +m[2] ? $(`kg-${t.k}-${t.i}`) : null, nr = nk && $(`rp-${t.k}-${t.i}`);
+  const tgt = !nk ? null : nk.value === "" ? nk : nr && nr.value === "" ? nr : null;
+  if (!tgt) return rp.blur();
+  tgt.focus(); markNext();
+  const row = tgt.closest(".set"); if (row) row.scrollIntoView({ block: "center", behavior: "smooth" });
 }
 // Tocco su un campo già compilato: il numero si seleziona tutto, così scrivi direttamente quello nuovo.
 document.addEventListener("focusin", e => {
