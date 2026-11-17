@@ -250,7 +250,7 @@ function renderLog() {
   const p = plan(), d = dayObj(), sess = current();
   // forma del giorno
   const cond = condition(sess);
-  $("ready").innerHTML = `<span>Come stai oggi?</span>` + Object.entries(READY).map(([k, v]) => `<button data-r="${k}" aria-pressed="${(sess.readiness || "ok") === k}">${v.n}</button>`).join("");
+  $("ready").innerHTML = Object.entries(READY).map(([k, v]) => `<button data-r="${k}" aria-pressed="${(sess.readiness || "ok") === k}">${v.n}</button>`).join("");
   $("ready").querySelectorAll("button").forEach(b => b.onclick = () => { setSess({ readiness: b.dataset.r }); togglePanel(false); });
   const pi = pauseInfo(S.date);
   $("pauseNag").innerHTML = pi.f < 1 && !sess.ignorePause
