@@ -457,8 +457,14 @@ function closeFeel() { FE = null; const box = $("feel"); if (box && !box.hidden)
 // r.at = quando hai scritto le reps; recupero ≈ tempo tra le reps di due serie consecutive − SET_SEC (durata della serie).
 // Recupero lungo (> 1,5× il previsto e > +30"): r.lr = secondi; le reps di quella serie non contano per salire.
 // "Non ha influito" → r.lrOk.
-const SET_SEC = 40;
-const restGap = (a, b) => a && b && a.at && b.at && b.at > a.at ? Math.max(0, Math.round((b.at - a.at) / 1000) - SET_SEC) : null;
+// durata stimata della serie: ~4" a rep (target del PT, o le reps fatte se di più), il doppio se "per gamba"/"per braccio"; tra 20" e 90"
+const SEC_REP = 4;
+function setSec(ex, i, r) {
+  const t = ex && ex.sets[i] ? tnum(ex.sets[i].t) : null, n = Math.max(t || 0, (r && r.reps) || 0) || 10;
+  const uni = ex && /per (gamba|braccio|lato)/i.test((ex.tec || "") + " " + (ex.sets[i] && ex.sets[i].note || ""));
+  return Math.min(90, Math.max(20, n * (uni ? 2 : 1) * SEC_REP));
+}
+const restGap = (a, b, ex, i) => a && b && a.at && b.at && b.at > a.at ? Math.max(0, Math.round((b.at - a.at) / 1000) - setSec(ex, i, b)) : null;
 const isLong = (sec, plan, buddy) => sec != null && sec > plan * (buddy ? 2 : 1.5) && sec > plan + 30;
 const lrOn = r => !!(r && r.lr && !r.lrOk);
 // ---------- durata dell'allenamento: dal primo inserimento all'ultimo (sessione.t0 / t1), tasti Inizia / Fine (tEnd) ----------
@@ -512,7 +518,7 @@ function recapCard(d, s, units) {
     if (sk && !cur.some(r => r && r.reps != null)) return;
     nEx++;
     ex.sets.forEach((st, i) => { const r = cur[i]; if (sk && !(r && r.reps != null)) return; nSet++; if (r && r.reps != null) { nDone++; if (!r.dirty) { clean++; if (r.help) nA++; else if (r.eff === "easy") nE++; else if (r.eff === "hard") nH++; } vol += (r.kg || 0) * r.reps; }
-      if (i > 0 && !circGroup(d, idx)) { const g = restGap(cur[i - 1], r); if (g != null) rests.push({ g, p: restFor(ex), long: lrOn(r) }); } });
+      if (i > 0 && !circGroup(d, idx)) { const g = restGap(cur[i - 1], r, ex, i); if (g != null) rests.push({ g, p: restFor(ex), long: lrOn(r) }); } });
     if (!cur.some(r => r && r.reps != null)) return;
     if (!ex.bw && !hasPain(s, ex.key)) { const stv = sb ? null : stepFor(ex.key).v, pv = gymSessions(S.gym).filter(x => x.date < s.date && home(x) && exHas(x, ex.key, sb)).pop(), ps = pv ? exSets(pv, ex.key) : [];
       if (ex.sets.some((st, i) => { const r = cur[i], a = r && r.reps != null ? advise(r, ps[i], tnum(st.t), stv, 1) : null; return a && a.kg > r.kg; })) upEx.push(nm); }
@@ -982,7 +988,7 @@ function edit(ex, i, field, val) {
   if (field === "reps") { const r = s.ex[ex.key][i], d = dayObj(), idx = d.ex.findIndex(e => e.key === ex.key);
     if (v == null) { delete r.at; delete r.lr; delete r.lrOk; }
     else if (!r.at && s.date === todayISO()) { r.at = Date.now();
-      const g = i > 0 && !circGroup(d, idx) ? restGap(s.ex[ex.key][i - 1], r) : null; if (isLong(g, restFor(ex), s.buddy)) r.lr = g; } }
+      const g = i > 0 && !circGroup(d, idx) ? restGap(s.ex[ex.key][i - 1], r, ex, i) : null; if (isLong(g, restFor(ex), s.buddy)) r.lr = g; } }
   if (v != null && !["dirty", "eff"].includes(field) && !(s.ord || []).includes(ex.key)) s.ord = [...(s.ord || []), ex.key]; // ordine reale di esecuzione
   if (v != null && !["dirty", "eff"].includes(field)) { stampTime(s); if (s.later && s.later[ex.key]) delete s.later[ex.key]; }
   if (field === "kg" && FE && (FE.key !== ex.key || FE.i !== i)) closeFeel();
