@@ -329,6 +329,16 @@ function renderSite() {
   if (off) off.onclick = () => { const x = JSON.parse(JSON.stringify(current())); delete x.site; x.updatedAt = Date.now(); D.sessions[x.id] = x; save(); renderLog(); };
   if (nm) nm.oninput = () => { const x = JSON.parse(JSON.stringify(current())); x.site = nm.value.trim(); x.updatedAt = Date.now(); D.sessions[x.id] = x; save(); renderConsole(); };
 }
+// Foto delle macchine scattate dall'utente (D.machines[gym][nome minuscolo] = JPEG ridotto), nel backup
+const machinePic = n => (((D.machines || {})[S.gym] || {})[(n || "").trim().toLowerCase()]) || "";
+function saveMachinePic(n, file) {
+  const img = new Image(), url = URL.createObjectURL(file);
+  img.onload = () => { const k = 480 / Math.max(img.width, img.height), c = document.createElement("canvas"); c.width = Math.round(img.width * Math.min(1, k)); c.height = Math.round(img.height * Math.min(1, k));
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+    D.machines = D.machines || {}; D.machines[S.gym] = { ...(D.machines[S.gym] || {}), [n.trim().toLowerCase()]: c.toDataURL("image/jpeg", 0.72) };
+    try { save(); toast("Foto salvata"); } catch (e) { toast("Spazio pieno: foto non salvata"); } renderLog(); };
+  img.src = url;
+}
 // ---------- Oggi: sostituisci / fastidio / salta (per esercizio, per seduta) ----------
 function setExMap(field, key, val) { const x = JSON.parse(JSON.stringify(current())); x[field] = { ...(x[field] || {}) }; if (val == null || val === false) delete x[field][key]; else x[field][key] = val; x.updatedAt = Date.now(); D.sessions[x.id] = x; save(); renderLog(); }
 function exAct(ex, a, undo) {
@@ -340,8 +350,16 @@ function exAct(ex, a, undo) {
 }
 function todayBanners(s, ex, painRef, rs) {
   const out = [];
-  if (S.subEdit === ex.key && !subOf(s, ex.key)) out.push(`<div class="xb sub"><label class="subin">↔ <input autocomplete="off" placeholder="Esercizio fatto al posto di questo (es. Leg press)" autofocus></label><button class="chip" data-undo="subx">Annulla</button></div>`);
-  if (subOf(s, ex.key)) out.push(`<div class="xb sub"><p>↔ Oggi fai <b>${esc(subOf(s, ex.key))}</b>: ha il suo storico, quello di ${esc(ex.name)} non cambia.</p><button class="chip" data-undo="sub">Torna all'originale</button></div>`);
+  if (S.subEdit === ex.key && !subOf(s, ex.key)) {
+    const used = [...new Set(gymSessions(S.gym).map(x => subOf(x, ex.key)).filter(Boolean))].reverse();
+    const cat = ((window.MACCHINE || {})[ex.key] || []).filter(m => !m.gym || m.gym.includes(S.gym) ).filter(m => !used.some(u => sameSub(u, m.n)));
+    out.push(`<div class="xb sub col"><label class="subin">↔ <input autocomplete="off" placeholder="Scrivi il nome della macchina o scegli sotto"></label>
+      ${used.length ? `<div class="alts"><span class="altk">Già usate qui</span>${used.map(n => `<div class="alt"><button type="button" class="altn" data-alt="${esc(n)}">${machinePic(n) ? `<img src="${machinePic(n)}" alt="">` : ""}<b>${esc(n)}</b></button></div>`).join("")}</div>` : ""}
+      ${cat.length ? `<div class="alts"><span class="altk">Macchine che allenano gli stessi muscoli</span>${cat.map(m => `<div class="alt"><button type="button" class="altn" data-alt="${esc(m.n)}"><b>${esc(m.n)}</b><small>${esc(m.d)}</small></button><a class="altq" href="https://www.google.com/search?tbm=isch&q=${encodeURIComponent("Panatta " + m.n)}" target="_blank" rel="noopener">Com'è fatta ↗</a></div>`).join("")}</div>` : ""}
+      <button class="chip" data-undo="subx">Annulla</button></div>`);
+  }
+  if (subOf(s, ex.key)) { const pic = machinePic(subOf(s, ex.key));
+    out.push(`<div class="xb sub"><p>↔ Oggi fai <b>${esc(subOf(s, ex.key))}</b>: ha il suo storico, quello di ${esc(ex.name)} non cambia.</p><div class="xbb"><label class="chip pic">📷 ${pic ? "Cambia foto" : "Foto macchina"}<input type="file" accept="image/*" capture="environment" hidden data-pic></label><button class="chip" data-undo="sub">Torna all'originale</button></div></div>`); }
   if (hasPain(s, ex.key)) out.push(`<div class="xb pain"><p>⚠ Fastidio segnato: la prossima volta il carico resta fermo. Se continua, dillo al PT.</p><button class="chip" data-undo="pain">Togli</button></div>`);
   else if (painRef) out.push(`<div class="xb pain"><p>⚠ Fastidio l'ultima volta (${fmtDate(rs.date).slice(0, 5)}): carico fermo. Se oggi va bene, non segnare niente e la prossima volta si riparte.</p></div>`);
   if (isSkip(s, ex.key)) out.push(`<div class="xb skip"><p>⤼ Saltato oggi: non conta come serie dimenticate.</p><button class="chip" data-undo="skip">Annulla</button></div>`);
@@ -568,14 +586,14 @@ function renderLog() {
     const oi = oooInfo(sess, ex.key, S.date === todayISO()), prosp = oi && !oi.started;
     let jc = oi && oi.off && !prosp ? { ...cond, ooo: true, why: [cond.why, "fuori ordine"].filter(Boolean).join(" + ") } : cond;
     if (isAway(sess)) { jc = { ...jc, ooo: true, why: [jc.why, "altra sede"].filter(Boolean).join(" + ") }; load = { c: "near", t: `📍 Altra sede: kg della tua palestra solo indicativi, macchine diverse. Non conta per i progressi.` }; }
-    const fr = sbN ? [] : execFrames(ex);
+    const fr = sbN ? [] : execFrames(ex), mpic = sbN ? machinePic(sbN) : "";
     const card = document.createElement("article"); card.className = "ex" + (isCur ? " cur" : ""); card.dataset.ex = ex.key;
     const open = S.open.has(ex.key);
     card.innerHTML = `
       <div class="exh">
         ${fr.length ? `<button class="exec thumb" data-zoom aria-label="Ingrandisci le immagini di ${esc(ex.name)}">
           ${fr.map(f => `<img src="${f.src}" alt="${esc(ex.name)} — ${esc(f.cap)}" class="${f.draw ? "draw" : ""}" loading="lazy">`).join("")}
-          <span class="zoom"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></span></button>` : ""}
+          <span class="zoom"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></span></button>` : mpic ? `<span class="exec thumb mpic"><img src="${mpic}" alt="${esc(sbN)}"></span>` : ""}
         <div class="t"><div class="exk">${exNum(exN)}${isCur ? " · Adesso" : ""}</div>
           <h3 class="exname">${esc(sbN || ex.name)}</h3>${sbN ? `<div class="subof">↔ al posto di ${esc(ex.name)}</div>` : ""}${rxLine(ex)}</div>
       </div>
@@ -654,6 +672,8 @@ function renderLog() {
     }
     card.querySelectorAll("[data-act]").forEach(b => b.onclick = () => exAct(ex, b.dataset.act));
     card.querySelectorAll("[data-undo]").forEach(b => b.onclick = () => exAct(ex, b.dataset.undo, true));
+    card.querySelectorAll("[data-alt]").forEach(b => b.onclick = () => { S.subEdit = null; setExMap("sub", ex.key, b.dataset.alt); });
+    const pin = card.querySelector("[data-pic]"); if (pin) pin.onchange = () => { if (pin.files[0]) saveMachinePic(subOf(current(), ex.key), pin.files[0]); };
     const sbi = card.querySelector(".subin input"); if (sbi) { sbi.onkeydown = e => { if (e.key === "Enter") sbi.blur(); }; sbi.onchange = () => { S.subEdit = null; setExMap("sub", ex.key, sbi.value.trim() || null); }; setTimeout(() => sbi.focus(), 60); }
     const cp = card.querySelector("[data-copy]");
     if (ex.bw || !rs || !refSets.some(r => r && r.kg != null)) cp.hidden = true;
@@ -1204,6 +1224,7 @@ $("bkFile").onchange = async e => {
     for (const [id, s] of Object.entries(inc.sessions || {})) { const l = D.sessions[id]; if (!l || (s.updatedAt || 0) > (l.updatedAt || 0)) { D.sessions[id] = s; added++; } }
     for (const g of Object.keys(inc.setup || {})) D.setup[g] = { ...(inc.setup[g] || {}), ...(D.setup[g] || {}) };
     for (const g of Object.keys(inc.steps || {})) { D.steps = D.steps || {}; D.steps[g] = { ...(inc.steps[g] || {}), ...(D.steps[g] || {}) }; }
+    for (const g of Object.keys(inc.machines || {})) { D.machines = D.machines || {}; D.machines[g] = { ...(inc.machines[g] || {}), ...(D.machines[g] || {}) }; }
     save(true); $("bkMsg").textContent = `Ripristino fatto: ${added} sedute importate o aggiornate.`; toast("Backup ripristinato"); render();
   } catch (err) { $("bkMsg").textContent = "Questo file non è un backup dell'app Palestra."; }
   e.target.value = "";

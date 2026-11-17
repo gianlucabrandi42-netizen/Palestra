@@ -841,3 +841,17 @@ html[data-theme="sparta"] .dlive{color:var(--gold)}
 .chip.del.arm{color:#fff;background:#B5473A;border-color:#B5473A}
 #toast button{margin-left:10px;border:0;background:transparent;color:var(--accent);font-weight:800;font-size:inherit;padding:0}
 .rc-h small .rc-dur{font-family:inherit;font-size:inherit;color:var(--ink);font-weight:700}
+/* Sostituisci: macchine suggerite */
+.xb.col{flex-direction:column;align-items:stretch}
+.xb.col>.chip{align-self:flex-end}
+.xbb{display:flex;flex-direction:column;gap:6px;flex:none}
+.alts{display:grid;gap:6px}
+.altk{font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.alt{display:flex;align-items:stretch;gap:6px}
+.altn{flex:1;min-width:0;text-align:left;display:flex;align-items:center;gap:10px;flex-wrap:wrap;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:11px;padding:8px 10px}
+.altn b{font-size:13.5px}
+.altn small{flex-basis:100%;font-size:11.5px;color:var(--muted);line-height:1.35}
+.altn img{width:34px;height:34px;object-fit:cover;border-radius:7px}
+.altq{flex:none;display:flex;align-items:center;font-size:11.5px;font-weight:700;color:var(--accent);text-decoration:none;padding:0 4px;max-width:66px;text-align:center;line-height:1.2}
+.chip.pic{cursor:pointer;text-align:center}
+.exec.thumb.mpic img{width:100%;height:100%;object-fit:cover;border-radius:inherit}
