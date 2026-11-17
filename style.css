@@ -942,3 +942,9 @@ html[data-theme="sparta"] .gdots i.on{background:var(--gold)}
 .acts3 button svg{color:var(--bc)}
 .acts3 button[aria-pressed="true"],.acts3 button[data-act="pain"][aria-pressed="true"]{color:#111;background:var(--bc);box-shadow:none}
 .acts3 button[aria-pressed="true"] svg{color:#111}
+.ir[hidden]{display:none!important}
+.addsetup{align-self:flex-start;margin:2px 0 0;border:0;background:none;color:var(--muted);font-size:12.5px;font-weight:700;padding:6px 0}
+.rx span{font-size:12px;font-weight:600;color:var(--muted)}
+.lb footer{display:grid;gap:10px}
+.lbtrack{transition:transform .2s}
+.lbclose2{width:100%;height:48px;border-radius:14px;border:0;background:rgba(255,255,255,.14);color:#fff;font-weight:800;font-size:15px}

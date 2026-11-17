@@ -359,7 +359,7 @@ function closeSheet(keep) {
   sh.classList.remove("on"); document.documentElement.classList.remove("noscroll");
   const b = document.activeElement; if (b && sh.contains(b)) b.blur();
   // il pannello torna nella sua scheda, così il tasto si può riaprire
-  const back = () => { const p = sh.querySelector(".is-c .panel"), c = sh._card; if (p && c && document.contains(c)) { p.hidden = true; c.appendChild(p); } sh.querySelector(".is-c").textContent = ""; sh._card = null; };
+  const back = () => { if (S.setupDirty) { S.setupDirty = false; sh.querySelector(".is-c").textContent = ""; sh._card = null; renderLog(); return; } const p = sh.querySelector(".is-c .panel"), c = sh._card; if (p && c && document.contains(c)) { p.hidden = true; c.appendChild(p); } sh.querySelector(".is-c").textContent = ""; sh._card = null; };
   setTimeout(() => { if (!sh.classList.contains("on")) { sh.hidden = true; back(); } }, 220);
 }
 (() => { // chiusura: tocco fuori, ✕, trascinamento verso il basso dalla barretta/intestazione
@@ -419,7 +419,8 @@ function todayBanners(s, ex, painRef, rs) {
 // Prescrizione del PT, sempre in evidenza sotto il nome: "3 × 10 reps" o "3 serie: 10 · 8 · 8 reps" + recupero
 function rxLine(ex) {
   const ts = ex.sets.map(st => st.t + (st.type === "ced" ? " RP" : st.type === "strip" ? " strip" : "")), same = ts.every(t => t === ts[0]);
-  return `<div class="rx"><b>${same ? `${ts.length} × ${esc(ts[0])}` : `${ts.length} serie: ${ts.map(esc).join(" · ")}`}</b></div>`;
+  // il recupero compare solo se il PT l'ha indicato nella scheda (campo "rest" in schede.js)
+  return `<div class="rx"><b>${same ? `${ts.length} × ${esc(ts[0])}` : `${ts.length} serie: ${ts.map(esc).join(" · ")}`}</b>${ex.rest ? `<span>recupero ${fmtSec(restFor(ex))}</span>` : ""}</div>`;
 }
 // ---------- sensazione della serie: striscia "Com'era?" sopra il timer ----------
 const FEEL = { easy: { n: "Facile", b: 1 }, ok: { n: "Giusta", b: 2 }, hard: { n: "Al limite", b: 3 }, dirty: { n: "Sporca" }, help: { n: "Aiutata" } };
@@ -666,9 +667,10 @@ function renderLog0() {
         ${manual ? `<button class="more" data-close>Chiudi</button>` : ""}
         <button class="infobtn" data-more aria-haspopup="dialog"><svg viewBox="0 0 24 24" class="ib-i"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.01"/></svg><span><b>Info ed esecuzione</b><small>foto · muscoli · regolazioni</small></span><svg viewBox="0 0 24 24" class="ib-c"><path d="M9 6l6 6-6 6"/></svg></button></div>
       <div class="panel" hidden><div class="exinfo">
-        ${ex.setup === false ? "" : `<div class="ir setup"><label class="il" for="su-${ex.key}">Regolazioni</label><div class="iv"><input id="su-${ex.key}" autocomplete="off" placeholder="+ aggiungi (es. sedile 4)"></div></div>`}
+        ${ex.setup === false ? "" : `<div class="ir setup"${((D.setup[S.gym] || {})[ex.key]) ? "" : " hidden"}><label class="il" for="su-${ex.key}">Regolazioni</label><div class="iv"><input id="su-${ex.key}" autocomplete="off" placeholder="es. sedile 4, schienale 2"></div></div>`}
         ${ex.tec ? `<div class="ir"><span class="il">Schema</span><div class="iv tecv">${esc(ex.tec)}</div></div>` : ""}
         ${ex.bw ? "" : `<div class="ir"><span class="il">Salto pesi${stp.auto && stp.v ? "<i>stimato</i>" : ""}</span><div class="iv stepsel" role="group" aria-label="Salto dei pesi">${STEPS.map(v => `<button type="button" data-step="${v}" aria-pressed="${stp.v === v}" class="${stp.v === v && stp.auto ? "auto" : ""}">${fmt(v)}</button>`).join("")}</div></div>`}
+        ${ex.setup === false || ((D.setup[S.gym] || {})[ex.key]) ? "" : `<button type="button" class="addsetup" data-addsetup>⚙ Aggiungi regolazioni della macchina</button>`}
         ${ex.bw ? "" : `<div class="ir"><span class="il">Kg suggeriti</span><div class="iv"><button type="button" class="chip" data-copy>⚡ Scrivili nelle serie</button></div></div>`}
       </div>
       <div class="today3"><span class="t3k">Solo per oggi</span><div class="acts3" role="group" aria-label="Solo per oggi">
@@ -728,9 +730,10 @@ function renderLog0() {
     });
     const su = card.querySelector(".setup input");
     if (su) {
-      su.value = ((D.setup[S.gym] || {})[ex.key]) || ""; su.oninput = () => { D.setup[S.gym] = D.setup[S.gym] || {}; D.setup[S.gym][ex.key] = su.value.trim(); save(); const t = card.querySelector("[data-editsetup]"); if (t) t.textContent = su.value.trim() || "—"; };
+      su.value = ((D.setup[S.gym] || {})[ex.key]) || ""; su.oninput = () => { D.setup[S.gym] = D.setup[S.gym] || {}; D.setup[S.gym][ex.key] = su.value.trim(); save(); S.setupDirty = true; const t = card.querySelector("[data-editsetup]"); if (t) t.textContent = su.value.trim() || "—"; };
     }
     card.querySelectorAll("[data-act]").forEach(b => b.onclick = () => exAct(ex, b.dataset.act));
+    card.querySelectorAll("[data-addsetup]").forEach(b => b.onclick = () => { const r = b.parentNode.querySelector(".ir.setup"); if (r) { r.hidden = false; b.remove(); const i = r.querySelector("input"); i.focus(); i.scrollIntoView({ block: "center", behavior: "smooth" }); } });
     card.querySelectorAll("[data-undo]").forEach(b => b.onclick = () => exAct(ex, b.dataset.undo, true));
     card.querySelectorAll("[data-alt]").forEach(b => b.onclick = () => { S.subEdit = null; setExMap("sub", ex.key, b.dataset.alt); });
     const pin = card.querySelector("[data-pic]"); if (pin) pin.onchange = () => { if (pin.files[0]) saveMachinePic(subOf(current(), ex.key), pin.files[0]); };
@@ -1082,7 +1085,18 @@ function openLB(ex, i) {
   tr.querySelectorAll(".zt").forEach(setupZoom);
   $("lbclose").focus();
 }
-function closeLB() { $("lb").hidden = true; document.body.style.overflow = ""; $("lbtrack").classList.remove("zoomed"); }
+// chiusura del visore: tasto "Chiudi" in basso e trascinamento verso il basso (se non è ingrandito)
+(() => {
+  const lb = $("lb"), tr = $("lbtrack"); if (!lb || !tr) return;
+  $("lbclose2").onclick = () => closeLB();
+  let y0 = null, x0 = 0, dy = 0, lock = null;
+  tr.addEventListener("touchstart", e => { if (e.touches.length !== 1 || tr.classList.contains("zoomed")) { y0 = null; return; } y0 = e.touches[0].clientY; x0 = e.touches[0].clientX; dy = 0; lock = null; }, { passive: true });
+  tr.addEventListener("touchmove", e => { if (y0 == null || e.touches.length !== 1 || tr.classList.contains("zoomed")) { y0 = null; tr.style.transform = ""; lb.style.background = ""; return; }
+    const t = e.touches[0]; if (!lock) { const ax = Math.abs(t.clientX - x0), ay = Math.abs(t.clientY - y0); if (ax < 6 && ay < 6) return; lock = ay > ax ? "y" : "x"; }
+    if (lock !== "y") return; dy = Math.max(0, t.clientY - y0); tr.style.transition = "none"; tr.style.transform = `translateY(${dy}px)`; lb.style.background = `rgba(5,7,9,${Math.max(0.35, 0.97 - dy / 500)})`; }, { passive: true });
+  tr.addEventListener("touchend", () => { if (y0 == null) return; tr.style.transition = ""; if (lock === "y" && dy > 110) closeLB(); tr.style.transform = ""; lb.style.background = ""; y0 = null; });
+})();
+function closeLB() { $("lbtrack").style.transform = ""; $("lb").style.background = ""; $("lb").hidden = true; document.body.style.overflow = ""; $("lbtrack").classList.remove("zoomed"); }
 $("lbclose").onclick = closeLB;
 function setupZoom(img) {
   const tr = $("lbtrack");
