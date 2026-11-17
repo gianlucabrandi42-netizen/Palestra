@@ -78,7 +78,10 @@ function dayUnits(d, s) {
 }
 const exSets = (s, k) => (s.ex && s.ex[k]) || [];
 const exHas = (s, k) => exSets(s, k).some(r => r && (r.kg != null || r.reps != null));
-function lastBefore(k) { const l = gymSessions(S.gym).filter(s => s.date < S.date && exHas(s, k)); return l[l.length - 1] || null; }
+// "Altra sede" (sessione.site, stringa = nome della sede; occasioni rare): macchine diverse → la seduta non fa da riferimento
+// per ultima volta/kg suggeriti/salto pesi e non entra in progressi e andamento. Conta nella settimana e nello storico.
+const isAway = s => !!s && s.site != null, home = s => !isAway(s);
+function lastBefore(k) { const l = gymSessions(S.gym).filter(s => s.date < S.date && exHas(s, k) && home(s)); return l[l.length - 1] || null; }
 const tnum = t => { const n = parseFloat(String(t)); return isFinite(n) ? n : null; };
 function allHit(sets, ex) { return ex.sets.every((st, i) => { const tn = tnum(st.t); if (tn == null) return true; return sets[i] && sets[i].reps != null && sets[i].reps >= tn; }); }
 function index(sets) { const k = sets.some(r => r && r.kg != null); let t = 0; for (const r of sets) { if (!r) continue; t += k ? (r.kg || 0) * (r.reps || 0) : (r.reps || 0); } return t; }
@@ -94,9 +97,9 @@ function condition(s) {
 }
 const isOffDay = s => condition(s).f < 1;
 // seduta normale precedente a "rs" per questo esercizio (per l'aumento serve 2 volte di fila a target e pulite)
-function prevRef(k, rs) { const l = gymSessions(S.gym).filter(s => s.date < rs.date && exHas(s, k) && !isOffDay(s) && !oooOff(s, k)); return l[l.length - 1] || null; }
+function prevRef(k, rs) { const l = gymSessions(S.gym).filter(s => s.date < rs.date && exHas(s, k) && home(s) && !isOffDay(s) && !oooOff(s, k)); return l[l.length - 1] || null; }
 // Riferimento per i suggerimenti: l'ultima seduta "normale" (salta fino a 2 giornate no o di rientro).
-function lastRef(k) { const l = gymSessions(S.gym).filter(s => s.date < S.date && exHas(s, k)); for (let i = l.length - 1; i >= Math.max(0, l.length - 3); i--) if (!isOffDay(l[i]) && !oooOff(l[i], k)) return l[i]; return l[l.length - 1] || null; }
+function lastRef(k) { const l = gymSessions(S.gym).filter(s => s.date < S.date && exHas(s, k) && home(s)); for (let i = l.length - 1; i >= Math.max(0, l.length - 3); i--) if (!isOffDay(l[i]) && !oooOff(l[i], k)) return l[i]; return l[l.length - 1] || null; }
 // ---------- esercizi fatti fuori ordine (macchina occupata) ----------
 // sessione.ord = ordine in cui hai iniziato gli esercizi (prima serie compilata). Un esercizio è "fuori ordine" se prima
 // di lui hai iniziato un esercizio che nella scheda viene dopo. Quel giorno, per quell'esercizio: valutazione tollerante,
@@ -148,7 +151,7 @@ function suggestKg(ls, hit, f, t, step) {
 const STEPS = [1, 2, 2.5, 5, 10];
 // stimato dai pesi già usati in questa palestra: la differenza più piccola tra due carichi diversi, agganciata ai salti tipici
 function stepAuto(key, gym) {
-  const ks = [...new Set(gymSessions(gym).flatMap(s => exSets(s, key).map(r => r && r.kg).filter(v => v != null && v > 0)))].sort((a, b) => a - b);
+  const ks = [...new Set(gymSessions(gym).filter(home).flatMap(s => exSets(s, key).map(r => r && r.kg).filter(v => v != null && v > 0)))].sort((a, b) => a - b);
   let m = null; for (let i = 1; i < ks.length; i++) { const d = ks[i] - ks[i - 1]; if (d >= 0.9 && (m == null || d < m)) m = d; }
   return m == null ? null : STEPS.reduce((best, x) => Math.abs(x - m) < Math.abs(best - m) ? x : best, STEPS[0]);
 }
@@ -222,7 +225,7 @@ function drawHeader(d, s, units, cur) {
   // va a capo solo DOPO un "·" (mai una riga che inizia con "·"): spazio non separabile prima di ogni puntino
   $("dtitle").textContent = `${d.id} · ${d.name}`.replace(/ · /g, "\u202F·\u2009"); // spazi sottili: compatto e simmetrico
   const r = s.readiness || "ok", when = S.date === todayISO() ? "oggi" : new Date(S.date + "T12:00").toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" });
-  $("dsub").textContent = `${left ? (left === 1 ? "manca 1 esercizio" : `mancano ${left} esercizi`) : "allenamento completato"} · ${when}${r !== "ok" ? " · " + READY[r].n : ""} ▾`;
+  $("dsub").textContent = `${left ? (left === 1 ? "manca 1 esercizio" : `mancano ${left} esercizi`) : "allenamento completato"} · ${when}${r !== "ok" ? " · " + READY[r].n : ""}${isAway(current()) ? " · 📍 " + (current().site || "altra sede") : ""} ▾`;
   const strip = $("strip");
   strip.innerHTML = units.map(u => { const f = execFrames(u.circ ? u.ex : u.ex)[0], c = u === cur;
     return `<button class="schip${u.done ? " d" : ""}${c ? " c" : ""}${u.started && !u.done ? " p" : ""}" data-k="${u.keys[0]}" aria-label="${esc(u.name)}${u.done ? ", fatto" : ""}">${f ? `<img src="${f.src}" alt="" loading="lazy">` : ""}<span>${u.done ? "✓ " : ""}${u.n}${c ? " " + esc(shortName(u.name)) : ""}</span></button>`; }).join("");
@@ -240,7 +243,7 @@ function openUnit(k) {
 function ensureRow(k, i) { let row = rowEl(k, i); if (row && row.classList.contains("exmini")) { S.exOpen.add(k); renderLog(); row = rowEl(k, i); } return row; }
 function persistPrefs() { D.prefs.gym = S.gym; D.prefs.day = S.day; save(); }
 
-function updateProgress() {
+function updateProgress() { renderWeek();
   const d = dayObj(), s = current();
   const units = dayUnitsList(d, s); drawHeader(d, s, units, currentUnit(d, s, units));
   d.ex.forEach(e => { const c = document.querySelector(`[data-ex="${e.key}"]`); if (c) c.classList.toggle("done", doneSets(s, e) === e.sets.length); });
@@ -273,8 +276,18 @@ function renderWeek() {
       <small>${x.done || x.part ? `${x.when} · ${esc(x.gym)}` : "da fare"}</small></button>`).join("")}</div>`;
   box.querySelectorAll("[data-d]").forEach(b => b.onclick = () => { if (b.dataset.d === S.day) return; S.day = b.dataset.d; S.open.clear(); S.exOpen.clear(); persistPrefs(); render(); scrollTo(0, 0); });
 }
+function renderSite() {
+  const box = $("site"); if (!box) return; const s = current();
+  box.innerHTML = isAway(s)
+    ? `<label class="sitein"><span>📍</span><input id="siteName" autocomplete="off" placeholder="Nome della sede (es. Green Theory Firenze)" value="${esc(s.site || "")}"></label><button class="chip" id="siteOff">Sede abituale</button>`
+    : `<button class="chip" id="siteOn">📍 Altra sede</button><span class="sitehint">solo per allenamenti in un'altra sede della catena</span>`;
+  const on = $("siteOn"), off = $("siteOff"), nm = $("siteName");
+  if (on) on.onclick = () => { setSess({ site: "" }); setTimeout(() => { const i = $("siteName"); if (i) i.focus(); }, 50); };
+  if (off) off.onclick = () => { const x = JSON.parse(JSON.stringify(current())); delete x.site; x.updatedAt = Date.now(); D.sessions[x.id] = x; save(); renderLog(); };
+  if (nm) nm.oninput = () => { const x = JSON.parse(JSON.stringify(current())); x.site = nm.value.trim(); x.updatedAt = Date.now(); D.sessions[x.id] = x; save(); renderConsole(); };
+}
 function renderLog() {
-  renderConsole(); renderWeek();
+  renderConsole(); renderWeek(); renderSite();
   const p = plan(), d = dayObj(), sess = current();
   // forma del giorno
   const cond = condition(sess);
@@ -321,7 +334,8 @@ function renderLog() {
     if (cg) pills += cg.last ? `<span class="pill circ">Circuito · recupero ${fmtSec(restFor(ex))} a fine giro</span>` : `<span class="pill circ">Circuito · subito il prossimo</span>`;
     const isCur = u === curU, manual = !isCur;
     const oi = oooInfo(sess, ex.key, S.date === todayISO()), prosp = oi && !oi.started;
-    const jc = oi && oi.off && !prosp ? { ...cond, ooo: true, why: [cond.why, "fuori ordine"].filter(Boolean).join(" + ") } : cond;
+    let jc = oi && oi.off && !prosp ? { ...cond, ooo: true, why: [cond.why, "fuori ordine"].filter(Boolean).join(" + ") } : cond;
+    if (isAway(sess)) { jc = { ...jc, ooo: true, why: [jc.why, "altra sede"].filter(Boolean).join(" + ") }; load = { c: "near", t: `📍 Altra sede: kg della tua palestra solo indicativi, macchine diverse. Non conta per i progressi.` }; }
     const fr = execFrames(ex);
     const card = document.createElement("article"); card.className = "ex" + (isCur ? " cur" : ""); card.dataset.ex = ex.key;
     const open = S.open.has(ex.key);
@@ -776,7 +790,7 @@ function renderProg() {
       const done = ss.filter(s => circCount(s, ex.circ) > 0), l = done[done.length - 1], row = document.createElement("div"); row.className = "pr";
       row.innerHTML = `<div><div class="n">Circuito ${esc(ex.circ)}</div><div class="s">${done.length ? `${done.length} sedute · ultima ${fmtDate(l.date)}: ${circCount(l, ex.circ)}/${ex.sets.length} giri` : "Nessun dato"}</div></div>`;
       box.appendChild(row); return; }
-    const all = ss.filter(s => exHas(s, ex.key)).map(s => ({ i: index(exSets(s, ex.key)), m: maxKg(exSets(s, ex.key)), hit: allHit(exSets(s, ex.key), ex), dirty: exSets(s, ex.key).filter(r => r && r.dirty).length, off: isOffDay(s) || oooOff(s, ex.key) }));
+    const all = ss.filter(s => exHas(s, ex.key)).map(s => ({ i: index(exSets(s, ex.key)), m: maxKg(exSets(s, ex.key)), hit: allHit(exSets(s, ex.key), ex), dirty: exSets(s, ex.key).filter(r => r && r.dirty).length, off: isOffDay(s) || oooOff(s, ex.key) || isAway(s) }));
     const pts = all.filter(x => !x.off), nOff = all.length - pts.length;
     let stat = "Nessun dato", pill = "";
     if (pts.length) {
@@ -811,7 +825,7 @@ function trendData(p, d, gym) {
   const weeks = [...new Set(ss.map(s => weekOf(p, s.date)))].filter(w => w >= 1).sort((a, b) => a - b);
   const exs = d.ex.filter((e, idx) => !isCircNoLog(d, idx)).map(e => {
     const byW = {};
-    for (const s of ss) { if (oooOff(s, e.key)) continue; const w = weekOf(p, s.date), b = bestSet(exSets(s, e.key), e.bw); if (b && (!byW[w] || b.v > byW[w].v)) byW[w] = b; }
+    for (const s of ss) { if (oooOff(s, e.key) || isAway(s)) continue; const w = weekOf(p, s.date), b = bestSet(exSets(s, e.key), e.bw); if (b && (!byW[w] || b.v > byW[w].v)) byW[w] = b; }
     const w0 = weeks.find(w => byW[w]);
     return { e, byW, base: w0 ? byW[w0].v : null };
   });
@@ -871,7 +885,7 @@ function renderHist() {
     const p = plans.find(x => x.id === s.plan), d = p && p.days.find(x => x.id === s.day), u = d ? dayUnits(d, s) : null;
     const dirty = Object.values(s.ex || {}).reduce((a, arr) => a + (arr || []).filter(r => r && r.dirty).length, 0);
     const wd = new Date(s.date + "T12:00").toLocaleDateString("it-IT", { weekday: "short", day: "2-digit", month: "2-digit" });
-    const info = [u ? `${u.done}/${u.tot} serie` : "", dirty ? `${dirty} ${dirty === 1 ? "sporca" : "sporche"}` : "", isOffDay(s) ? "giornata no" : "", p && p.id !== act.id ? p.name : ""].filter(Boolean).join(" · ");
+    const info = [u ? `${u.done}/${u.tot} serie` : "", dirty ? `${dirty} ${dirty === 1 ? "sporca" : "sporche"}` : "", isOffDay(s) ? "giornata no" : "", isAway(s) ? "📍 " + (s.site || "altra sede") : "", p && p.id !== act.id ? p.name : ""].filter(Boolean).join(" · ");
     const rows = d ? d.ex.map((e, idx) => {
       const g = isCircNoLog(d, idx); if (g) return idx === g.start && circCount(s, e.circ) ? `<li><b>Circuito ${esc(e.circ)}</b><span>${circCount(s, e.circ)}/${e.sets.length} giri</span></li>` : "";
       const sets = exSets(s, e.key).filter(r => r && (r.kg != null || r.reps != null)); if (!sets.length) return "";

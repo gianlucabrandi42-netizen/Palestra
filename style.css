@@ -680,3 +680,15 @@ html[data-theme] .gym button[aria-pressed="true"]::before{filter:drop-shadow(0 1
 .tipline{display:block;margin:0 14px 10px;font-size:13px;font-weight:600;line-height:1.45;color:var(--muted)}
 .tipline span{display:inline}
 .tipline span+span::before{margin:0 8px}
+/* altra sede */
+.site{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sitehint{font-size:11.5px;color:var(--muted)}
+.sitein{flex:1;min-width:0;display:flex;align-items:center;gap:6px;background:var(--raised);border:1px solid var(--accent);border-radius:12px;padding:0 10px;min-height:38px}
+.sitein input{flex:1;min-width:0;background:none;border:0;padding:0;min-height:36px;font-size:14px;font-weight:600;color:var(--ink)}
+.sitein input:focus{outline:none}
+/* consigli: ogni consiglio intero col suo pallino, righe centrate e simmetriche */
+.tipline{display:flex;flex-wrap:wrap;justify-content:center;gap:3px 16px;text-align:center}
+.tipline span{display:inline-flex;align-items:center;white-space:nowrap}
+.tipline span::before,.tipline span+span::before{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--accent);margin:0 7px 0 0;vertical-align:middle}
+/* riquadri della settimana: sfondo pieno, le foglie dei bordi restano dietro */
+.wk{background:var(--surface)}
