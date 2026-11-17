@@ -155,7 +155,7 @@ const mnames = l => [...new Set((l || []).map(x => MNAME[x] || x))].join(" · ")
 // ---------- render: allenamento ----------
 function renderConsole() {
   const gi = GYMS.findIndex(g => g.id === S.gym);
-  document.body.classList.toggle("g1", gi === 1);
+  document.body.classList.toggle("g1", gi === 1); setTheme();
   $("gyms").innerHTML = GYMS.map(g => `<button data-g="${g.id}" aria-pressed="${g.id === S.gym}" aria-label="${esc(g.name)}">${esc(g.short || g.name.split(" ")[0])}</button>`).join("");
   $("gyms").querySelectorAll("button").forEach(b => b.onclick = () => { S.gym = b.dataset.g; persistPrefs(); render(); });
   const p = plan(); dayObj();
@@ -199,7 +199,7 @@ const unitOpen = (u, cur) => u === cur || u.keys.some(k => S.exOpen.has(k));
 const shortName = n => n.length > 14 ? n.slice(0, 13).trim() + "." : n;
 function drawHeader(d, s, units, cur) {
   const tot = units.length, done = units.filter(x => x.done).length, left = tot - done, C = 2 * Math.PI * 18;
-  $("ring").innerHTML = `<svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" class="rb"/><circle cx="22" cy="22" r="18" class="rf" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - (tot ? done / tot : 0))).toFixed(1)}"/></svg><b>${left ? left : "✓"}</b>`;
+  $("ring").innerHTML = `<svg viewBox="0 0 44 44"><defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="s1"/><stop offset="1" class="s2"/></linearGradient></defs><circle cx="22" cy="22" r="18" class="rb"/><circle cx="22" cy="22" r="18" class="rf" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - (tot ? done / tot : 0))).toFixed(1)}"/></svg><b>${left ? left : "✓"}</b>`;
   $("ring").classList.toggle("all", !left && tot > 0);
   $("dtitle").textContent = `${d.id} · ${d.name}`;
   const r = s.readiness || "ok", when = S.date === todayISO() ? "oggi" : new Date(S.date + "T12:00").toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" });
@@ -278,7 +278,7 @@ function renderLog() {
         ${fr.length ? `<button class="exec thumb" data-zoom aria-label="Ingrandisci le immagini di ${esc(ex.name)}">
           ${fr.map(f => `<img src="${f.src}" alt="${esc(ex.name)} — ${esc(f.cap)}" class="${f.draw ? "draw" : ""}" loading="lazy">`).join("")}
           <span class="zoom"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></span></button>` : ""}
-        <div class="t"><div class="exk">${String(exN).padStart(2, "0")}${isCur ? " · Adesso" : ""} · Recupero ${fmtSec(restFor(ex))}</div>
+        <div class="t"><div class="exk">${exNum(exN)}${isCur ? " · Adesso" : ""} · Recupero ${fmtSec(restFor(ex))}</div>
           <h3 class="exname">${esc(ex.name)}</h3><div class="tec">${esc(ex.tec || "")}</div></div>
       </div>
       ${pills ? `<div class="pills">${pills}</div>` : ""}
@@ -399,8 +399,8 @@ function miniCard(u, s) {
   if (u.circ) { const c = circCount(s, e.circ); sub = u.done ? `${c}/${e.sets.length} giri` : `${e.sets.length} giri · ${e.sets[0].t} reps · recupero ${fmtSec(restFor(u.circ ? d_last(u) : e))}`; }
   else if (u.started || u.done) sub = (oooOff(s, e.key) ? "↕ " : "") + exSets(s, e.key).filter(r => r && (r.kg != null || r.reps != null)).map(r => `${r.kg != null ? fmt(r.kg) + "×" : ""}${r.reps ?? "–"}${r.dirty ? "~" : ""}`).join(" · ");
   else { const l = lastBefore(e.key), mk = l ? maxKg(exSets(l, e.key)) : null; sub = `${e.sets.length} serie · ${e.sets.map(x => x.t).join("-")}${mk != null ? ` · ultima ${fmt(mk)} kg` : ""}`; }
-  b.innerHTML = `<span class="mk">${u.done ? "✓" : String(u.n).padStart(2, "0")}</span>${f ? `<img src="${f.src}" alt="" loading="lazy">` : ""}
-    <span class="t"><b>${u.done ? String(u.n).padStart(2, "0") + " · " : ""}${esc(u.name)}</b><small>${esc(sub)}</small></span><span class="chev">›</span>`;
+  b.innerHTML = `<span class="mk">${u.done ? "✓" : exNum(u.n)}</span>${f ? `<img src="${f.src}" alt="" loading="lazy">` : ""}
+    <span class="t"><b>${u.done ? exNum(u.n) + " · " : ""}${esc(u.name)}</b><small>${esc(sub)}</small></span><span class="chev">›</span>`;
   b.onclick = () => openUnit(u.keys[0]);
   return b;
 }
@@ -419,7 +419,7 @@ function circCard(d, g, n, isCur) {
   const mu = { p: [...new Set(mem.flatMap(e => (e.m && e.m.p) || []))], s: [...new Set(mem.flatMap(e => (e.m && e.m.s) || []))] };
   const card = document.createElement("article"); card.className = "ex circ-card" + (cnt >= giri ? " done" : ""); card.dataset.circ = c; card.dataset.keys = mem.map(e => e.key).join(" ");
   card.innerHTML = `
-    <div class="exhead"><div class="num">${String(n).padStart(2, "0")}</div>
+    <div class="exhead"><div class="num">${exNum(n)}</div>
       <div>${isCur ? `<div class="exk">Adesso</div>` : ""}<h3 class="exname">Circuito ${esc(c)}</h3><div class="tec">${giri} giri: ${mem.map(e => esc(e.name)).join(" → ")}, ${esc(t)} reps ciascuno senza pausa. ${fmtSec(rest)} di recupero dopo ogni giro.</div></div>
       <div class="mini" aria-hidden="true">${bodySVG(mu)}</div></div>
     <ol class="circlist">${mem.map((e, i) => { const f = execFrames(e)[0]; return `<li>
@@ -649,11 +649,20 @@ function setupZoom(img) {
   img.addEventListener("wheel", e => { e.preventDefault(); zoomAt(e.clientX, e.clientY, sc * (e.deltaY < 0 ? 1.2 : 1 / 1.2)); }, { passive: false });
 }
 
+// numero dell'esercizio: a Sparta in numeri romani (I, II, III…), altrove 01, 02…
+const ROM = [["X", 10], ["IX", 9], ["V", 5], ["IV", 4], ["I", 1]];
+function exNum(n) { if (document.documentElement.dataset.theme !== "sparta") return String(n).padStart(2, "0"); let r = ""; for (const [k, v] of ROM) while (n >= v) { r += k; n -= v; } return r; }
+// grafica della palestra scelta (PALESTRE[].theme in schede.js → html[data-theme] in style.css)
+function setTheme() {
+  const t = (GYMS.find(g => g.id === S.gym) || {}).theme || ""; if (document.documentElement.dataset.theme === t) return;
+  document.documentElement.dataset.theme = t;
+  const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() || "#0B0E12";
+}
 // ---------- progressi ----------
 function renderProg() {
   const p = plan(); S.pday = S.pday || S.day;
   const d = p.days.find(x => x.id === S.pday) || p.days[0];
-  document.body.classList.toggle("g1", GYMS.findIndex(g => g.id === S.gym) === 1);
+  document.body.classList.toggle("g1", GYMS.findIndex(g => g.id === S.gym) === 1); setTheme();
   $("pk").textContent = `${GYMS.find(g => g.id === S.gym).name} · ${p.name}`;
   $("pdays").innerHTML = p.days.map(x => `<button data-d="${x.id}" aria-pressed="${x.id === d.id}"><b>${esc(x.id)}</b><small>${esc(x.name)}</small></button>`).join("");
   $("pdays").querySelectorAll("button").forEach(b => b.onclick = () => { S.pday = b.dataset.d; renderProg(); });
@@ -718,7 +727,10 @@ function trendChart(weeks, pcts) {
   const X = i => L + (weeks.length > 1 ? i * (W - L - R) / (weeks.length - 1) : (W - L - R) / 2), Y = v => T + (mx - v) / span * (H - T - B);
   const idx = w => weeks.indexOf(w);
   const path = pts.map((x, k) => `${k ? "L" : "M"}${X(idx(x.w)).toFixed(1)},${Y(x.v).toFixed(1)}`).join("");
+  const area = pts.length > 1 ? `${path}L${X(idx(pts[pts.length - 1].w)).toFixed(1)},${(H - B).toFixed(1)}L${X(idx(pts[0].w)).toFixed(1)},${(H - B).toFixed(1)}Z` : "";
   return `<svg class="tchart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Miglioramento per settimana">
+    <defs><linearGradient id="ta" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="a1"/><stop offset="1" class="a2"/></linearGradient></defs>
+    ${area ? `<path class="ar" d="${area}"/>` : ""}
     <line class="z" x1="${L}" x2="${W - R}" y1="${Y(0)}" y2="${Y(0)}"/><text class="ax" x="${L - 6}" y="${Y(0) + 4}" text-anchor="end">0%</text>
     ${weeks.map((w, i) => `<text class="ax" x="${X(i)}" y="${H - 8}" text-anchor="middle">S${w}</text>`).join("")}
     ${pts.length > 1 ? `<path class="l" d="${path}"/>` : ""}

@@ -432,3 +432,81 @@ html.standalone .cin{padding-top:36px}
 .ooo.ok b{color:var(--muted)}
 .tsum .tclean{border-top:1px solid var(--line);padding-top:10px;margin-top:4px}
 .tsum .tclean b{font-size:28px}
+
+/* ================= TEMI PALESTRA (html[data-theme], da PALESTRE[].theme in schede.js) =================
+   Base neutra (grigio quasi nero, come il tema standard): il colore della palestra sta solo nei dettagli. */
+.ring .s1{stop-color:var(--accent)} .ring .s2{stop-color:var(--accent)}
+.tchart .a1{stop-color:var(--accent);stop-opacity:.28} .tchart .a2{stop-color:var(--accent);stop-opacity:0}
+.tchart .ar{fill:url(#ta)}
+html[data-theme] body{background:transparent}
+html[data-theme] .console{overflow:hidden}
+html[data-theme] .console::before,html[data-theme] .console::after{content:"";position:absolute;pointer-events:none}
+html[data-theme] .cin{position:relative;z-index:1}
+html[data-theme] body::after{content:"";position:fixed;z-index:-1;pointer-events:none}
+html[data-theme] .ring .rf{stroke:url(#rg)}
+html[data-theme] .ex{position:relative}
+html[data-theme] .ex.cur{box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 35%,transparent),0 18px 40px -22px color-mix(in srgb,var(--accent) 70%,transparent)}
+html[data-theme] .btn.primary,html[data-theme] .tb.go,html[data-theme] .gym button[aria-pressed="true"]{background:var(--grad);border-color:transparent;box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 4px 14px -6px var(--accent)}
+html[data-theme] .tabbar button[aria-current="page"] svg{background:color-mix(in srgb,var(--accent) 18%,transparent);border-radius:10px;padding:3px 10px;width:44px;height:28px;margin-top:-3px}
+html[data-theme] .gym button{display:inline-flex;align-items:center;gap:5px}
+html[data-theme] .gym button::before{content:"";width:14px;height:14px;flex:none;background:center/contain no-repeat}
+html[data-theme] .gym button[data-g="PA"]::before{background-image:url(img/theme/gt-leaf.svg)}
+html[data-theme] .gym button[data-g="PB"]::before{background-image:url(img/theme/sp-helmet.svg)}
+html[data-theme] .exmini.done .mk{border:0;background:var(--done) center/contain no-repeat;color:transparent;width:34px;height:34px}
+
+/* --- Green Theory: verde bosco, felci e monstera --- */
+html[data-theme="green"]{
+  --bg:#0B0D0C; --surface:#141716; --raised:#1A1E1C; --ink:#EEF3F0; --muted:#919A95; --line:#262C29; --chip:#1E2321; --body:#2C3430;
+  --a1:#2E9C5A; --a2:#2E9C5A; --accent:#2E9C5A; --on-accent:#F2FFF6; --leaf:#43B873; --ok:#5FD49A; --ok-bg:#103022;
+  --grad:linear-gradient(160deg,#3AB46B,#1F7A45); --done:url(img/theme/gt-done.svg);
+}
+html[data-theme="green"] body.g1{--accent:#2E9C5A}
+html[data-theme="green"] .ring .s1{stop-color:#7EDB8F} html[data-theme="green"] .ring .s2{stop-color:#1F8A4C}
+html[data-theme="green"] .console{background:var(--surface)}
+html[data-theme="green"] .console::before{inset:0;background:url(img/theme/gt-leaves.svg) top center/max(100%,430px) auto no-repeat;opacity:.5}
+html[data-theme="green"] .console::after{left:0;right:0;bottom:0;height:1px;background:linear-gradient(90deg,transparent,#2E9C5A,transparent)}
+html[data-theme="green"] body::after{right:-40px;bottom:40px;width:270px;height:310px;background:url(img/theme/gt-corner.svg) bottom right/contain no-repeat;opacity:.28}
+html[data-theme="green"] .num{color:var(--leaf);font-style:normal}
+html[data-theme="green"] .exk,html[data-theme="green"] .hero .k,html[data-theme="green"] .dsel[aria-expanded="true"] small,html[data-theme="green"] .more,html[data-theme="green"] .tabbar button[aria-current="page"]{color:var(--leaf)}
+html[data-theme="green"] h2::before,html[data-theme="green"] .hero .k::before{content:"";display:inline-block;width:.95em;height:.95em;margin-right:7px;vertical-align:-.12em;background:url(img/theme/gt-leaf.svg) center/contain no-repeat}
+html[data-theme="green"] .hero{position:relative}
+html[data-theme="green"] .hero::after{content:"";position:absolute;right:-24px;top:-6px;width:150px;height:120px;background:url(img/theme/gt-leaves.svg) top right/430px auto no-repeat;opacity:.5;pointer-events:none}
+html[data-theme="green"] .ex.cur::before{content:"";position:absolute;right:-30px;top:-26px;width:150px;height:150px;background:url(img/theme/gt-corner.svg) center/contain no-repeat;opacity:.13;transform:rotate(180deg);pointer-events:none}
+html[data-theme="green"] .ex.cur>*{position:relative}
+
+/* --- Sparta 2.0: viola imperiale, bronzo, greca, elmo corinzio e alloro --- */
+html[data-theme="sparta"]{
+  --bg:#0C0B0E; --surface:#161419; --raised:#1D1A21; --ink:#F3F1F6; --muted:#9E99A6; --line:#2B2731; --chip:#221F27; --body:#34303B;
+  --a1:#B07CFF; --a2:#B07CFF; --accent:#B07CFF; --on-accent:#FFFFFF; --gold:#D6B06A;
+  --grad:linear-gradient(160deg,#B98AFF,#7440D0); --done:url(img/theme/sp-laurel.svg);
+  --display:Palatino,"Palatino Linotype","TeX Gyre Pagella","Book Antiqua",Georgia,serif;
+}
+html[data-theme="sparta"] body.g1{--accent:#B07CFF}
+html[data-theme="sparta"] .ring .s1{stop-color:#E9C77E} html[data-theme="sparta"] .ring .s2{stop-color:#9A5CFF}
+html[data-theme="sparta"] .console{background:var(--surface)}
+html[data-theme="sparta"] .console::after{left:0;right:0;bottom:0;height:9px;background:url(img/theme/sp-meander.svg) left bottom/18px 9px repeat-x;opacity:.75}
+html[data-theme="sparta"] .cin{padding-bottom:16px}
+html[data-theme="sparta"] body::after{right:-30px;bottom:70px;width:230px;height:253px;background:url(img/theme/sp-helmet.svg) center/contain no-repeat;opacity:.08}
+html[data-theme="sparta"] h2,html[data-theme="sparta"] .hero h1{font-family:var(--display);letter-spacing:.06em;text-transform:uppercase}
+html[data-theme="sparta"] .dsel b{font-family:var(--display);font-size:16px;font-weight:700;letter-spacing:.01em}
+html[data-theme="sparta"] h2{font-weight:700;font-size:19px;color:var(--gold)}
+html[data-theme="sparta"] h2::after{content:"";display:block;width:56px;height:6px;margin-top:5px;background:url(img/theme/sp-meander.svg) left/12px 6px repeat-x;opacity:.8}
+html[data-theme="sparta"] .hero h1{font-weight:700;font-size:34px}
+html[data-theme="sparta"] .hero .k,html[data-theme="sparta"] .exk{color:var(--gold)}
+html[data-theme="sparta"] .hero{position:relative}
+html[data-theme="sparta"] .hero::after{content:"";position:absolute;right:0;top:4px;width:74px;height:82px;background:url(img/theme/sp-helmet.svg) center/contain no-repeat;pointer-events:none}
+html[data-theme="sparta"] .num,html[data-theme="sparta"] .exmini .mk{font-family:var(--display);font-style:normal;font-weight:700;color:var(--gold);letter-spacing:.02em}
+html[data-theme="sparta"] .num{font-size:24px;min-width:36px}
+html[data-theme="sparta"] .exmini .mk{font-size:15px;width:auto;min-width:30px}
+html[data-theme="sparta"] .ring b{font-style:normal;font-family:var(--display)}
+html[data-theme="sparta"] .ex.cur::before{content:"";position:absolute;left:0;right:0;top:0;height:7px;background:url(img/theme/sp-meander.svg) left top/14px 7px repeat-x;opacity:.7;pointer-events:none}
+html[data-theme="sparta"] .ex:not(.cur){box-shadow:inset 0 1px 0 #D6B06A26}
+html[data-theme] .gym button[aria-pressed="false"]{font-size:0;gap:0;padding-left:9px;padding-right:9px}
+html[data-theme] .gym button[aria-pressed="false"]::before{width:17px;height:17px;opacity:.75}
+/* Green Theory: felci e monstere lungo i bordi, stesso stile della barra in alto. Stanno DIETRO le schede
+   (si vedono solo ai margini e tra una scheda e l'altra) e scorrono con la pagina. */
+.vines{display:none}
+html[data-theme="green"] .vines{display:block;position:fixed;inset:0;z-index:-1;pointer-events:none}
+html[data-theme="green"] .vines::before,html[data-theme="green"] .vines::after{content:"";position:absolute;top:0;bottom:0;width:120px;background:url(img/theme/gt-side.svg) left top/120px auto repeat-y;opacity:.45}
+html[data-theme="green"] .vines::before{left:0}
+html[data-theme="green"] .vines::after{right:0;transform:scaleX(-1);background-position:left 380px}

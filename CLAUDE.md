@@ -10,7 +10,7 @@
 - **Indirizzo:** https://gianlucabrandi42-netizen.github.io/Palestra/ (P maiuscola). La apro dall'**icona sulla Home** del telefono: i dati stanno lì, non nel browser.
 - **Repository GitHub:** `gianlucabrandi42-netizen/Palestra` (pubblico, branch `main`, GitHub Pages da `main` / root). Sullo stesso account c'è anche il repo `brandilab`: **non va toccato**. La Claude GitHub App è autorizzata solo su `Palestra`.
 - **Funziona senza abbonamento Claude:** sito statico + dati salvati **solo sul telefono** (localStorage, chiave `palestra-v1`), con **Backup/Ripristino** su file JSON ed esportazione CSV per Excel. Funziona anche offline (service worker).
-- **Tema scuro.** Colore accento per palestra: blu = Green Theory, arancio = Sparta.
+- **Tema scuro**, con una grafica per palestra: Green Theory = verde bosco con felci e monstere, Sparta = viola e bronzo con greca, elmo e alloro (vedi "Temi delle palestre").
 
 ### File del repository
 | File | Cosa contiene |
@@ -59,6 +59,11 @@ Muscoli disponibili per `m`: CHEST, FRONT_DELTOIDS, BACK_DELTOIDS, TRICEPS, BICE
   - **Scheda aperta:** miniatura animata 92 px (tocco = immagini grandi), "02 · Adesso · Recupero 1:30", nome, tecnica, un solo pill sul carico, consigli flash come etichette, Regolazioni, serie con colonna **~** (serie sporca) e messaggio sotto, riga della **prossima serie evidenziata**; in fondo "⚡ Usa kg suggeriti" ed "Esecuzione" (galleria, muscoli, esecuzione/errori).
   - Il menu "Backup" ora si chiama **Impostazioni** (backup, timer, palestre).
   - **iOS 26 sfuma la fascia sotto la barra di stato** nelle app aperte dalla Home (status bar `black-translucent`): con l'app aperta dalla Home (`display-mode: standalone` o classe `html.standalone`, impostata da uno script in `index.html` con `navigator.standalone`) la barra in alto ha 36px di spazio vuoto in cima (`.cin{padding-top:36px}`) così titolo e cerchio non finiscono sfocati. Se serve più o meno spazio, si regola lì. Non cambiare `apple-mobile-web-app-status-bar-style`: iOS lo legge all'aggiunta alla Home e reinstallare l'icona cancellerebbe i dati.
+- **Temi delle palestre** (scelti dall'utente il 17/11/2026, dopo 5 anteprime): `PALESTRE[].theme` in `schede.js` ("green" / "sparta") → `html[data-theme]` (funzione `setTheme()` in `app.js`), stili nel blocco "TEMI PALESTRA" in fondo a `style.css`, disegni originali in `img/theme/` (nessun logo delle palestre). **Base neutra** grigio quasi nero (l'utente: "troppo verde o viola" con gli sfondi colorati): il colore sta solo nei dettagli.
+  - **Green Theory:** verde bosco scuro (`--accent:#2E9C5A`, testi `--leaf:#43B873`; il lime era troppo chiaro); felci e monstere che scendono dagli angoli della barra in alto (`gt-leaves.svg`); **ai bordi** felci e monstere nello stesso stile (`gt-side.svg`, in `.vines` dietro le schede, opacità .45: una cornice di tralci davanti alle schede era "troppo invadente"); monstera tenue in basso a destra (`gt-corner.svg`); foglia davanti ai titoli; esercizio fatto = foglia con spunta (`gt-done.svg`).
+  - **Sparta 2.0:** viola `#B07CFF` + bronzo `--gold:#D6B06A`; titoli in Palatino (già su iPhone, va offline); greca sotto la barra in alto, sopra la scheda "adesso" e sotto i titoli (`sp-meander.svg`); elmo corinzio frontale con cresta viola (`sp-helmet.svg`) in Progressi e tenue sullo sfondo; **numeri romani** per gli esercizi (`exNum()`); esercizio fatto = corona d'alloro con spunta (`sp-laurel.svg`); cerchio sfumato bronzo → viola.
+  - Comuni: pulsanti con sfumatura (`--grad`), scheda "adesso" con bagliore, menu in basso con la sezione attiva su sfondo colorato, selettore palestre con icone (la palestra non attiva mostra solo l'icona), grafico dell'andamento con area sfumata.
+  - I file di `img/theme/` sono nell'elenco `FILES` di `sw.js`.
 - **Allenamento:** si scelgono palestra, giorno e data. Per ogni esercizio:
   - animazione del movimento (foto inizio/fine alternate), con zoom a pizzico o doppio tocco;
   - nome, tecnica esatta e consigli flash;

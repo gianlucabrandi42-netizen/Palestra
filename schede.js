@@ -24,7 +24,7 @@
 //    ref    = kg di riferimento della scheda precedente (facoltativo)
 //    setup  = false per nascondere il campo "Regolazioni"
 // =====================================================================
-window.PALESTRE = [{"id": "PA", "name": "Green Theory"}, {"id": "PB", "name": "Sparta 2.0"}];
+window.PALESTRE = [{"id": "PA", "name": "Green Theory", "theme": "green"}, {"id": "PB", "name": "Sparta 2.0", "theme": "sparta"}]; // theme: grafica della palestra (style.css, "TEMI PALESTRA")
 
 window.SCHEDA_ATTIVA = "p2026-11";
 
