@@ -248,8 +248,33 @@ function updateProgress() {
   checkMissing();
 }
 
+// ---------- questa settimana: quali giorni della scheda hai fatto (tutte e due le palestre) e quali mancano ----------
+const WD = ["dom", "lun", "mar", "mer", "gio", "ven", "sab"];
+function weekStart(iso) { const t = new Date(iso + "T12:00"); t.setDate(t.getDate() - ((t.getDay() + 6) % 7)); return t.toISOString().slice(0, 10); }
+function weekStatus() {
+  const p = plan(), today = todayISO(), mon = weekStart(today), sun = (() => { const t = new Date(mon + "T12:00"); t.setDate(t.getDate() + 6); return t.toISOString().slice(0, 10); })();
+  const ss = Object.values(D.sessions).filter(s => s.plan === p.id && s.date >= mon && s.date <= sun && hasData(s));
+  return p.days.map(d => {
+    let best = null;
+    for (const s of ss.filter(s => s.day === d.id)) {
+      const us = dayUnitsList(d, s), f = us.length ? us.filter(u => u.done).length / us.length : 0;
+      if (!best || f > best.f || (f === best.f && s.date > best.s.date)) best = { s, f };
+    }
+    const g = best && GYMS.find(x => x.id === best.s.gym);
+    return { d, done: !!best && best.f >= 0.75, part: !!best && best.f < 0.75, when: best ? (best.s.date === today ? "oggi" : WD[new Date(best.s.date + "T12:00").getDay()]) : "", gym: g ? (g.short || g.name.split(" ")[0]) : "" };
+  });
+}
+function renderWeek() {
+  const box = $("week"); if (!box) return;
+  const w = weekStatus(), left = w.filter(x => !x.done).length;
+  box.innerHTML = `<div class="wk-h"><span>Questa settimana</span><b>${left ? `${left === 1 ? "manca" : "mancano"} ${left}` : "completa ✓"}</b></div>
+    <div class="wk-r">${w.map(x => `<button class="wk ${x.done ? "done" : x.part ? "part" : ""}${x.d.id === S.day ? " sel" : ""}" data-d="${x.d.id}">
+      <span class="wk-i">${x.done ? "✓" : x.part ? "◐" : ""}</span><b>${esc(x.d.id)}</b>
+      <small>${x.done || x.part ? `${x.when} · ${esc(x.gym)}` : "da fare"}</small></button>`).join("")}</div>`;
+  box.querySelectorAll("[data-d]").forEach(b => b.onclick = () => { if (b.dataset.d === S.day) return; S.day = b.dataset.d; S.open.clear(); S.exOpen.clear(); persistPrefs(); render(); scrollTo(0, 0); });
+}
 function renderLog() {
-  renderConsole();
+  renderConsole(); renderWeek();
   const p = plan(), d = dayObj(), sess = current();
   // forma del giorno
   const cond = condition(sess);
