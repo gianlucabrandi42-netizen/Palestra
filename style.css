@@ -499,7 +499,7 @@ html[data-theme="sparta"] .num,html[data-theme="sparta"] .exmini .mk{font-family
 html[data-theme="sparta"] .num{font-size:24px;min-width:36px}
 html[data-theme="sparta"] .exmini .mk{font-size:15px;width:auto;min-width:30px}
 html[data-theme="sparta"] .ring b{font-style:normal;font-family:var(--display)}
-html[data-theme="sparta"] .ex.cur::before{content:"";position:absolute;left:0;right:0;top:0;height:7px;background:url(img/theme/sp-meander.svg) left top/14px 7px repeat-x;opacity:.7;pointer-events:none}
+
 html[data-theme="sparta"] .ex:not(.cur){box-shadow:inset 0 1px 0 #D6B06A26}
 html[data-theme] .gym button[aria-pressed="false"]{font-size:0;gap:0;padding-left:9px;padding-right:9px}
 html[data-theme] .gym button[aria-pressed="false"]::before{width:17px;height:17px;opacity:.75}
@@ -537,3 +537,9 @@ html[data-theme] .gym button[aria-pressed="false"]::before{width:20px;height:20p
 /* barretta accanto alle serie normali (S1, S2…): colore della palestra invece dell'azzurro */
 html[data-theme="green"]{--t-std:#2E9C5A}
 html[data-theme="sparta"]{--t-std:#C19A52}
+
+/* bordino in cima a ogni scheda aperta (esercizio o circuito): greca a Sparta, fregio di foglie alla Green Theory */
+html[data-theme] .ex::after{content:"";position:absolute;left:0;right:0;top:0;height:var(--fh);background:var(--frieze) left top/var(--fw) var(--fh) repeat-x;opacity:.8;pointer-events:none;z-index:2}
+html[data-theme="sparta"]{--frieze:url(img/theme/sp-frieze.svg);--fw:14px;--fh:7px}
+html[data-theme="green"]{--frieze:url(img/theme/gt-frieze.svg);--fw:25px;--fh:10px}
+html[data-theme] .exhead{padding-top:18px}
