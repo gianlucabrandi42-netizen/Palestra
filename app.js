@@ -137,15 +137,35 @@ const allClean = sets => !sets.some(r => r && r.dirty);
 // Aumento = un salto (scelta dell'utente: si sale subito e si accettano 1-2 reps in meno). Riduzioni (giornata no,
 // rientro, serie sporca sotto target −5%) = peso disponibile più vicino VERSO IL BASSO. Senza salto noto: +2,5% / 0,5 kg.
 // Regola dell'utente (17/11/2026): OGNI serie fatta pulita e a target (o oltre) sale di un salto già la volta dopo.
-function setUp(ls, t) { return !!ls && ls.kg != null && t != null && ls.reps != null && ls.reps >= t && !ls.dirty; }
-function suggestKg(ls, hit, f, t, step) {
+// Sensazione della serie (17/11/2026): r.eff = "easy" (Facile, 2+ reps in canna) | "hard" (Al limite, pulita ma 0 in canna) | assente = Giusta.
+// Al limite a target → stesso carico (consolidi). Facile a target due volte di fila → due salti.
+function setUp(ls, t) { return !!ls && ls.kg != null && t != null && ls.reps != null && ls.reps >= t && !ls.dirty && ls.eff !== "hard"; }
+const atLimit = (ls, t) => !!ls && !ls.dirty && ls.eff === "hard" && t != null && ls.reps != null && ls.reps >= t;
+const easy2 = (ls, pl, t) => setUp(ls, t) && ls.eff === "easy" && setUp(pl, t) && pl.eff === "easy";
+function suggestKg(ls, hit, f, t, step, n = 1) {
   if (!ls || ls.kg == null) return null; const b = ls.kg; let k = b;
   if (ls.dirty && t != null && ls.reps != null && ls.reps < t) k = b * 0.95;
-  else if (setUp(ls, t) && f >= 1) k = step ? b + step : Math.max(b * 1.025, b + 1);
+  else if (setUp(ls, t) && f >= 1) k = step ? b + step * n : Math.max(b * (1 + 0.025 * n), b + n);
   k *= f;
   if (!step) return roundKg(k);
   if (k >= b - 1e-9) return roundKg(b + Math.round((k - b) / step) * step);
   const d = roundKg(b - Math.ceil((b - k) / step - 1e-9) * step); return d > 0 ? d : b;
+}
+// Doppia progressione (17/11/2026): quando il salto è troppo pesante (≥10% del carico, es. manubri 14→16) o
+// l'ultimo tentativo col peso nuovo è finito sotto il 60% delle reps, si resta (o si torna) al peso di prima e si
+// aggiungono reps (+1 a seduta, fino a target+2); a target+2 pulite si riprova il salto. Restituisce { kg, reps, why }.
+function advise(r, pl, t, step, f, n = 1) {
+  if (!r || r.kg == null) return null;
+  if (f >= 1 && t != null && r.reps != null) {
+    if (pl && pl.kg != null && pl.kg < r.kg && r.reps < t * 0.6)
+      return { kg: pl.kg, reps: Math.min(t + 2, Math.max(t, pl.reps || t) + 1), why: "Il peso nuovo era troppo: torna a quello di prima e aggiungi reps", mode: "reps" };
+    const rebuild = !!pl && pl.kg != null && pl.kg > r.kg && pl.reps != null && pl.reps < t * 0.6, big = !!step && step / r.kg >= 0.1;
+    if ((big || rebuild) && !r.dirty && r.reps >= t) {
+      if (r.reps >= t + 2 && r.eff !== "hard") return { kg: roundKg(r.kg + step), reps: t, why: "Reps in più fatte: prova il peso nuovo", mode: "jump" };
+      return { kg: r.kg, reps: Math.min(t + 2, r.reps + 1), why: big ? "Salto pesante: aggiungi una rep a seduta, con 2 in più pulite sali" : "Prima più reps, poi riprova il peso nuovo", mode: "reps" };
+    }
+  }
+  return { kg: suggestKg(r, null, f, t, step, n), reps: t };
 }
 // ---------- salto dei pesi ----------
 const STEPS = [1, 2, 2.5, 5, 10];
@@ -225,7 +245,7 @@ function drawHeader(d, s, units, cur) {
   // va a capo solo DOPO un "·" (mai una riga che inizia con "·"): spazio non separabile prima di ogni puntino
   $("dtitle").textContent = `${d.id} · ${d.name}`.replace(/ · /g, "\u202F·\u2009"); // spazi sottili: compatto e simmetrico
   const r = s.readiness || "ok", when = S.date === todayISO() ? "oggi" : new Date(S.date + "T12:00").toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" });
-  $("dsub").textContent = `${left ? (left === 1 ? "manca 1 esercizio" : `mancano ${left} esercizi`) : "allenamento completato"} · ${when}${r !== "ok" ? " · " + READY[r].n : ""}${isAway(current()) ? " · 📍 " + (current().site || "altra sede") : ""}${durTxt(s, !left) ? " · ⏱ " + durTxt(s, !left) : ""} ▾`;
+  $("dsub").textContent = `${left ? (left === 1 ? "manca 1 esercizio" : `mancano ${left} esercizi`) : "allenamento completato"} · ${when}${r !== "ok" ? " · " + READY[r].n : ""}${isAway(current()) ? " · 📍 " + (current().site || "altra sede") : ""}${durTxt(s, !left) ? " · ⏱ " + durTxt(s, !left) : ""} ▾`.replace(/ · oggi(?= · ⏱)/, "");
   const strip = $("strip");
   strip.innerHTML = units.map(u => { const f = execFrames(u.circ ? u.ex : u.ex)[0], c = u === cur;
     return `<button class="schip${u.done ? " d" : ""}${c ? " c" : ""}${u.started && !u.done ? " p" : ""}" data-k="${u.keys[0]}" aria-label="${esc(u.name)}${u.done ? ", fatto" : ""}">${f ? `<img src="${f.src}" alt="" loading="lazy">` : ""}<span>${u.done ? "✓ " : ""}${u.n}${c ? " " + esc(shortName(u.name)) : ""}</span></button>`; }).join("");
@@ -267,10 +287,20 @@ function weekStatus() {
     return { d, done: !!best && best.f >= 0.75, part: !!best && best.f < 0.75, when: best ? (best.s.date === today ? "oggi" : WD[new Date(best.s.date + "T12:00").getDay()]) : "", gym: g ? (g.short || g.name.split(" ")[0]) : "" };
   });
 }
+// da quanto tempo fai la scheda attiva: cerchio che si riempie in 4 settimane (il PT la cambia circa ogni mese)
+const PLAN_DAYS = 28;
+function planAge() {
+  const p = plan(); if (!p || !p.from) return "";
+  const n = Math.max(1, Math.round((new Date(todayISO() + "T12:00") - new Date(p.from + "T12:00")) / 864e5) + 1), wk = Math.ceil(n / 7), over = n > PLAN_DAYS;
+  const C = 2 * Math.PI * 16, f = Math.min(1, n / PLAN_DAYS);
+  return `<div class="pl-age${over ? " over" : ""}" aria-label="Scheda in uso da ${n} giorni">
+    <svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" class="tr"/><circle cx="20" cy="20" r="16" class="pg" stroke-dasharray="${(C * f).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 20 20)"/><text x="20" y="24.5" text-anchor="middle">${n}</text></svg>
+    <div><span>Scheda da ${n === 1 ? "1 giorno" : n + " giorni"}</span><small>${over ? "4 settimane passate: chiedi la nuova al PT" : `settimana ${wk} di ${PLAN_DAYS / 7}`}</small></div></div>`;
+}
 function renderWeek() {
   const box = $("week"); if (!box) return;
   const w = weekStatus(), left = w.filter(x => !x.done).length;
-  box.innerHTML = `<div class="wk-h"><span>Questa settimana</span><b>${left ? `${left === 1 ? "manca" : "mancano"} ${left}` : "completa ✓"}</b></div>
+  box.innerHTML = `<div class="wk-h">${planAge()}<div class="wk-s"><span>Questa settimana</span><b>${left ? `${left === 1 ? "manca" : "mancano"} ${left}` : "completa ✓"}</b></div></div>
     <div class="wk-r" role="group" aria-label="Giorno">${w.map(x => `<button class="wk ${x.done ? "done" : x.part ? "part" : ""}${x.d.id === S.day ? " sel" : ""}" data-d="${x.d.id}" aria-pressed="${x.d.id === S.day}">
       <span class="wk-i">${x.done ? "✓" : x.part ? "◐" : ""}</span><b>${esc(x.d.id)}</b>
       <em>${esc(x.d.name)}</em>
@@ -287,6 +317,37 @@ function renderSite() {
   if (off) off.onclick = () => { const x = JSON.parse(JSON.stringify(current())); delete x.site; x.updatedAt = Date.now(); D.sessions[x.id] = x; save(); renderLog(); };
   if (nm) nm.oninput = () => { const x = JSON.parse(JSON.stringify(current())); x.site = nm.value.trim(); x.updatedAt = Date.now(); D.sessions[x.id] = x; save(); renderConsole(); };
 }
+// ---------- sensazione della serie: striscia "Com'era?" sopra il timer ----------
+const FEEL = { easy: { n: "Facile", b: 1 }, ok: { n: "Giusta", b: 2 }, hard: { n: "Al limite", b: 3 }, dirty: { n: "Sporca" } };
+const feelOf = r => !r ? "ok" : r.dirty ? "dirty" : r.eff === "easy" ? "easy" : r.eff === "hard" ? "hard" : "ok";
+const feelIcon = f => f === "dirty" ? `<svg viewBox="0 0 18 14" class="fi"><path d="M2 8.5c2-3.4 4.2-3.4 7 0s5 3.4 7 0" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>`
+  : `<svg viewBox="0 0 18 14" class="fi">${[0, 1, 2].map(j => `<rect x="${1 + j * 6}" y="${10 - j * 4}" width="4" height="${4 + j * 4}" rx="1.2" fill="currentColor" opacity="${j < FEEL[f].b ? 1 : .22}"/>`).join("")}</svg>`;
+let FE = null, lastField = null;
+document.addEventListener("focusin", e => { if (e.target.matches && e.target.matches(".set input")) lastField = e.target; });
+function openFeel(ex, i, label) {
+  const box = $("feel"); if (!box || S.view !== "log") return;
+  FE = { key: ex.key, i };
+  const f = feelOf(exSets(current(), ex.key)[i]);
+  box.innerHTML = `<div class="fq"><span>${esc(label)} · ${esc(ex.name)}</span><b>Com'era?</b></div>
+    <div class="fopts" role="radiogroup">${["easy", "ok", "hard", "dirty"].map(v => `<button type="button" role="radio" data-v="${v}" aria-checked="${v === f}">${feelIcon(v)}<span>${FEEL[v].n}</span></button>`).join("")}</div>`;
+  box.hidden = false; box.classList.remove("in"); void box.offsetWidth; box.classList.add("in");
+  box.querySelectorAll("button").forEach(b => {
+    b.onmousedown = e => e.preventDefault(); // non toglie il cursore dal campo: la tastiera resta aperta
+    b.onclick = () => {
+      const v = b.dataset.v, ae = document.activeElement, keep = lastField && document.contains(lastField) ? lastField : null;
+      const s2 = JSON.parse(JSON.stringify(current())); s2.ex[ex.key] = s2.ex[ex.key] || [];
+      while (s2.ex[ex.key].length < ex.sets.length) s2.ex[ex.key].push({ kg: null, reps: null });
+      const r = { ...s2.ex[ex.key][i] }; delete r.dirty; delete r.eff;
+      if (v === "dirty") r.dirty = true; else if (v !== "ok") r.eff = v;
+      s2.ex[ex.key][i] = r; s2.updatedAt = Date.now(); D.sessions[s2.id] = s2; save();
+      const row = $(`rp-${ex.key}-${i}`); if (row && row.closest(".set")._upd) row.closest(".set")._upd();
+      closeFeel();
+      if (keep && ae !== keep && document.body.classList.contains("kb")) keep.focus({ preventScroll: true });
+    };
+  });
+  placeTimer();
+}
+function closeFeel() { FE = null; const box = $("feel"); if (box && !box.hidden) { box.hidden = true; placeTimer(); } }
 // ---------- durata dell'allenamento: dal primo inserimento all'ultimo (sessione.t0 / t1), tasti Inizia / Fine (tEnd) ----------
 function stampTime(s) { if (s.date !== todayISO()) return; const n = Date.now(); if (!s.t0) s.t0 = n; s.t1 = n; }
 const fmtDur = ms => { const m = Math.max(1, Math.round(ms / 60000)); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")} min`; };
@@ -309,12 +370,13 @@ const e1 = (r, bw) => !r || r.reps == null ? 0 : bw || !r.kg ? r.reps : r.kg * (
 function recapCard(d, s, units) {
   const done = units.filter(u => u.done).length;
   if (!hasData(s) || (done < units.length && !s.tEnd)) return null;
-  let nSet = 0, nDone = 0, clean = 0, vol = 0, volPrev = 0; const upEx = []; const better = [], worse = [], recs = [];
+  let nSet = 0, nDone = 0, clean = 0, vol = 0, volPrev = 0, nE = 0, nH = 0; const upEx = []; const better = [], worse = [], recs = [];
   const prevDay = gymSessions(S.gym).filter(x => x.day === s.day && x.date < s.date && home(x) && hasData(x)).pop();
   for (const ex of d.ex) {
     const cur = exSets(s, ex.key); if (!cur.some(r => r && r.reps != null)) continue;
-    ex.sets.forEach((st, i) => { nSet++; const r = cur[i]; if (r && r.reps != null) { nDone++; if (!r.dirty) clean++; vol += (r.kg || 0) * r.reps; } });
-    if (!ex.bw && ex.sets.some((st, i) => cur[i] && cur[i].reps != null && setUp(cur[i], tnum(st.t)))) upEx.push(ex.name);
+    ex.sets.forEach((st, i) => { nSet++; const r = cur[i]; if (r && r.reps != null) { nDone++; if (!r.dirty) { clean++; if (r.eff === "easy") nE++; if (r.eff === "hard") nH++; } vol += (r.kg || 0) * r.reps; } });
+    if (!ex.bw) { const stv = stepFor(ex.key).v, pv = gymSessions(S.gym).filter(x => x.date < s.date && home(x) && exHas(x, ex.key)).pop(), ps = pv ? exSets(pv, ex.key) : [];
+      if (ex.sets.some((st, i) => { const r = cur[i], a = r && r.reps != null ? advise(r, ps[i], tnum(st.t), stv, 1) : null; return a && a.kg > r.kg; })) upEx.push(ex.name); }
     if (prevDay) exSets(prevDay, ex.key).forEach(r => { if (r && r.reps != null) volPrev += (r.kg || 0) * r.reps; });
     const best = Math.max(0, ...cur.filter(r => r && !r.dirty).map(r => e1(r, ex.bw)));
     const before = gymSessions(S.gym).filter(x => x.date < s.date && home(x) && exHas(x, ex.key));
@@ -335,6 +397,7 @@ function recapCard(d, s, units) {
     ${recs.length ? `<p class="rc-l rec">🏆 <b>Record:</b> ${esc(listIt(recs))}</p>` : ""}
     ${better.length ? `<p class="rc-l up">↑ <b>Meglio dell'ultima volta:</b> ${better.sort((a, b) => b.pc - a.pc).map(x => `${esc(x.n)} ${pcs(x)}`).join(" · ")}</p>` : ""}
     ${worse.length ? `<p class="rc-l dn">↓ <b>Sotto l'ultima volta:</b> ${worse.map(x => `${esc(x.n)} ${pcs(x)}`).join(" · ")}${isAway(s) || isOffDay(s) ? " (giornata particolare, non conta)" : ""}</p>` : ""}
+    <div class="rc-feel" aria-label="Com'erano le serie">${["easy", "ok", "hard", "dirty"].map(f => { const n = f === "easy" ? nE : f === "hard" ? nH : f === "dirty" ? nDone - clean : clean - nE - nH; return n ? `<span data-f="${f}" style="flex:${n} 0 auto"><i>${feelIcon(f)}</i>${n} ${FEEL[f].n.toLowerCase()}</span>` : ""; }).join("")}</div>
     ${nDone - clean ? `<p class="rc-l">~ ${nDone - clean} ${nDone - clean === 1 ? "serie sporca" : "serie sporche"}: la prossima volta stesso carico, falle pulite.</p>` : ""}
     <p class="rc-l nx">→ <b>Prossima volta:</b> ${!upEx.length ? "stessi carichi, punta alle reps piene" : upEx.length <= 3 ? `carico su in ${esc(listIt(upEx))}` : `carico su in ${upEx.length} esercizi`}.</p>`;
   return el;
@@ -371,6 +434,7 @@ function renderLog() {
     const last = lastBefore(ex.key), lastSets = last ? exSets(last, ex.key) : [];
     const rs = lastRef(ex.key), refSets = rs ? exSets(rs, ex.key) : [], hit1 = rs ? allHit(refSets, ex) && allClean(refSets) : false, pr = hit1 ? prevRef(ex.key, rs) : null,
       hit = hit1 && !!pr && allHit(exSets(pr, ex.key), ex) && allClean(exSets(pr, ex.key)), cond = condition(sess), stp = ex.bw ? { v: null } : stepFor(ex.key);
+    const pr2 = rs ? prevRef(ex.key, rs) : null, prSets = pr2 ? exSets(pr2, ex.key) : [], nUp = i => easy2(refSets[i], prSets[i], tnum(ex.sets[i].t)) ? 2 : 1;
     const ref = ex.ref && ex.ref[S.gym];
     // riga "CARICO" del blocco info: cosa fare oggi con il peso e perché
     let pills = "", load = null;
@@ -378,8 +442,22 @@ function renderLog() {
     else if (rs) {
       const lab = i => { let n = 0, out = ""; ex.sets.forEach((st, j) => { if (!st.type || ["std", "alte", "pausa", "risc"].includes(st.type)) n++; if (j === i) out = st.type === "ced" ? "RP" : st.type === "strip" ? "ST" : st.type === "super" ? "SS" : "S" + n; }); return out; };
       const ix = f => ex.sets.map((st, i) => f(refSets[i], tnum(st.t)) ? i : -1).filter(i => i >= 0), names = a => listIt(a.map(lab));
-      const up = ix(setUp), dirty = ix(r => r && r.dirty), all = up.length === ex.sets.length, inc = ex.bw ? "aumenta" : stp.v ? `+${fmt(stp.v)} kg` : "sali un po'";
-      if (up.length) load = { c: "up", t: `↑ ${all ? "Tutte le serie" : names(up)} a target e pulit${all || up.length > 1 ? "e" : "a"}: ${inc}${all ? "" : `; ${up.length === ex.sets.length - 1 ? "l'altra" : "le altre"} stesso carico`}.${stp.v ? " Ok anche 1-2 reps in meno." : ""}${dirty.length ? ` ${names(dirty)} sporc${dirty.length > 1 ? "he: falle pulite" : "a: falla pulita"}.` : ""}` };
+      const up = ix(setUp), dirty = ix(r => r && r.dirty), hard = ix(atLimit), dbl = up.filter(i => nUp(i) === 2), all = up.length === ex.sets.length, inc = ex.bw ? "aumenta" : stp.v ? `+${fmt(stp.v)} kg` : "sali un po'";
+      // serie per serie: S1 +5 kg (facile 2 volte) · S2 stesso carico (al limite) · S3 +2,5 kg
+      const advs = ex.sets.map((st, i) => ex.bw ? null : advise(refSets[i], prSets[i], tnum(st.t), stp.v, 1, nUp(i))), special = advs.some(a => a && a.why);
+      // serie con lo stesso esito raggruppate ("S1 e S2: +2,5 kg · S3: stesso carico"), poi i motivi una volta sola
+      const what = i => { const r = refSets[i], t = tnum(ex.sets[i].t), a = advs[i], dk = a && a.kg != null && r && r.kg != null ? roundKg(a.kg - r.kg) : null;
+        return ex.bw ? (setUp(r, t) ? "aumenta" : "stesse reps") : dk == null ? "—" : (dk > 0 ? `+${fmt(dk)} kg` : dk < 0 ? `−${fmt(-dk)} kg` : "stesso carico") + (a && t != null && a.reps > t ? `, ${a.reps} reps` : ""); };
+      const perSet = () => { const g = new Map(); ex.sets.forEach((_, i) => { const w = what(i); g.set(w, [...(g.get(w) || []), i]); });
+        const head = g.size === 1 ? `Tutte le serie: ${[...g.keys()][0]}` : [...g].map(([w, a]) => `${names(a)}: ${w}`).join(" · ");
+        const why = [...new Set(advs.map(a => a && a.why).filter(Boolean))];
+        const own = (f, txt) => { const a = ex.sets.map((_, i) => !(advs[i] && advs[i].why) && f(i) ? i : -1).filter(i => i >= 0); if (a.length) why.push(`${names(a)} ${txt}`); };
+        own(i => nUp(i) === 2, "facile due volte di fila: doppio salto"); own(i => atLimit(refSets[i], tnum(ex.sets[i].t)), "al limite: consolida"); own(i => refSets[i] && refSets[i].dirty, "sporca: falla pulita");
+        return `${head}. ${why.join(". ")}${why.length ? "." : ""}`; };
+      const upK = advs.some((a, i) => a && refSets[i] && a.kg > refSets[i].kg);
+      if (up.length && all && !dbl.length && !special) load = { c: "up", t: `↑ Tutte le serie a target e pulite: ${inc}.${stp.v ? " Ok anche 1-2 reps in meno." : ""}` };
+      else if (up.length || special) load = { c: upK ? "up" : "", t: `${upK ? "↑" : "="} ${perSet()}${stp.v && upK ? " Col peso nuovo ok anche 1-2 reps in meno." : ""}` };
+      else if (hard.length) load = { c: "", t: `= Stesso carico: a target ma al limite, consolida prima di salire.${dirty.length ? ` ${names(dirty)} sporc${dirty.length > 1 ? "he: falle pulite" : "a: falla pulita"}.` : ""}` };
       else if (dirty.length) load = { c: "near", t: "~ Serie sporche l'ultima volta: stesso carico, falle pulite." };
       else load = { c: "", t: "= Stesso carico: l'ultima volta nessuna serie a target." };
     }
@@ -424,28 +502,31 @@ function renderLog() {
       const ty = TYPES[st.type] || TYPES.std; if (!st.type || st.type === "std" || st.type === "alte" || st.type === "pausa" || st.type === "risc") sn++;
       const label = st.type === "ced" ? "RP" : st.type === "strip" ? "ST" : st.type === "super" ? "SS" : "S" + sn;
       const r = cur[i] || {}, lr = lastSets[i], tn = tnum(st.t), rr = refSets[i];
-      const sug = ex.bw ? null : suggestKg(rr, hit, cond.f, tn, stp.v), lk = lr && lr.kg != null ? lr.kg : null;
+      const adv = ex.bw ? null : advise(rr, prSets[i], tn, stp.v, cond.f, nUp(i)), sug = adv ? adv.kg : null, goal = adv && adv.reps != null && tn != null && adv.reps > tn ? adv.reps : null, lk = lr && lr.kg != null ? lr.kg : null;
       const dir = sug == null || lk == null ? "" : sug > lk + 1e-9 ? "up" : sug < lk - 1e-9 ? "dn" : "eq";
       const row = document.createElement("div"); row.className = "set";
       row.innerHTML = `<div class="sn" style="--tc:var(${ty.c})">${label}<small>${esc(st.t)}${ex.bw && tn != null ? "" : ""} reps</small>${ty.n || st.note ? `<em>${esc([ty.n, st.note].filter(Boolean).join(" · "))}</em>` : ""}</div>
-        <div class="prev">${lr && (lr.kg != null || lr.reps != null) ? `<b class="lv${lr.dirty ? " dirty" : ""}"${lr.dirty ? ' title="Sporca l\'ultima volta"' : ""}>${lr.kg != null ? fmt(lr.kg) + " × " : ""}${lr.reps ?? "–"}${lr.dirty ? "<i>~</i>" : ""}</b>` : `<b class="lv none">—</b>`}${sug != null ? `<span class="sug ${dir}">${{ up: "↑", dn: "↓", eq: "=" }[dir] || "oggi"} ${fmt(sug)} kg</span>` : ""}</div>
+        <div class="prev">${lr && (lr.kg != null || lr.reps != null) ? `<b class="lv${lr.dirty ? " dirty" : ""}"${lr.dirty ? ' title="Sporca l\'ultima volta"' : ""}>${lr.kg != null ? fmt(lr.kg) + " × " : ""}${lr.reps ?? "–"}${lr.dirty ? "<i>~</i>" : ""}</b>` : `<b class="lv none">—</b>`}${sug != null ? `<span class="sug ${dir}">${{ up: "↑", dn: "↓", eq: "=" }[dir] || "oggi"} ${goal ? `${fmt(sug)} × ${goal}` : `${fmt(sug)} kg`}</span>` : ""}</div>
         <input id="kg-${ex.key}-${i}" inputmode="decimal" enterkeyhint="next" autocomplete="off" aria-label="${esc(ex.name)} serie ${i + 1} kg" placeholder="${sug != null ? fmt(sug) : lr && lr.kg != null ? fmt(lr.kg) : ref ? fmt(ref) : "kg"}">
-        <input id="rp-${ex.key}-${i}" inputmode="numeric" enterkeyhint="next" autocomplete="off" aria-label="${esc(ex.name)} serie ${i + 1} ripetizioni" placeholder="${tn != null ? tn : "max"}">
-        <button type="button" class="dq">~</button><div class="fb"></div>`;
+        <input id="rp-${ex.key}-${i}" inputmode="numeric" enterkeyhint="next" autocomplete="off" aria-label="${esc(ex.name)} serie ${i + 1} ripetizioni" placeholder="${goal || (tn != null ? tn : "max")}">
+        <button type="button" class="dq" aria-label="Com'era la serie?"></button><div class="fb"></div>`;
       const [kg, rp] = row.querySelectorAll("input"); kg.value = fmt(r.kg); rp.value = r.reps ?? "";
       const fb = row.querySelector(".fb"), dq = row.querySelector(".dq");
       const isDirty = () => !!(exSets(current(), ex.key)[i] || {}).dirty;
       const upd = () => {
-        judge(kg, rp, fb, tn, rr, jc, isDirty());
-        const has = num(rp.value) != null, dirty = isDirty();
-        dq.classList.toggle("off", !has); dq.disabled = !has; dq.classList.toggle("on", dirty);
-        dq.setAttribute("aria-label", dirty ? "Serie sporca: tocca per segnarla pulita" : "Serie pulita: tocca se l'hai sporcata");
+        const cr = exSets(current(), ex.key)[i] || {}, fv = feelOf(cr);
+        judge(kg, rp, fb, tn, rr, jc, isDirty(), cr.eff, goal);
+        const has = num(rp.value) != null;
+        dq.classList.toggle("off", !has); dq.disabled = !has; dq.dataset.f = fv; dq.innerHTML = feelIcon(fv);
+        dq.setAttribute("aria-label", `Serie ${FEEL[fv].n.toLowerCase()}: tocca per cambiare`);
       };
-      dq.onclick = () => { edit(ex, i, "dirty", !isDirty()); upd(); };
+      row._upd = upd;
+      dq.onclick = () => openFeel(ex, i, label);
       kg.oninput = e => { edit(ex, i, "kg", kg.value); upd(); autoKg(e, kg, rp); };
       rp.oninput = e => { edit(ex, i, "reps", rp.value); upd(); autoReps(e, rp); };
       // serie completata (reps inserite e campo lasciato) → parte il recupero
       rp.addEventListener("change", () => {
+        if (num(rp.value) != null) openFeel(ex, i, label);
         if (num(rp.value) == null || S.date !== todayISO() || !tPrefs().auto) return;
         const g = circGroup(d, idx);
         if (g && !g.last) { toast(`Subito: ${d.ex[idx + 1].name}`); return; } // circuito: niente recupero tra gli esercizi
@@ -461,7 +542,7 @@ function renderLog() {
     }
     const cp = card.querySelector("[data-copy]");
     if (ex.bw || !rs || !refSets.some(r => r && r.kg != null)) cp.hidden = true;
-    cp.onclick = () => ex.sets.forEach((_, i) => { const k = suggestKg(refSets[i], hit, cond.f, tnum(ex.sets[i].t), stp.v); if (k != null) { const el = $(`kg-${ex.key}-${i}`); el.value = fmt(k); edit(ex, i, "kg", el.value); el.dispatchEvent(new Event("input")); } });
+    cp.onclick = () => ex.sets.forEach((_, i) => { const a = advise(refSets[i], prSets[i], tnum(ex.sets[i].t), stp.v, cond.f, nUp(i)), k = a && a.kg; if (k != null) { const el = $(`kg-${ex.key}-${i}`); el.value = fmt(k); edit(ex, i, "kg", el.value); el.dispatchEvent(new Event("input")); } });
     const panel = card.querySelector(".panel"), pbody = panel.querySelector(".pbody"); if (open) fillPanel(pbody, ex);
     const openInfo = () => { panel.hidden = false; card.querySelector("[data-more]").setAttribute("aria-expanded", true); S.open.add(ex.key); if (!pbody.firstChild) fillPanel(pbody, ex); };
     card.querySelectorAll("[data-more]").forEach(b => b.onclick = () => {
@@ -646,7 +727,7 @@ document.addEventListener("focusout", e => { const el = e.target; if (el.matches
 // Valutazione della serie: non solo "target sì/no", ma quanto ti sei avvicinato e se hai alzato il carico.
 // Forza stimata (formula di Epley): kg × (1 + reps/30), confrontata con la stessa serie dell'ultima volta.
 const repsTxt = n => n === 1 ? "manca 1 rep" : `mancano ${n} reps`;
-function judge(kgEl, rpEl, fb, t, lr, cond, dirty) {
+function judge(kgEl, rpEl, fb, t, lr, cond, dirty, eff, goal) {
   const kg = num(kgEl.value), reps = num(rpEl.value), f = cond ? cond.f : 1, off = f < 1 || !!(cond && cond.ooo);
   let cls = "", msg = "";
   if (reps != null && t != null) {
@@ -661,6 +742,9 @@ function judge(kgEl, rpEl, fb, t, lr, cond, dirty) {
     else if (pct >= 0.6 || off) { cls = "prog"; msg = `Pulita, ${repsTxt(miss)}: carico giusto per oggi` + (off ? " · " + cond.why : ""); }
     else { cls = "prog"; msg = `Pulita, ${reps} su ${t}: se succede ancora, scendi un po' di carico`; }
   }
+  if (!dirty && goal && reps != null && t != null && reps >= t) { cls = "ok"; msg = reps >= goal ? (reps >= t + 2 ? `${reps} reps: la prossima volta prova il salto` : `Obiettivo ${goal} reps preso: ti avvicini al salto`) : `Target pieno; obiettivo di oggi ${goal} reps`; }
+  else if (!dirty && reps != null && t != null && reps >= t && eff === "hard") { cls = "ok"; msg = "Target pieno ma al limite: la prossima volta stesso carico, per consolidarlo"; }
+  else if (!dirty && reps != null && t != null && reps >= t && eff === "easy") { cls = "ok"; msg = "Facile: la prossima volta si sale"; }
   if (dirty && reps != null) { // serie sporca: mai verde; dice cosa succede la prossima volta
     if (t == null || reps >= t) { cls = "near"; msg = "Sporca: meglio una rep in meno ma pulita. La prossima volta stesso carico"; }
     else { cls = "near"; msg = "Sporca: la prossima volta −5% su questa serie, per farla pulita"; }
@@ -686,10 +770,11 @@ function edit(ex, i, field, val) {
   const s = JSON.parse(JSON.stringify(current()));
   s.ex[ex.key] = s.ex[ex.key] || [];
   while (s.ex[ex.key].length < ex.sets.length) s.ex[ex.key].push({ kg: null, reps: null });
-  const v = field === "dirty" ? (val ? true : undefined) : num(val);
+  const v = field === "dirty" ? (val ? true : undefined) : field === "eff" ? (val || undefined) : num(val);
   s.ex[ex.key][i] = { ...s.ex[ex.key][i], [field]: v };
-  if (v != null && field !== "dirty" && !(s.ord || []).includes(ex.key)) s.ord = [...(s.ord || []), ex.key]; // ordine reale di esecuzione
-  if (v != null && field !== "dirty") stampTime(s);
+  if (v != null && !["dirty", "eff"].includes(field) && !(s.ord || []).includes(ex.key)) s.ord = [...(s.ord || []), ex.key]; // ordine reale di esecuzione
+  if (v != null && !["dirty", "eff"].includes(field)) stampTime(s);
+  if (field === "kg" && FE && (FE.key !== ex.key || FE.i !== i)) closeFeel(); // passi alla serie dopo: la domanda sparisce
   s.updatedAt = Date.now(); D.sessions[s.id] = s; save(); updateProgress();
   if (field === "reps") try { localStorage.setItem(LKEY, JSON.stringify({ gym: S.gym, day: S.day, date: S.date, key: ex.key, i })); } catch (e) {}
 }
@@ -1003,11 +1088,11 @@ $("bkFile").onchange = async e => {
 };
 $("csv").onclick = () => {
   const names = {}; plans.forEach(p => p.days.forEach(d => d.ex.forEach(ex => names[ex.key] = ex.name)));
-  const rows = [["data", "palestra", "scheda", "giorno", "esercizio", "serie", "kg", "reps", "sporca"]];
+  const rows = [["data", "palestra", "scheda", "giorno", "esercizio", "serie", "kg", "reps", "sporca", "sensazione"]];
   Object.values(D.sessions).sort((a, b) => a.date < b.date ? -1 : 1).forEach(s => {
     const pn = (plans.find(p => p.id === s.plan) || {}).name || s.plan, gn = (GYMS.find(g => g.id === s.gym) || {}).name || s.gym;
     Object.entries(s.circ || {}).forEach(([c, n]) => { if (n > 0) rows.push([s.date, gn, pn, s.day, "Circuito " + c, "giri", "", n]); });
-    Object.entries(s.ex || {}).forEach(([k, arr]) => (arr || []).forEach((r, i) => { if (r && (r.kg != null || r.reps != null)) rows.push([s.date, gn, pn, s.day, names[k] || k, i + 1, fmt(r.kg), r.reps ?? "", r.dirty ? "sì" : ""]); }));
+    Object.entries(s.ex || {}).forEach(([k, arr]) => (arr || []).forEach((r, i) => { if (r && (r.kg != null || r.reps != null)) rows.push([s.date, gn, pn, s.day, names[k] || k, i + 1, fmt(r.kg), r.reps ?? "", r.dirty ? "sì" : "", r.dirty ? "" : r.eff === "easy" ? "facile" : r.eff === "hard" ? "al limite" : "giusta"]); }));
   });
   const csv = "﻿" + rows.map(r => r.map(x => `"${String(x).replace(/"/g, '""')}"`).join(";")).join("\n");
   const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = `palestra-${todayISO()}.csv`; document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 1000);
@@ -1022,6 +1107,7 @@ function renderMore() {
 // ---------- navigazione ----------
 document.querySelectorAll(".tabbar button").forEach(b => b.onclick = () => { S.view = b.dataset.view; render(); scrollTo(0, 0); });
 function render() {
+  if (S.view !== "log" || (FE && !dayObj().ex.some(e => e.key === FE.key))) closeFeel();
   document.querySelectorAll(".tabbar button").forEach(b => b.toggleAttribute("aria-current", b.dataset.view === S.view));
   document.querySelectorAll(".tabbar button[aria-current]").forEach(b => b.setAttribute("aria-current", "page"));
   for (const v of ["log", "prog", "plan", "more"]) $("v-" + v).hidden = S.view !== v;

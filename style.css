@@ -748,3 +748,49 @@ html[data-theme="green"] .ex.cur{border-color:color-mix(in srgb,var(--accent) 45
 .rc-l.nx{padding-top:8px;border-top:1px solid var(--line);margin-top:10px}
 html[data-theme="green"] .rc-h b{font-family:Didot,"Bodoni 72","Latin Modern Roman Demi",serif}
 html[data-theme="sparta"] .rc-k,html[data-theme="sparta"] .rc-l.rec b{color:var(--gold)}
+
+/* ===== Sensazione della serie (17/11/2026): Facile · Giusta · Al limite · Sporca ===== */
+.timer{flex-direction:column;align-items:center}
+.feel{pointer-events:auto;width:100%;max-width:640px;margin-bottom:6px;padding:8px 8px 7px;border-radius:20px;background:var(--raised);border:1px solid var(--line);box-shadow:0 6px 22px rgba(0,0,0,.5)}
+.feel.in{animation:feelIn .2s ease-out}
+@keyframes feelIn{from{opacity:0;transform:translateY(8px)}}
+.fq{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:0 6px 7px}
+.fq span{font-size:11.5px;color:var(--muted);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.fq b{flex:none;font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+.fopts{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;padding:3px;border-radius:14px;background:var(--surface);border:1px solid var(--line)}
+.fopts button{border:0;background:transparent;color:var(--muted);border-radius:11px;height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11.5px;font-weight:700;transition:background .15s,color .15s}
+.fopts button .fi{width:18px;height:14px}
+.fopts button[aria-checked="true"]{color:var(--fc);background:color-mix(in srgb,var(--fc) 16%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--fc) 45%,transparent)}
+[data-v="easy"],[data-f="easy"]{--fc:var(--ok)}
+[data-v="ok"],[data-f="ok"]{--fc:var(--ink)}
+[data-v="hard"],[data-f="hard"]{--fc:var(--accent)}
+[data-v="dirty"],[data-f="dirty"]{--fc:var(--near)}
+body.kb .feel{padding:6px 6px 5px;margin-bottom:4px;box-shadow:0 2px 10px rgba(0,0,0,.45)}
+body.kb .fq{padding-bottom:5px}
+body.kb .fopts button{height:36px;flex-direction:row;gap:6px}
+/* indicatore nella riga della serie */
+.set .dq .fi{width:17px;height:13px}
+.set .dq[data-f="ok"]{color:var(--muted)}
+.set .dq[data-f="easy"],.set .dq[data-f="hard"],.set .dq[data-f="dirty"]{color:var(--fc);background:color-mix(in srgb,var(--fc) 14%,var(--raised));border-color:color-mix(in srgb,var(--fc) 50%,var(--line))}
+/* recap: com'erano le serie */
+.rc-feel{display:flex;gap:4px;margin:2px 0 4px}
+.rc-feel span{min-width:max-content;height:28px;padding:0 9px;border-radius:9px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:11.5px;font-weight:700;white-space:nowrap;color:var(--fc);background:color-mix(in srgb,var(--fc) 13%,var(--raised));border:1px solid color-mix(in srgb,var(--fc) 30%,transparent)}
+.rc-feel i{display:flex}
+.rc-feel .fi{width:15px;height:12px}
+/* da quanto tempo fai la scheda (cerchio, 4 settimane) */
+.wk-h{align-items:center;margin-bottom:9px}
+.wk-s{display:grid;justify-items:end;gap:2px}
+.pl-age{display:flex;align-items:center;gap:9px;min-width:0}
+.pl-age svg{width:38px;height:38px;flex:none}
+.pl-age .tr{fill:none;stroke:var(--line);stroke-width:3.5}
+.pl-age .pg{fill:none;stroke:var(--accent);stroke-width:3.5;stroke-linecap:round}
+.pl-age text{font-family:var(--display);font-weight:800;font-size:14px;fill:var(--ink)}
+.pl-age div{display:grid;gap:1px;min-width:0}
+.wk-h .pl-age span{font-size:13px;font-weight:700;letter-spacing:0;text-transform:none;color:var(--ink)}
+.pl-age small{font-size:11.5px;color:var(--muted)}
+.pl-age.over .pg{stroke:var(--near)}
+.pl-age.over small{color:var(--near)}
+html[data-theme="sparta"] .pl-age .pg{stroke:var(--gold)}
+html[data-theme="sparta"] .pl-age.over .pg{stroke:var(--near)}
+.rc-feel{flex-wrap:wrap}
+.rc-feel span{flex:none!important;height:26px;padding:0 8px}
