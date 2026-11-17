@@ -277,10 +277,13 @@ function renderLog() {
     const rs = lastRef(ex.key), refSets = rs ? exSets(rs, ex.key) : [], hit1 = rs ? allHit(refSets, ex) && allClean(refSets) : false, pr = hit1 ? prevRef(ex.key, rs) : null,
       hit = hit1 && !!pr && allHit(exSets(pr, ex.key), ex) && allClean(exSets(pr, ex.key)), cond = condition(sess), stp = ex.bw ? { v: null } : stepFor(ex.key);
     const ref = ex.ref && ex.ref[S.gym];
-    let pills = "";
-    if (rs && cond.f < 1) pills += `<span class="pill near">Oggi −${Math.round((1 - cond.f) * 100)}% · ${esc(cond.why)}</span>`;
-    else if (rs) pills += hit ? `<span class="pill up">↑ ${ex.bw ? "Aumenta" : stp.v ? `+${fmt(stp.v)} kg` : "Aumenta carico"}: 2 volte di fila a target e pulite${stp.v ? " · ok anche 1-2 reps in meno" : ""}</span>` : !allClean(refSets) ? `<span class="pill near">~ Serie sporche l'ultima volta: stesso carico, falle pulite</span>` : hit1 ? `<span class="pill">= Stesso carico: a target e pulite 1 volta, alla 2ª aumenti</span>` : `<span class="pill">= Stesso carico</span>`;
-    else if (ref) pills += `<span class="pill">Rif. scheda prec. ${fmt(ref)} kg</span>`;
+    // riga "CARICO" del blocco info: cosa fare oggi con il peso e perché
+    let pills = "", load = null;
+    if (rs && cond.f < 1) load = { c: "near", t: `↓ Oggi −${Math.round((1 - cond.f) * 100)}%: ${esc(cond.why)}` };
+    else if (rs) load = hit ? { c: "up", t: `↑ ${ex.bw ? "Aumenta" : stp.v ? `+${fmt(stp.v)} kg` : "Aumenta"}: 2 volte di fila a target e pulite.${stp.v ? " Ok anche 1-2 reps in meno." : ""}` }
+      : !allClean(refSets) ? { c: "near", t: "~ Serie sporche l'ultima volta: stesso carico, falle pulite." }
+      : hit1 ? { c: "", t: "= Stesso carico. A target e pulite 1 volta: alla 2ª aumenti." } : { c: "", t: "= Stesso carico dell'ultima volta." };
+    else if (ref) load = { c: "", t: `Scheda precedente: ${fmt(ref)} kg` };
     const cg = circGroup(d, idx);
     if (cg) pills += cg.last ? `<span class="pill circ">Circuito · recupero ${fmtSec(restFor(ex))} a fine giro</span>` : `<span class="pill circ">Circuito · subito il prossimo</span>`;
     const isCur = u === curU, manual = !isCur;
@@ -300,6 +303,7 @@ function renderLog() {
       ${pills ? `<div class="pills">${pills}</div>` : ""}
       ${oi ? oooBox(oi, prosp) : ""}
       <div class="exinfo">
+        ${load ? `<div class="ir"><span class="il">Carico</span><div class="iv load ${load.c}">${load.t}</div></div>` : ""}
         ${(ex.flash || []).length ? `<div class="ir"><span class="il">Consigli</span><ul class="iv tipl" aria-label="Da ricordare">${ex.flash.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}
         ${ex.setup === false ? "" : `<div class="ir setup"><label class="il" for="su-${ex.key}">Regolazioni</label><div class="iv"><input id="su-${ex.key}" autocomplete="off" placeholder="+ aggiungi (es. sedile 4)"></div></div>`}
         ${ex.bw ? "" : `<div class="ir"><span class="il">Salto pesi${stp.auto && stp.v ? "<i>stimato</i>" : ""}</span><div class="iv stepsel" role="group" aria-label="Salto dei pesi">${STEPS.map(v => `<button type="button" data-step="${v}" aria-pressed="${stp.v === v}" class="${stp.v === v && stp.auto ? "auto" : ""}">${fmt(v)}</button>`).join("")}</div></div>`}
@@ -320,7 +324,7 @@ function renderLog() {
       const row = document.createElement("div"); row.className = "set";
       row.innerHTML = `<div class="sn" style="--tc:var(${ty.c})">${label}<small>${esc(st.t)}${ex.bw && tn != null ? "" : ""} reps</small>${ty.n || st.note ? `<em>${esc([ty.n, st.note].filter(Boolean).join(" · "))}</em>` : ""}</div>
         <div class="prev">${lr && (lr.kg != null || lr.reps != null) ? `<b class="lv">${lr.kg != null ? fmt(lr.kg) + " × " : ""}${lr.reps ?? "–"}${lr.dirty ? "~" : ""}</b>` : `<b class="lv none">—</b>`}${sug != null ? `<span class="sug ${dir}">${{ up: "↑", dn: "↓", eq: "=" }[dir] || "oggi"} ${fmt(sug)} kg</span>` : ""}</div>
-        <input id="kg-${ex.key}-${i}" inputmode="decimal" enterkeyhint="next" autocomplete="off" aria-label="${esc(ex.name)} serie ${i + 1} kg" placeholder="${sug != null ? fmt(sug) : lr && lr.kg != null ? fmt(lr.kg) : "kg"}">
+        <input id="kg-${ex.key}-${i}" inputmode="decimal" enterkeyhint="next" autocomplete="off" aria-label="${esc(ex.name)} serie ${i + 1} kg" placeholder="${sug != null ? fmt(sug) : lr && lr.kg != null ? fmt(lr.kg) : ref ? fmt(ref) : "kg"}">
         <input id="rp-${ex.key}-${i}" inputmode="numeric" enterkeyhint="next" autocomplete="off" aria-label="${esc(ex.name)} serie ${i + 1} ripetizioni" placeholder="${tn != null ? tn : "max"}">
         <button type="button" class="dq">~</button><div class="fb"></div>`;
       const [kg, rp] = row.querySelectorAll("input"); kg.value = fmt(r.kg); rp.value = r.reps ?? "";
