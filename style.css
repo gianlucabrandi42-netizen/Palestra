@@ -477,14 +477,15 @@ html[data-theme="green"] .ex.cur>*{position:relative}
 /* --- Sparta 2.0: viola imperiale, bronzo, greca, elmo corinzio e alloro --- */
 html[data-theme="sparta"]{
   --bg:#0C0B0E; --surface:#161419; --raised:#1D1A21; --ink:#F3F1F6; --muted:#9E99A6; --line:#2B2731; --chip:#221F27; --body:#34303B;
-  --a1:#B07CFF; --a2:#B07CFF; --accent:#B07CFF; --on-accent:#FFFFFF; --gold:#D6B06A;
-  --grad:linear-gradient(160deg,#B98AFF,#7440D0); --done:url(img/theme/sp-laurel.svg);
+  --a1:#C19A52; --a2:#C19A52; --accent:#C19A52; --on-accent:#1A1408; --gold:#C19A52;
+  --grad:linear-gradient(160deg,#D9B66E,#8E6727); --done:url(img/theme/sp-laurel.svg);
+  --near:#FF9447; --near-bg:#3A2010; /* serie sporca arancione: il giallo si confonderebbe col bronzo */
   --display:Palatino,"Palatino Linotype","TeX Gyre Pagella","Book Antiqua",Georgia,serif;
 }
-html[data-theme="sparta"] body.g1{--accent:#B07CFF}
-html[data-theme="sparta"] .ring .s1{stop-color:#E9C77E} html[data-theme="sparta"] .ring .s2{stop-color:#9A5CFF}
+html[data-theme="sparta"] body.g1{--accent:#C19A52}
+html[data-theme="sparta"] .ring .s1{stop-color:#D9B66E} html[data-theme="sparta"] .ring .s2{stop-color:#8E6A24}
 html[data-theme="sparta"] .console{background:var(--surface)}
-html[data-theme="sparta"] .console::after{left:0;right:0;bottom:0;height:1px;background:linear-gradient(90deg,transparent,#B07CFF,transparent)}
+html[data-theme="sparta"] .console::after{left:0;right:0;bottom:0;height:1px;background:linear-gradient(90deg,transparent,#C19A52,transparent)}
 html[data-theme="sparta"] body::after{right:-46px;bottom:60px;width:250px;height:272px;background:url(img/theme/sp-corner.svg) bottom right/contain no-repeat;opacity:.22}
 html[data-theme="sparta"] .console::before{inset:0;background:url(img/theme/sp-top.svg) top center/max(100%,430px) auto no-repeat;opacity:.42}
 html[data-theme="sparta"] h2,html[data-theme="sparta"] .hero h1{font-family:var(--display);letter-spacing:.06em;text-transform:uppercase}
