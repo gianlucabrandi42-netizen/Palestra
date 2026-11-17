@@ -671,3 +671,12 @@ html[data-theme="green"] .wk.done b,html[data-theme="green"] .wk.done .wk-i{colo
 /* icone del selettore palestre: piene e colorate anche quando non attive; ombra sul pulsante attivo */
 html[data-theme] .gym button[aria-pressed="false"]::before{opacity:.95;filter:none}
 html[data-theme] .gym button[aria-pressed="true"]::before{filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.55))}
+/* scheda compatta (17/11/2026): consigli in una riga sotto il nome, sopra le serie solo CARICO e regolazioni; il resto in "Info ed esecuzione" */
+.tipline{display:flex;flex-wrap:wrap;gap:2px 0;margin-top:5px;font-size:12.5px;font-weight:600;line-height:1.35;color:var(--muted)}
+.tipline span+span::before{content:"";display:inline-block;width:4px;height:4px;border-radius:50%;background:var(--accent);margin:0 7px;vertical-align:2px}
+.exinfo.top{gap:7px;margin-bottom:10px}
+.exinfo .setv{background:none;border:0;padding:0;text-align:left;font-size:14px;font-weight:700;color:var(--ink);min-height:0}
+.panel .exinfo{border-top:0;margin-top:4px;padding-top:4px}
+.tipline{display:block;margin:0 14px 10px;font-size:13px;font-weight:600;line-height:1.45;color:var(--muted)}
+.tipline span{display:inline}
+.tipline span+span::before{margin:0 8px}

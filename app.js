@@ -333,21 +333,23 @@ function renderLog() {
         <div class="t"><div class="exk">${exNum(exN)}${isCur ? " · Adesso" : ""} · Recupero ${fmtSec(restFor(ex))}</div>
           <h3 class="exname">${esc(ex.name)}</h3></div>
       </div>
+      ${(ex.flash || []).length ? `<p class="tipline" aria-label="Da ricordare">${ex.flash.map(x => `<span>${esc(x)}</span>`).join("")}</p>` : ""}
       ${pills ? `<div class="pills">${pills}</div>` : ""}
       ${oi ? oooBox(oi, prosp) : ""}
-      <div class="exinfo">
-        ${ex.m && ((ex.m.p || []).length || ex.ml) ? `<div class="ir"><span class="il">Muscoli</span><div class="iv musv"><b>${esc(ex.ml || mnames(ex.m.p))}</b>${(ex.m.s || []).length ? `<small>anche ${esc(mnames(ex.m.s).toLowerCase())}</small>` : ""}</div></div>` : ""}
-        ${ex.tec ? `<div class="ir"><span class="il">Schema</span><div class="iv tecv">${esc(ex.tec)}</div></div>` : ""}
+      ${load || ((D.setup[S.gym] || {})[ex.key]) ? `<div class="exinfo top">
         ${load ? `<div class="ir"><span class="il">Carico</span><div class="iv load ${load.c}">${load.t}</div></div>` : ""}
-        ${(ex.flash || []).length ? `<div class="ir"><span class="il">Consigli</span><ul class="iv tipl" aria-label="Da ricordare">${ex.flash.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}
-        ${ex.setup === false ? "" : `<div class="ir setup"><label class="il" for="su-${ex.key}">Regolazioni</label><div class="iv"><input id="su-${ex.key}" autocomplete="off" placeholder="+ aggiungi (es. sedile 4)"></div></div>`}
-        ${ex.bw ? "" : `<div class="ir"><span class="il">Salto pesi${stp.auto && stp.v ? "<i>stimato</i>" : ""}</span><div class="iv stepsel" role="group" aria-label="Salto dei pesi">${STEPS.map(v => `<button type="button" data-step="${v}" aria-pressed="${stp.v === v}" class="${stp.v === v && stp.auto ? "auto" : ""}">${fmt(v)}</button>`).join("")}</div></div>`}
-      </div>
+        ${((D.setup[S.gym] || {})[ex.key]) ? `<div class="ir"><span class="il">Regolazioni</span><button type="button" class="iv setv" data-editsetup>${esc(D.setup[S.gym][ex.key])}</button></div>` : ""}
+      </div>` : ""}
       <div class="sets"><div class="sh"><span>Serie</span><span>Ultima</span><span>${ex.bw ? "kg (opz.)" : "kg"}</span><span>Reps</span><span></span></div></div>
       <div class="exfoot"><button class="btn sm" data-copy>⚡ Usa kg suggeriti</button>
         ${manual ? `<button class="more" data-close>Chiudi</button>` : ""}
-        <button class="more" data-more aria-expanded="${open}">Esecuzione<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></div>
-      <div class="panel" ${open ? "" : "hidden"}></div>`;
+        <button class="more" data-more aria-expanded="${open}">Info ed esecuzione<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></div>
+      <div class="panel" ${open ? "" : "hidden"}><div class="exinfo">
+        ${ex.m && ((ex.m.p || []).length || ex.ml) ? `<div class="ir"><span class="il">Muscoli</span><div class="iv musv"><b>${esc(ex.ml || mnames(ex.m.p))}</b>${(ex.m.s || []).length ? `<small>anche ${esc(mnames(ex.m.s).toLowerCase())}</small>` : ""}</div></div>` : ""}
+        ${ex.tec ? `<div class="ir"><span class="il">Schema</span><div class="iv tecv">${esc(ex.tec)}</div></div>` : ""}
+        ${ex.setup === false ? "" : `<div class="ir setup"><label class="il" for="su-${ex.key}">Regolazioni</label><div class="iv"><input id="su-${ex.key}" autocomplete="off" placeholder="+ aggiungi (es. sedile 4)"></div></div>`}
+        ${ex.bw ? "" : `<div class="ir"><span class="il">Salto pesi${stp.auto && stp.v ? "<i>stimato</i>" : ""}</span><div class="iv stepsel" role="group" aria-label="Salto dei pesi">${STEPS.map(v => `<button type="button" data-step="${v}" aria-pressed="${stp.v === v}" class="${stp.v === v && stp.auto ? "auto" : ""}">${fmt(v)}</button>`).join("")}</div></div>`}
+      </div><div class="pbody"></div></div>`;
     const setsEl = card.querySelector(".sets"), cur = exSets(sess, ex.key);
     let sn = 0;
     ex.sets.forEach((st, i) => {
@@ -387,16 +389,17 @@ function renderLog() {
     });
     const su = card.querySelector(".setup input");
     if (su) {
-      su.value = ((D.setup[S.gym] || {})[ex.key]) || ""; su.oninput = () => { D.setup[S.gym] = D.setup[S.gym] || {}; D.setup[S.gym][ex.key] = su.value.trim(); save(); };
+      su.value = ((D.setup[S.gym] || {})[ex.key]) || ""; su.oninput = () => { D.setup[S.gym] = D.setup[S.gym] || {}; D.setup[S.gym][ex.key] = su.value.trim(); save(); const t = card.querySelector("[data-editsetup]"); if (t) t.textContent = su.value.trim() || "—"; };
     }
     const cp = card.querySelector("[data-copy]");
     if (ex.bw || !rs || !refSets.some(r => r && r.kg != null)) cp.hidden = true;
     cp.onclick = () => ex.sets.forEach((_, i) => { const k = suggestKg(refSets[i], hit, cond.f, tnum(ex.sets[i].t), stp.v); if (k != null) { const el = $(`kg-${ex.key}-${i}`); el.value = fmt(k); edit(ex, i, "kg", el.value); el.dispatchEvent(new Event("input")); } });
-    const panel = card.querySelector(".panel"); if (open) fillPanel(panel, ex);
+    const panel = card.querySelector(".panel"), pbody = panel.querySelector(".pbody"); if (open) fillPanel(pbody, ex);
+    const openInfo = () => { panel.hidden = false; card.querySelector("[data-more]").setAttribute("aria-expanded", true); S.open.add(ex.key); if (!pbody.firstChild) fillPanel(pbody, ex); };
     card.querySelectorAll("[data-more]").forEach(b => b.onclick = () => {
-      const isOpen = !panel.hidden; panel.hidden = isOpen; card.querySelector(".more").setAttribute("aria-expanded", !isOpen);
-      if (isOpen) S.open.delete(ex.key); else { S.open.add(ex.key); if (!panel.firstChild) fillPanel(panel, ex); }
+      if (!panel.hidden) { panel.hidden = true; b.setAttribute("aria-expanded", false); S.open.delete(ex.key); } else openInfo();
     });
+    const es = card.querySelector("[data-editsetup]"); if (es) es.onclick = () => { openInfo(); const i = card.querySelector(".setup input"); if (i) { i.focus(); i.scrollIntoView({ block: "center", behavior: "smooth" }); } };
     const z = card.querySelector("[data-zoom]"); if (z) z.onclick = () => openLB(ex, -1);
     // Chiudi: la riga chiusa resta dove stavi guardando (o subito sotto la barra in alto se la scheda iniziava più su)
     card.querySelectorAll("[data-step]").forEach(b => b.onclick = () => { const v = +b.dataset.step; setStep(ex.key, stp.v === v && !stp.auto ? null : v); });
