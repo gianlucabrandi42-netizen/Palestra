@@ -609,6 +609,8 @@ function dbSearch(q, exKey) {
 const dbName = m => `${m.b} ${m.l} ${m.n}`;
 const dbFind = n => { const DB = window.MACCHINE_DB, k = dbNorm(n); return DB ? DB.list.find(m => dbNorm(dbName(m)) === k) || null : null; };
 const imgQ = q => `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(q)}`;
+// ricerca precisa: marca + linea + nome del modello tra virgolette (frase esatta), così escono le foto di quel modello e non di macchine simili (18/11/2026)
+const mQ = m => imgQ(`${m.b} ${m.l} "${m.n}"`);
 function todayBanners(s, ex, painRef, rs) {
   const out = [];
   { const used = [...new Set(gymSessions(S.gym).filter(x => x.id !== s.id).map(x => subOf(x, ex.key)).filter(Boolean))].reverse();
@@ -626,12 +628,12 @@ function todayBanners(s, ex, painRef, rs) {
       ${pp ? `<p class="subhint">📷 Foto pronta: scrivi marca e nome che leggi sulla targhetta (o scegli sotto) e la salvo con la macchina.</p>` : ""}
       <div class="dbres" hidden></div>
       ${used.length ? `<div class="alts"><span class="altk">Già usate qui</span>${used.map(n => `<div class="alt"><button type="button" class="altn" data-alt="${esc(n)}">${machinePic(n) ? `<img src="${machinePic(n)}" alt="">` : ""}<b>${esc(n)}</b></button></div>`).join("")}</div>` : ""}
-      ${cat.length ? `<div class="alts"><span class="altk">Macchine che allenano gli stessi muscoli</span>${cat.map(m => `<div class="alt"><button type="button" class="altn" data-alt="${esc(m.n)}"><b>${esc(m.n)}</b><small>${esc(m.d)}</small></button><a class="altq" href="https://www.google.com/search?tbm=isch&q=${encodeURIComponent("Panatta " + m.n)}" target="_blank" rel="noopener">Com'è fatta ↗</a></div>`).join("")}</div>` : ""}
+      ${cat.length ? `<div class="alts"><span class="altk">Macchine che allenano gli stessi muscoli</span>${cat.map(m => `<div class="alt"><button type="button" class="altn" data-alt="${esc(m.n)}"><b>${esc(m.n)}</b><small>${esc(m.d)}</small></button><a class="altq" href="https://www.google.com/search?tbm=isch&q=${encodeURIComponent(`Panatta "${m.n}"`)}" target="_blank" rel="noopener">Com'è fatta ↗</a></div>`).join("")}</div>` : ""}
       <button class="chip" data-undo="subx">Annulla</button></div>`);
   }
   if (subOf(s, ex.key)) { const pic = machinePic(subOf(s, ex.key));
     const dm = dbFind(subOf(s, ex.key)), dmc = dm && window.MACCHINE_DB.CAT[dm.c];
-    out.push(`<div class="xb sub"><p>↔ Oggi fai <b>${esc(subOf(s, ex.key))}</b>${dmc ? ` <span class="subml">· ${esc(dmc.ml)}</span>` : ""}: ha il suo storico, quello di ${esc(ex.name)} non cambia.${dm ? ` <a class="altq" href="${imgQ(`${dm.b} ${dm.l} ${dm.n}`)}" target="_blank" rel="noopener">Foto vere ↗</a>` : ""}</p><div class="xbb"><label class="chip pic">📷 ${pic ? "Cambia foto" : "Foto macchina"}<input type="file" accept="image/*" capture="environment" hidden data-pic></label><button class="chip" data-undo="sub">Torna all'originale</button></div></div>`); }
+    out.push(`<div class="xb sub"><p>↔ Oggi fai <b>${esc(subOf(s, ex.key))}</b>${dmc ? ` <span class="subml">· ${esc(dmc.ml)}</span>` : ""}: ha il suo storico, quello di ${esc(ex.name)} non cambia.${dm ? ` <a class="altq" href="${mQ(dm)}" target="_blank" rel="noopener">Foto vere ↗</a>` : ""}</p><div class="xbb"><label class="chip pic">📷 ${pic ? "Cambia foto" : "Foto macchina"}<input type="file" accept="image/*" capture="environment" hidden data-pic></label><button class="chip" data-undo="sub">Torna all'originale</button></div></div>`); }
   if (hasPain(s, ex.key)) out.push(`<div class="xb pain"><p>⚠ Fastidio segnato: la prossima volta il carico resta fermo. Se continua, dillo al PT.</p><button class="chip" data-undo="pain">Togli</button></div>`);
   else if (painRef) out.push(`<div class="xb pain"><p>⚠ Fastidio l'ultima volta (${fmtDate(rs.date).slice(0, 5)}): carico fermo. Se oggi va bene, non segnare niente e la prossima volta si riparte.</p></div>`);
   if (isLater(s, ex.key) && !exSets(s, ex.key).some(r => r && r.reps != null)) out.push(`<div class="xb"><p>⏳ Macchina occupata: lo fai dopo gli altri. Quando lo inizi, l'app tiene conto dei muscoli già stanchi.</p><button class="chip" data-undo="later">Annulla</button></div>`);
@@ -1085,8 +1087,8 @@ function renderLog0() {
     const sbi = card.querySelector(".subin input"); if (sbi) { sbi.onkeydown = e => { if (e.key === "Enter") sbi.blur(); }; sbi.onchange = () => { if (Date.now() - (S.camTap || 0) < 2000 || Date.now() - (S.dbTap || 0) < 1500) return; withPic(sbi.value.trim() || null); };
       const box = card.querySelector(".dbres"), others = [...card.querySelectorAll(".xb.sub .alts")];
       sbi.oninput = () => { const r = dbSearch(sbi.value, ex.key); box.hidden = !sbi.value.trim(); others.forEach(o => o.hidden = !!sbi.value.trim());
-        box.innerHTML = r.length ? `<span class="altk">Dal database macchinari · ${r.length === 14 ? "primi 14" : r.length}</span>${r.map(m => { const c = window.MACCHINE_DB.CAT[m.c], fit = c.k.includes(ex.key);
-          return `<div class="alt"><button type="button" class="altn" data-db="${esc(dbName(m))}">${machinePic(dbName(m)) ? `<img src="${machinePic(dbName(m))}" alt="">` : ""}<b>${esc(m.n)}</b><small>${esc(m.b)} · ${esc(m.l)} · ${esc(c.ml)}${fit ? "" : " · <i>altro movimento</i>"}</small></button><a class="altq" href="${imgQ(`${m.b} ${m.l} ${m.n}`)}" target="_blank" rel="noopener">Foto vere ↗</a></div>`; }).join("")}`
+        box.innerHTML = r.length ? `<span class="altk">Dal database macchinari · ${r.length === 14 ? "primi 14" : r.length}</span><p class="subhint">Per essere sicuro: il nome deve essere quello sulla targhetta della macchina; con "Foto vere" vedi proprio quel modello.</p>${r.map(m => { const c = window.MACCHINE_DB.CAT[m.c], fit = c.k.includes(ex.key);
+          return `<div class="alt"><button type="button" class="altn" data-db="${esc(dbName(m))}">${machinePic(dbName(m)) ? `<img src="${machinePic(dbName(m))}" alt="">` : ""}<b>${esc(m.n)}</b><small>${esc(m.b)} · ${esc(m.l)} · ${esc(c.ml)}${fit ? "" : " · <i>altro movimento</i>"}</small></button><a class="altq" href="${mQ(m)}" target="_blank" rel="noopener">Foto vere ↗</a></div>`; }).join("")}`
           : sbi.value.trim() ? `<p class="subhint">Nessuna macchina trovata: va bene lo stesso, il nome che scrivi resta salvato.</p>` : "";
         box.querySelectorAll("[data-db]").forEach(b => { b.onpointerdown = () => { S.dbTap = Date.now(); }; b.onclick = () => withPic(b.dataset.db); }); }; /* toccando la fotocamera il nome aspetta la foto */ setTimeout(() => sbi.focus(), 60); }
     const cp = card.querySelector("[data-copy]") || { set hidden(v) {} };
