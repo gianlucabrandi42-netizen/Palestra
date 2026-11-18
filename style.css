@@ -1074,3 +1074,8 @@ body.kb .tphase{margin-bottom:3px;min-height:26px;padding:3px 8px}
 /* "Che macchina usi oggi?" */
 .xb.ask{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
 .xb.ask .askq{margin:0 0 6px;font-weight:800;font-size:14px;color:var(--ink)}
+/* database macchinari: risultati mentre scrivi */
+.dbres{width:100%;margin-top:8px}
+.dbres .alt small i{font-style:normal;color:var(--near)}
+.subml{color:var(--muted);font-weight:600}
+.dbres .altq,.xb.sub .altq{white-space:nowrap}

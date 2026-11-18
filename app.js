@@ -592,6 +592,23 @@ function exAct(ex, a, undo) {
       S.exOpen.delete(ex.key); S.open.delete(ex.key); const d = dayObj(), n = nextOpenUnit(d, d.ex.findIndex(e => e.key === ex.key));
       renderLog(); if (n) { openUnit(n.k); toast(`Saltato: ${ex.name}`); } else toast("Saltato: allenamento completato"); } }
 }
+// ---------- database macchinari: ricerca mentre scrivi in "Sostituisci" (18/11/2026) ----------
+// Ogni parola scritta deve trovarsi in marca/linea/modello o essere una parola italiana del movimento (petto, dorso…).
+// Prima le macchine che sostituiscono davvero l'esercizio (stessa categoria), poi le altre. Nome salvato = "Marca Linea Modello".
+const dbNorm = t => String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9+]+/g, " ").trim();
+const DB_IT = { petto: ["cp", "ip", "fly", "dp", "multi"], panca: ["cp", "ip", "dp"], inclinata: ["ip"], inclinato: ["ip"], declinata: ["dp"], croci: ["fly"], pectoral: ["fly"], spalle: ["sp", "lat", "rd"], lento: ["sp"], laterali: ["lat"], alzate: ["lat"], posteriori: ["rd"], dorso: ["pd", "row", "hrow", "tbar", "po"], schiena: ["pd", "row", "hrow", "tbar", "lb"], trazioni: ["pd"], rematore: ["row", "tbar", "hrow"], bicipiti: ["bic"], curl: ["bic", "lc", "lcs", "lck"], tricipiti: ["tri", "dip"], braccia: ["bic", "tri", "arm"], addominali: ["abs", "rot"], obliqui: ["rot"], lombari: ["lb"], gambe: ["lp", "hack", "sq", "le", "lc", "lcs", "lck", "lunge"], quadricipiti: ["le", "lp", "hack", "sq"], squat: ["hack", "sq", "belt", "smith"], pressa: ["lp"], affondi: ["lunge"], femorali: ["lc", "lcs", "lck", "ham"], glutei: ["glute", "abd", "ham"], polpacci: ["calf", "calfs"], cavi: ["cable"], cavo: ["cable"], multipower: ["smith"], trapezio: ["shrug"] };
+function dbSearch(q, exKey) {
+  const DB = window.MACCHINE_DB; if (!DB) return []; const toks = dbNorm(q).split(" ").filter(t => t.length > 1 || /\d/.test(t)); if (!toks.length) return [];
+  const out = [];
+  for (const m of DB.list) { const hay = " " + dbNorm(`${m.b} ${m.l} ${m.n}`) + " ", cat = DB.CAT[m.c];
+    let ok = true, sc = 0;
+    for (const t of toks) { if (hay.includes(" " + t + " ")) sc += 4; else if (hay.includes(" " + t)) sc += 3; else if (hay.includes(t)) sc += 1; else if ((DB_IT[t] || []).includes(m.c)) sc += 2; else { ok = false; break; } }
+    if (!ok) continue; if (cat.k.includes(exKey)) sc += 5; if (m.b === "Panatta") sc += 1; else if (m.b === "Technogym") sc += 0.5; out.push({ m, sc }); } // le palestre dell'utente sono Panatta
+  return out.sort((a, b) => b.sc - a.sc || a.m.b.localeCompare(b.m.b)).slice(0, 14).map(x => x.m);
+}
+const dbName = m => `${m.b} ${m.l} ${m.n}`;
+const dbFind = n => { const DB = window.MACCHINE_DB, k = dbNorm(n); return DB ? DB.list.find(m => dbNorm(dbName(m)) === k) || null : null; };
+const imgQ = q => `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(q)}`;
 function todayBanners(s, ex, painRef, rs) {
   const out = [];
   { const used = [...new Set(gymSessions(S.gym).filter(x => x.id !== s.id).map(x => subOf(x, ex.key)).filter(Boolean))].reverse();
@@ -605,14 +622,16 @@ function todayBanners(s, ex, painRef, rs) {
     const used = [...new Set(gymSessions(S.gym).map(x => subOf(x, ex.key)).filter(Boolean))].reverse();
     const cat = ((window.MACCHINE || {})[ex.key] || []).filter(m => !m.gym || m.gym.includes(S.gym) ).filter(m => !used.some(u => sameSub(u, m.n)));
     const pp = S.subPic && S.subPic.key === ex.key ? S.subPic.url : "";
-    out.push(`<div class="xb sub col"><div class="subrow"><label class="subin">↔ <input autocomplete="off" placeholder="${pp ? "Nome sulla targhetta della macchina" : "Scrivi il nome della macchina o scegli sotto"}"></label><label class="subcam${pp ? " on" : ""}" aria-label="Scatta una foto alla macchina">${pp ? `<img src="${pp}" alt="">` : `<svg viewBox="0 0 24 24"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13.2" r="3.6"/></svg>`}<input type="file" accept="image/*" capture="environment" hidden data-subpic></label></div>
-      ${pp ? `<p class="subhint">📷 Foto pronta: scrivi il nome che leggi sulla targhetta (o scegli sotto) e la salvo con la macchina.</p>` : ""}
+    out.push(`<div class="xb sub col"><div class="subrow"><label class="subin">↔ <input autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${pp ? "Marca e nome sulla targhetta" : "Marca e nome (es. panatta inclined)"}"></label><label class="subcam${pp ? " on" : ""}" aria-label="Scatta una foto alla macchina">${pp ? `<img src="${pp}" alt="">` : `<svg viewBox="0 0 24 24"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13.2" r="3.6"/></svg>`}<input type="file" accept="image/*" capture="environment" hidden data-subpic></label></div>
+      ${pp ? `<p class="subhint">📷 Foto pronta: scrivi marca e nome che leggi sulla targhetta (o scegli sotto) e la salvo con la macchina.</p>` : ""}
+      <div class="dbres" hidden></div>
       ${used.length ? `<div class="alts"><span class="altk">Già usate qui</span>${used.map(n => `<div class="alt"><button type="button" class="altn" data-alt="${esc(n)}">${machinePic(n) ? `<img src="${machinePic(n)}" alt="">` : ""}<b>${esc(n)}</b></button></div>`).join("")}</div>` : ""}
       ${cat.length ? `<div class="alts"><span class="altk">Macchine che allenano gli stessi muscoli</span>${cat.map(m => `<div class="alt"><button type="button" class="altn" data-alt="${esc(m.n)}"><b>${esc(m.n)}</b><small>${esc(m.d)}</small></button><a class="altq" href="https://www.google.com/search?tbm=isch&q=${encodeURIComponent("Panatta " + m.n)}" target="_blank" rel="noopener">Com'è fatta ↗</a></div>`).join("")}</div>` : ""}
       <button class="chip" data-undo="subx">Annulla</button></div>`);
   }
   if (subOf(s, ex.key)) { const pic = machinePic(subOf(s, ex.key));
-    out.push(`<div class="xb sub"><p>↔ Oggi fai <b>${esc(subOf(s, ex.key))}</b>: ha il suo storico, quello di ${esc(ex.name)} non cambia.</p><div class="xbb"><label class="chip pic">📷 ${pic ? "Cambia foto" : "Foto macchina"}<input type="file" accept="image/*" capture="environment" hidden data-pic></label><button class="chip" data-undo="sub">Torna all'originale</button></div></div>`); }
+    const dm = dbFind(subOf(s, ex.key)), dmc = dm && window.MACCHINE_DB.CAT[dm.c];
+    out.push(`<div class="xb sub"><p>↔ Oggi fai <b>${esc(subOf(s, ex.key))}</b>${dmc ? ` <span class="subml">· ${esc(dmc.ml)}</span>` : ""}: ha il suo storico, quello di ${esc(ex.name)} non cambia.${dm ? ` <a class="altq" href="${imgQ(`${dm.b} ${dm.l} ${dm.n}`)}" target="_blank" rel="noopener">Foto vere ↗</a>` : ""}</p><div class="xbb"><label class="chip pic">📷 ${pic ? "Cambia foto" : "Foto macchina"}<input type="file" accept="image/*" capture="environment" hidden data-pic></label><button class="chip" data-undo="sub">Torna all'originale</button></div></div>`); }
   if (hasPain(s, ex.key)) out.push(`<div class="xb pain"><p>⚠ Fastidio segnato: la prossima volta il carico resta fermo. Se continua, dillo al PT.</p><button class="chip" data-undo="pain">Togli</button></div>`);
   else if (painRef) out.push(`<div class="xb pain"><p>⚠ Fastidio l'ultima volta (${fmtDate(rs.date).slice(0, 5)}): carico fermo. Se oggi va bene, non segnare niente e la prossima volta si riparte.</p></div>`);
   if (isLater(s, ex.key) && !exSets(s, ex.key).some(r => r && r.reps != null)) out.push(`<div class="xb"><p>⏳ Macchina occupata: lo fai dopo gli altri. Quando lo inizi, l'app tiene conto dei muscoli già stanchi.</p><button class="chip" data-undo="later">Annulla</button></div>`);
@@ -1063,7 +1082,13 @@ function renderLog0() {
     const spi = card.querySelector("[data-subpic]"); if (spi) spi.onchange = () => { const f = spi.files[0]; if (!f) return; const nm = (card.querySelector(".subin input") || {}).value;
       if (nm && nm.trim()) return withPic(nm.trim()); S.subPic = { key: ex.key, file: f, url: URL.createObjectURL(f) }; renderLog(); };
     const pin = card.querySelector("[data-pic]"); if (pin) pin.onchange = () => { if (pin.files[0]) saveMachinePic(subOf(current(), ex.key), pin.files[0]); };
-    const sbi = card.querySelector(".subin input"); if (sbi) { sbi.onkeydown = e => { if (e.key === "Enter") sbi.blur(); }; sbi.onchange = () => { if (Date.now() - (S.camTap || 0) < 2000) return; withPic(sbi.value.trim() || null); }; /* toccando la fotocamera il nome aspetta la foto */ setTimeout(() => sbi.focus(), 60); }
+    const sbi = card.querySelector(".subin input"); if (sbi) { sbi.onkeydown = e => { if (e.key === "Enter") sbi.blur(); }; sbi.onchange = () => { if (Date.now() - (S.camTap || 0) < 2000 || Date.now() - (S.dbTap || 0) < 1500) return; withPic(sbi.value.trim() || null); };
+      const box = card.querySelector(".dbres"), others = [...card.querySelectorAll(".xb.sub .alts")];
+      sbi.oninput = () => { const r = dbSearch(sbi.value, ex.key); box.hidden = !sbi.value.trim(); others.forEach(o => o.hidden = !!sbi.value.trim());
+        box.innerHTML = r.length ? `<span class="altk">Dal database macchinari · ${r.length === 14 ? "primi 14" : r.length}</span>${r.map(m => { const c = window.MACCHINE_DB.CAT[m.c], fit = c.k.includes(ex.key);
+          return `<div class="alt"><button type="button" class="altn" data-db="${esc(dbName(m))}">${machinePic(dbName(m)) ? `<img src="${machinePic(dbName(m))}" alt="">` : ""}<b>${esc(m.n)}</b><small>${esc(m.b)} · ${esc(m.l)} · ${esc(c.ml)}${fit ? "" : " · <i>altro movimento</i>"}</small></button><a class="altq" href="${imgQ(`${m.b} ${m.l} ${m.n}`)}" target="_blank" rel="noopener">Foto vere ↗</a></div>`; }).join("")}`
+          : sbi.value.trim() ? `<p class="subhint">Nessuna macchina trovata: va bene lo stesso, il nome che scrivi resta salvato.</p>` : "";
+        box.querySelectorAll("[data-db]").forEach(b => { b.onpointerdown = () => { S.dbTap = Date.now(); }; b.onclick = () => withPic(b.dataset.db); }); }; /* toccando la fotocamera il nome aspetta la foto */ setTimeout(() => sbi.focus(), 60); }
     const cp = card.querySelector("[data-copy]") || { set hidden(v) {} };
     if (ex.bw || !rs || !refSets.some(r => r && r.kg != null)) { const row = cp.closest && cp.closest(".ir"); if (row) row.remove(); }
     cp.onclick = () => (closeSheet(), ex.sets).forEach((_, i) => { const el0 = $(`kg-${ex.key}-${i}`), a = advise2(refSets[i], prSets[i], tnum(ex.sets[i].t), stp.v, cond.f, nUp(i)), k = el0 && el0.value === "" && /\d/.test(el0.placeholder) ? num(el0.placeholder) : a && a.kg; if (k != null) { const el = $(`kg-${ex.key}-${i}`); el.value = fmt(k); edit(ex, i, "kg", el.value); el.dispatchEvent(new Event("input")); } });
