@@ -434,6 +434,33 @@ function closeSheet(keep) {
 // Forza stimata (Epley) di ogni serie valida (pulita, non aiutata, con kg e reps). Casi: "light" (S1 leggera: le serie dopo
 // valgono >8% in più e la S1 era a target o facile), "climb" (salito troppo: ultima serie più pesante della precedente,
 // ≥2 reps sotto target e calo >15%), "drop" (stesso peso e calo >15%), "pyr" (piramide giusta), "ok" (calo ≤12%), "mid".
+// Adattamento in seduta (18/11/2026, richiesta dell'utente): i kg (e se serve le reps) delle serie ancora da fare si
+// aggiornano appena scrivi una serie. Si parte dal suggerimento della serie (storico) e si guarda l'ultima serie fatta oggi:
+// · kg diversi da quelli suggeriti → le serie dopo si spostano della stessa differenza (tieni la struttura della piramide);
+// · 3+ reps sotto il target, o sporca e sotto target → −1 salto (−2 se a metà target o meno);
+// · pulita e 2+ reps oltre il target, o "Facile" a target → +1 salto (se il salto è pesante, ≥10%, +1 rep invece del peso);
+//   mai in giornata no, scarico, rientro, fastidio, serie aiutata o dopo un recupero lungo; al massimo +2 salti sul suggerito.
+// Senza storico: dopo la S1 la serie dopo parte da quei kg (+1 salto se è una piramide con meno reps e la S1 era a target pulita).
+// 1-2 reps in meno non cambiano nulla (stessa tolleranza dell'opzione B e di "salita troppo").
+function liveAdj(i, sets, P, st0, canUp) {
+  let j = -1; for (let k = i - 1; k >= 0; k--) { const r = sets[k]; if (r && r.kg != null && r.reps != null) { j = k; break; } }
+  if (j < 0 || !P[i] || !P[j]) return null;
+  const rj = sets[j], tj = P[j].tn, ti = P[i].tn, pj = P[j].plan, pi = P[i].plan, st = st0 || (rj.kg >= 20 ? 2.5 : 1);
+  let out = 0;
+  if (tj != null) {
+    if (rj.reps <= Math.floor(tj * 0.5)) out = -2;
+    else if (rj.reps <= tj - CLIMB_MISS || (rj.dirty && rj.reps < tj)) out = -1;
+    else if (canUp && !rj.dirty && !rj.help && !lrOn(rj) && rj.eff !== "hard" && (rj.reps >= tj + 2 || (rj.eff === "easy" && rj.reps >= tj))) out = 1;
+  }
+  const dev = pi != null && pj != null ? r2(rj.kg - pj) : 0;
+  const pyr = pi == null && ti != null && tj != null && ti < tj && out === 0 && !rj.dirty && rj.reps >= tj && canUp;
+  const base = pi != null ? pi + dev : rj.kg + (pyr ? st : 0);
+  const big = st / Math.max(1, base) >= 0.1;
+  let kg = base, reps = P[i].goal || null;
+  if (out > 0 && big) reps = Math.max(reps || 0, (ti || 0) + 1); else kg = base + out * st;
+  kg = Math.max(st, kg); const cap = (pi != null ? pi : base) + 2 * st; if (kg > cap) kg = cap; kg = r2(kg);
+  return { kg, reps, out, j, dev, base: pi, noPlan: pi == null };
+}
 const CLIMB_MISS = 3; // "salita troppo" da 3 reps sotto il target: 1-2 in meno col peso nuovo sono accettate (opzione B)
 function setsTrend(ex, sets, s) {
   if (!ex || ex.bw || ex.nolog) return null;
@@ -898,7 +925,7 @@ function renderLog0() {
         <button type="button" data-act="pain" aria-pressed="${hasPain(sess, ex.key)}"><svg viewBox="0 0 24 24"><path d="M12 3.5 2.8 19.5h18.4z"/><path d="M12 10v4.2M12 17v.01"/></svg><span>Fastidio</span></button>
         <button type="button" data-act="skip" aria-pressed="${isSkip(sess, ex.key)}"><svg viewBox="0 0 24 24"><path d="M5 6l8 6-8 6zM16 6v12"/></svg><span>Non lo faccio</span></button></div></div>
       <div class="pbody"></div></div>`;
-    const setsEl = card.querySelector(".sets"), cur = exSets(sess, ex.key);
+    const setsEl = card.querySelector(".sets"), cur = exSets(sess, ex.key), P = [];
     let sn = 0;
     ex.sets.forEach((st, i) => {
       const ty = TYPES[st.type] || TYPES.std; if (!st.type || st.type === "std" || st.type === "alte" || st.type === "pausa" || st.type === "risc") sn++;
@@ -920,7 +947,7 @@ function renderLog0() {
           row._gap.hidden = g == null; if (g != null) { const lg = lrOn(all[i]); row._gap.className = "rgap" + (lg ? " long" : g < pl * 0.8 ? " short" : "");
             row._gap.innerHTML = `<span>⏱ recupero ${fmtSec(Math.round(g / 5) * 5)}</span><small>previsto ${fmtSec(pl)} · serie ~${setSec(ex, i, all[i])}"</small>`; } }
         const cr = exSets(current(), ex.key)[i] || {}, fv = feelOf(cr);
-        judge(kg, rp, fb, tn, rr, { ...jc, step: stp.v }, isDirty(), cr.eff, goal);
+        judge(kg, rp, fb, tn, rr, { ...jc, step: stp.v, last: i >= need(ex, current()) - 1 }, isDirty(), cr.eff, goal);
         { const pv = i > 0 ? exSets(current(), ex.key)[i - 1] : null, k = num(kg.value), rv = num(rp.value);
           if (pv && pv.kg != null && k != null && rv != null && tn != null && k > pv.kg && rv <= tn - CLIMB_MISS && !cr.dirty && !cond.hold) { fb.className = "fb near"; fb.hidden = false;
             fb.textContent = `Salita troppo: prossima volta ${fmt(pv.kg)} kg qui`; } }
@@ -938,8 +965,10 @@ function renderLog0() {
         const has = num(rp.value) != null;
         dq.classList.toggle("off", !has); dq.disabled = !has; dq.dataset.f = fv; dq.innerHTML = feelIcon(fv);
         dq.setAttribute("aria-label", `Serie ${FEEL[fv].n.toLowerCase()}: tocca per cambiare`);
+        if (card._live) card._live();
       };
-      row._upd = upd;
+      row._upd = upd; row._i = i; row._kg = kg; row._rp = rp; row._fb = fb;
+      P[i] = { plan: sug, goal, tn, lk, label, ph: kg.placeholder, rph: rp.placeholder, sugHTML: (row.querySelector(".sug") || {}).outerHTML || "" };
       dq.onclick = () => openFeel(ex, i, label);
       kg.oninput = e => { edit(ex, i, "kg", kg.value); upd(); autoKg(e, kg, rp); };
       rp.oninput = e => { edit(ex, i, "reps", rp.value); upd(); autoReps(e, rp); };
@@ -960,6 +989,33 @@ function renderLog0() {
       if (i > 0 && !circGroup(d, idx)) { const gp = document.createElement("div"); gp.className = "rgap"; gp.hidden = true; setsEl.appendChild(gp); row._gap = gp; }
       upd(); setsEl.appendChild(row);
     });
+    // adattamento in tempo reale delle serie ancora da fare (vedi liveAdj)
+    card._live = () => {
+      if (ex.bw || circGroup(d, idx)) return;
+      const sets = exSets(current(), ex.key), stv = stepFor(ex.key).v, canUp = cond.f >= 1 && !cond.hold && !hasPain(current(), ex.key);
+      let first = true;
+      setsEl.querySelectorAll(".set").forEach(row => { if (row._i == null) return;
+        const i = row._i, r = sets[i] || {}, p = P[i], filled = r.kg != null || r.reps != null, kgTyped = row._kg.value.trim() !== "";
+        const a = filled || kgTyped ? null : liveAdj(i, sets, P, stv, canUp);
+        const changed = a && (a.noPlan ? true : Math.abs(a.kg - p.plan) > 1e-9 || (a.reps || null) !== (p.goal || null));
+        const pv = row.querySelector(".prev"); let sg = pv.querySelector(".sug");
+        if (!changed) { // torna al suggerimento di partenza
+          row._kg.placeholder = p.ph; row._rp.placeholder = p.rph; row.classList.remove("live");
+          if (sg && sg.classList.contains("live")) { if (p.sugHTML) sg.outerHTML = p.sugHTML; else sg.remove(); }
+          if (row._fb.dataset.live) { row._fb.textContent = ""; row._fb.hidden = true; delete row._fb.dataset.live; }
+          if (!filled) first = false; return; }
+        const dir = p.lk == null ? "" : a.kg > p.lk + 1e-9 ? "up" : a.kg < p.lk - 1e-9 ? "dn" : "eq", rp2 = a.reps && p.tn != null && a.reps > p.tn ? a.reps : null;
+        row._kg.placeholder = fmt(a.kg); row._rp.placeholder = rp2 != null ? rp2 : p.rph; row.classList.add("live");
+        if (!sg) { sg = document.createElement("span"); pv.appendChild(sg); }
+        sg.className = `sug ${dir} live`; sg.textContent = `${{ up: "↑", dn: "↓", eq: "=" }[dir] || "oggi"} ${rp2 != null ? `${fmt(a.kg)} × ${rp2}` : `${fmt(a.kg)} kg`}`;
+        if (first) { const lj = P[a.j].label, rj = sets[a.j], tj = P[a.j].tn;
+          const why = a.out < 0 ? `${lj} ${rj.reps} su ${tj}${rj.dirty ? " e sporca" : ""}` : a.out > 0 ? `${lj} ${rj.eff === "easy" ? "facile" : `+${rj.reps - tj} reps`}` : a.dev ? `${lj} a ${fmt(rj.kg)} kg` : a.noPlan ? `da ${lj}` : "";
+          const what = rp2 != null && a.out > 0 ? `qui ${fmt(a.kg)} × ${rp2}` : `qui ${fmt(a.kg)} kg`;
+          if (why) { row._fb.className = "fb live"; row._fb.hidden = false; row._fb.dataset.live = "1"; row._fb.textContent = `⟳ ${why}: ${what}`; } }
+        first = false;
+      });
+    };
+    card._live();
     const su = card.querySelector(".setup input");
     if (su) {
       su.value = ((D.setup[S.gym] || {})[ex.key]) || ""; su.oninput = () => { D.setup[S.gym] = D.setup[S.gym] || {}; D.setup[S.gym][ex.key] = su.value.trim(); save(); S.setupDirty = true; const t = card.querySelector("[data-editsetup]"); if (t) t.textContent = su.value.trim() || "—"; };
@@ -987,7 +1043,7 @@ function renderLog0() {
     const sbi = card.querySelector(".subin input"); if (sbi) { sbi.onkeydown = e => { if (e.key === "Enter") sbi.blur(); }; sbi.onchange = () => { S.subEdit = null; setExMap("sub", ex.key, sbi.value.trim() || null); }; setTimeout(() => sbi.focus(), 60); }
     const cp = card.querySelector("[data-copy]") || { set hidden(v) {} };
     if (ex.bw || !rs || !refSets.some(r => r && r.kg != null)) { const row = cp.closest && cp.closest(".ir"); if (row) row.remove(); }
-    cp.onclick = () => (closeSheet(), ex.sets).forEach((_, i) => { const a = advise2(refSets[i], prSets[i], tnum(ex.sets[i].t), stp.v, cond.f, nUp(i)), k = a && a.kg; if (k != null) { const el = $(`kg-${ex.key}-${i}`); el.value = fmt(k); edit(ex, i, "kg", el.value); el.dispatchEvent(new Event("input")); } });
+    cp.onclick = () => (closeSheet(), ex.sets).forEach((_, i) => { const el0 = $(`kg-${ex.key}-${i}`), a = advise2(refSets[i], prSets[i], tnum(ex.sets[i].t), stp.v, cond.f, nUp(i)), k = el0 && el0.value === "" && /\d/.test(el0.placeholder) ? num(el0.placeholder) : a && a.kg; if (k != null) { const el = $(`kg-${ex.key}-${i}`); el.value = fmt(k); edit(ex, i, "kg", el.value); el.dispatchEvent(new Event("input")); } });
     const panel = card.querySelector(".panel"), pbody = panel.querySelector(".pbody"); if (open) fillPanel(pbody, ex);
     const openInfo = () => openSheet(ex.key);
     card.querySelectorAll("[data-more]").forEach(b => b.onclick = () => {
@@ -1195,10 +1251,11 @@ function judge(kgEl, rpEl, fb, t, lr, cond, dirty, eff, goal) {
     // forza attesa oggi = forza dell'ultima volta × fattore di forma/rientro
     const e1 = hasLast ? e1rm(kg, reps) : 0, exp = hasLast ? e1rm(lr.kg, lr.reps) * f : 0;
     if (reps >= t) { cls = "ok"; msg = reps > t ? `+${reps - t} oltre il target 🔥` : off ? "Target pieno anche oggi 💪" : cheer; }
-    else if (hasLast && e1 >= exp * 0.99 && (up > 0 || off)) { cls = "prog"; msg = off ? `${missTxt} in meno, ma ci sei 👍` : `−${missTxt} ma +${fmt(up)} kg: più forte 💪`; }
+    else if (hasLast && e1 >= exp * 0.99 && (up > 0 || off) && (off || miss < CLIMB_MISS)) { cls = "prog"; msg = off ? `${missTxt} in meno, ma ci sei 👍` : `−${missTxt} ma +${fmt(up)} kg: più forte 💪`; }
     else if (hasLast && up > 0 && pct < 0.6 && !off) { cls = "prog"; msg = `Peso nuovo troppo: prossima volta ${fmt(lr.kg)} kg e più reps`; }
+    else if (!off && miss >= CLIMB_MISS && !(cond && cond.last)) { cls = "prog"; msg = `${reps} su ${t}: la prossima serie scende ⟳`; } // coerente con l'adattamento in seduta
     else if (hasLast && up > 0) { cls = "prog"; msg = `+${fmt(up)} kg: ci sta perdere qualche rep`; }
-    else if (pct >= 0.6 || off) { cls = "prog"; msg = `Pulita, −${missTxt}: carico giusto 👍`; }
+    else if (pct >= 0.6 || off) { cls = "prog"; msg = !off && miss >= CLIMB_MISS ? `${reps} su ${t}: prossima volta stesso carico` : `Pulita, −${missTxt}: carico giusto 👍`; }
     else { cls = "prog"; msg = `${reps} su ${t}: se si ripete, scendi un po'`; }
   }
   if (!dirty && goal && reps != null && t != null && reps >= t) { cls = "ok"; msg = reps >= goal ? (reps >= t + 2 ? `${reps} reps: prossima volta il salto 🚀` : `Obiettivo ${goal} preso, quasi al salto ✓`) : `Target pieno · obiettivo ${goal}`; }

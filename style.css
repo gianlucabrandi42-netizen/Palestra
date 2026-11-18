@@ -1054,3 +1054,7 @@ body.kb .tphase{margin-bottom:3px;min-height:26px;padding:3px 8px}
 .exinfo .restsel [data-restx],.exinfo .stepsel [data-stepx]{flex:0 0 auto;padding:0 11px}
 .tp-opts{flex-wrap:nowrap!important;overflow:hidden}
 .tp-opts button{flex:1 1 0;min-width:0;padding:5px 2px}
+/* adattamento in seduta: suggerimento aggiornato in tempo reale */
+.set .fb.live{color:color-mix(in srgb,var(--accent) 80%,var(--ink))}
+.prev .sug.live{color:var(--accent);font-weight:800}
+.set.live input::placeholder{color:color-mix(in srgb,var(--accent) 70%,transparent)}
