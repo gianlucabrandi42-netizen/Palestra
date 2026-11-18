@@ -1171,10 +1171,19 @@ function circCard(d, g, n, isCur) {
     D.sessions[s2.id] = s2; save();
     if (S.date === todayISO()) try { localStorage.setItem(LKEY, JSON.stringify({ gym: S.gym, day: S.day, date: S.date, key: mem[0].key, i: 0 })); } catch (e) {}
     const was = cnt >= giri, now = Math.max(0, Math.min(giri, k)) >= giri;
-    if (was !== now) { if (now) S.exOpen.delete(mem[0].key); renderLog(); return; } // completato (o riaperto): la lista si riorganizza
+    if (was !== now) { // completato (o riaperto): la lista si riorganizza; se completato, resta aperto FINISH_HOLD con "Vai ora"
+      if (now) { S.exOpen.delete(mem[0].key); clearTimeout(S.moveT); clearInterval(S.moveI);
+        if (T.key === tKey(mem[0]) && (running() || T.left != null)) stopRest(); // circuito finito: niente recupero
+        const nx = nextOpenUnit(d, g.start); S.between = { next: nx ? (d.ex.find(e => e.key === nx.k) || {}).name : "" };
+        S.hold = mem[0].key; S.moveAt = Date.now() + FINISH_HOLD;
+        S.moveGo = () => { clearTimeout(S.moveT); clearInterval(S.moveI); S.hold = null; S.moveAt = null; S.moveGo = null; renderLog(); drawTimer(); };
+        S.moveT = setTimeout(S.moveGo, FINISH_HOLD); S.moveI = setInterval(() => drawTimer(), 1000); }
+      renderLog(); drawTimer(); return; }
     card.replaceWith(circCard(d, g, n, isCur)); updateProgress();
   };
-  card.querySelector("[data-play]").onclick = () => setCirc(cnt + 1);
+  // "Giro fatto" fa partire subito il recupero del circuito (18/11/2026, richiesta dell'utente), tranne dopo l'ultimo giro
+  card.querySelector("[data-play]").onclick = () => { const k = cnt + 1; setCirc(k);
+    if (k < giri && S.date === todayISO()) startRest(rest, `Giro ${k} fatto · poi giro ${k + 1}`, tKey(mem[0])); };
   card.querySelectorAll("[data-g]").forEach(b => b.onclick = () => { const k = +b.dataset.g; setCirc(cnt === k ? k - 1 : k); });
   card.querySelector("[data-rest]").onclick = () => startRest(rest, cnt >= giri ? "Circuito finito" : cnt ? `Giro ${cnt} fatto · poi giro ${cnt + 1}` : `Recupero ${c}`);
   return card;
@@ -1361,7 +1370,7 @@ document.addEventListener("focusout", e => {
   if (vv) vv.addEventListener("resize", () => setTimeout(go, 60), { once: true });
   setTimeout(go, 450);
 });
-const FINISH_HOLD = 10000; // 10" dopo l'ultima serie prima di chiudere l'esercizio (scelta dell'utente del 18/11/2026)
+const FINISH_HOLD = 5000; // 5" dopo l'ultima serie (o l'ultimo giro) prima di chiudere l'esercizio (scelta dell'utente del 18/11/2026; prima 10")
 // ---------- ripresa: all'apertura torna all'ultima serie compilata oggi ----------
 const LKEY = "palestra-last";
 function resumeLast(force) {
