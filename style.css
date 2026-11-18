@@ -614,7 +614,7 @@ html[data-theme] .ctop .gym button::before,html[data-theme] .ctop .gym button[ar
 .prev .lv.dirty i{font-style:normal;font-weight:900;margin-left:2px}
 /* tastiera aperta: niente menu in basso, timer compatto in fondo (sopra la tastiera) */
 body.kb .tabbar{display:none}
-body.kb .timer{bottom:0;padding-bottom:4px}
+body.kb .timer{bottom:0;padding-bottom:8px}
 body.kb .tbox{padding:3px;box-shadow:0 2px 10px rgba(0,0,0,.45)}
 body.kb .tb{height:38px;width:38px}
 body.kb .tmain{height:38px}

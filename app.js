@@ -373,9 +373,11 @@ function saveMachinePic(n, file) {
 // Il pannello .panel della scheda viene spostato dentro #isheet; si chiude toccando fuori, con ✕ o trascinando giù.
 function openSheet(key) {
   const card = document.querySelector(`.ex[data-ex="${key}"]`), sh = $("isheet"); if (!card || !sh) return;
-  const ex = dayObj().ex.find(e => e.key === key), panel = card.querySelector(".panel"), pbody = panel.querySelector(".pbody");
-  if (!pbody.firstChild) fillPanel(pbody, ex);
-  if (!panel) return;
+  clearTimeout(sh._closeT); // riaperto mentre si stava chiudendo: il pannello è ancora nel riquadro
+  { const prev = sh.querySelector(".is-c .panel"); if (prev && sh._card && sh._card !== card && document.contains(sh._card)) { prev.hidden = true; sh._card.appendChild(prev); } }
+  const ex = dayObj().ex.find(e => e.key === key), panel = card.querySelector(".panel") || (sh._card === card ? sh.querySelector(".is-c .panel") : null);
+  if (!panel || !ex) return; const pbody = panel.querySelector(".pbody");
+  if (pbody && !pbody.firstChild) fillPanel(pbody, ex);
   const body = sh.querySelector(".is-c"); body.textContent = ""; panel.hidden = false; body.appendChild(panel); sh._card = card;
   sh.querySelector(".is-h").innerHTML = `<b>${esc(subOf(current(), key) || ex.name)}</b>${rxLine(ex)}`;
   const was = !sh.hidden || S.sheet === key && sh.classList.contains("on"); S.sheet = key;
@@ -389,7 +391,7 @@ function closeSheet(keep) {
   const b = document.activeElement; if (b && sh.contains(b)) b.blur();
   // il pannello torna nella sua scheda, così il tasto si può riaprire
   const back = () => { if (S.setupDirty) { S.setupDirty = false; sh.querySelector(".is-c").textContent = ""; sh._card = null; renderLog(); return; } const p = sh.querySelector(".is-c .panel"), c = sh._card; if (p && c && document.contains(c)) { p.hidden = true; c.appendChild(p); } sh.querySelector(".is-c").textContent = ""; sh._card = null; };
-  setTimeout(() => { if (!sh.classList.contains("on")) { sh.hidden = true; back(); } }, 220);
+  clearTimeout(sh._closeT); sh._closeT = setTimeout(() => { if (!sh.classList.contains("on")) { sh.hidden = true; back(); } }, 220);
 }
 (() => { // chiusura: tocco fuori, ✕, trascinamento verso il basso dalla barretta/intestazione
   const sh = $("isheet"); if (!sh) return;
@@ -397,20 +399,36 @@ function closeSheet(keep) {
   sh.querySelector(".is-bg").onclick = () => closeSheet();
   sh.querySelector(".is-x").onclick = () => closeSheet();
   sh.querySelector(".is-close").onclick = () => closeSheet();
-  // trascinando giù il contenuto quando è già in cima, il riquadro scende e si chiude
-  const cont = sh.querySelector(".is-c"); let cy = null, cd = 0;
-  let cx = 0, lock = null;
-  cont.addEventListener("touchstart", e => { const g = e.target.closest && e.target.closest(".gallery, .acts3, .stepsel");
-    cy = !g && cont.scrollTop <= 0 ? e.touches[0].clientY : null; cx = e.touches[0].clientX; cd = 0; lock = null; }, { passive: true });
-  cont.addEventListener("touchmove", e => { if (cy == null) return; const t = e.touches[0];
-    if (!lock) { const ax = Math.abs(t.clientX - cx), ay = Math.abs(t.clientY - cy); if (ax < 6 && ay < 6) return; lock = ax > ay ? "x" : "y"; }
-    if (lock === "x") { cy = null; box.style.transform = ""; return; } // movimento orizzontale: non è una chiusura
-    cd = t.clientY - cy; if (cd > 0 && cont.scrollTop <= 0) { box.style.transition = "none"; box.style.transform = `translateY(${cd}px)`; } else if (cd < 0) { cy = null; box.style.transform = ""; } }, { passive: true });
-  cont.addEventListener("touchend", () => { if (cy == null) return; box.style.transition = ""; if (cd > 110) closeSheet(); else box.style.transform = ""; cy = null; });
-  const grab = sh.querySelector(".is-top"); let y0 = null, dy = 0;
-  grab.addEventListener("touchstart", e => { y0 = e.touches[0].clientY; dy = 0; box.style.transition = "none"; }, { passive: true });
-  grab.addEventListener("touchmove", e => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); box.style.transform = `translateY(${dy}px)`; }, { passive: true });
-  grab.addEventListener("touchend", () => { box.style.transition = ""; if (dy > 90) closeSheet(); else box.style.transform = ""; y0 = null; });
+  // Trascina giù per chiudere (rifatto il 18/11/2026: "non si trascina bene"). Funziona da qualsiasi punto del riquadro,
+  // anche partendo dalle foto (prima la galleria era esclusa, ed è proprio la parte in alto): direzione decisa ai primi
+  // 8 px (orizzontale = sfogli le foto, verticale = trascini); a contenuto in cima il rimbalzo di iOS viene bloccato
+  // (touchmove non passivo) così il riquadro segue il dito; si chiude oltre 1/4 di altezza o con uno scatto veloce.
+  const cont = sh.querySelector(".is-c"), bg = sh.querySelector(".is-bg"), grab = sh.querySelector(".is-top");
+  let y0 = null, x0 = 0, dy = 0, lock = null, t0 = 0, fromTop = false, lastY = 0, lastT = 0, vel = 0;
+  const start = (e, top) => { const t = e.touches[0]; if (e.target.closest && e.target.closest("input, textarea")) { y0 = null; return; }
+    fromTop = top; y0 = t.clientY; x0 = t.clientX; dy = 0; lock = top ? "y" : null; t0 = lastT = Date.now(); lastY = y0; vel = 0; };
+  const move = e => { if (y0 == null) return; const t = e.touches[0];
+    if (!lock) { const ax = Math.abs(t.clientX - x0), ay = Math.abs(t.clientY - y0);
+      // iOS decide lo scorrimento al primo movimento: verso il basso a contenuto in cima lo blocchiamo subito
+      if (t.clientY > y0 && ay >= ax && cont.scrollTop <= 0 && e.cancelable) e.preventDefault();
+      if (ax < 8 && ay < 8) return;
+      lock = ax > ay ? "x" : (t.clientY > y0 && cont.scrollTop <= 0 ? "y" : "scroll"); }
+    if (lock !== "y") return;
+    dy = Math.max(0, t.clientY - y0); const now = Date.now(); vel = (t.clientY - lastY) / Math.max(1, now - lastT); lastY = t.clientY; lastT = now;
+    if (e.cancelable) e.preventDefault();
+    box.style.transition = "none"; box.style.transform = `translateY(${dy}px)`; bg.style.transition = "none"; bg.style.opacity = String(Math.max(0.15, 1 - dy / (box.offsetHeight || 600)));
+  };
+  const end = () => { if (y0 == null) return; const h = box.offsetHeight || 600;
+    box.style.transition = ""; bg.style.transition = ""; bg.style.opacity = "";
+    const avg = dy / Math.max(1, Date.now() - t0); // scatto: veloce nell'ultimo tratto o in media
+    if (lock === "y" && (dy > h * 0.25 || (dy > 40 && Math.max(vel, avg) > 0.5))) closeSheet(); else box.style.transform = "";
+    y0 = null; lock = null; };
+  cont.addEventListener("touchstart", e => start(e, false), { passive: true });
+  cont.addEventListener("touchmove", move, { passive: false });
+  cont.addEventListener("touchend", end); cont.addEventListener("touchcancel", end);
+  grab.addEventListener("touchstart", e => start(e, true), { passive: true });
+  grab.addEventListener("touchmove", move, { passive: false });
+  grab.addEventListener("touchend", end); grab.addEventListener("touchcancel", end);
 })();
 // ---------- Confronto tra le serie dello stesso esercizio nella stessa seduta (18/11/2026) ----------
 // Forza stimata (Epley) di ogni serie valida (pulita, non aiutata, con kg e reps). Casi: "light" (S1 leggera: le serie dopo
@@ -579,7 +597,12 @@ function openFeel(ex, i, label) {
   box.hidden = false; box.classList.remove("in"); void box.offsetWidth; box.classList.add("in");
   box.querySelectorAll("button").forEach(b => {
     b.onmousedown = e => e.preventDefault(); // non toglie il cursore dal campo: la tastiera resta aperta
-    b.onclick = () => {
+    // 18/11/2026: su iPhone con la tastiera aperta il "click" a volte non arriva e la striscia restava aperta
+    // (soprattutto toccando "Giusta"): si risponde già alla fine del tocco (touchend), una volta sola.
+    let fired = 0; const fire = () => { if (Date.now() - fired < 500) return; fired = Date.now(); pick(); };
+    let tx = 0, ty = 0; b.addEventListener("touchstart", e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; }, { passive: true });
+    b.addEventListener("touchend", e => { const t = e.changedTouches[0]; if (Math.abs(t.clientX - tx) > 12 || Math.abs(t.clientY - ty) > 12) return; if (e.cancelable) e.preventDefault(); fire(); }, { passive: false }); b.onclick = fire; // preventDefault: niente "click fantasma" sotto la striscia
+    const pick = () => {
       const v = b.dataset.v, ae = document.activeElement, keep = lastField && document.contains(lastField) ? lastField : null;
       const s2 = JSON.parse(JSON.stringify(current())); s2.ex[ex.key] = s2.ex[ex.key] || [];
       while (s2.ex[ex.key].length < ex.sets.length) s2.ex[ex.key].push({ kg: null, reps: null });
@@ -1149,6 +1172,8 @@ function placeTimer() {
   tm.style.bottom = "auto"; tm.style.top = Math.max(0, vv.offsetTop + vv.height - tm.offsetHeight) + "px";
 }
 if (window.visualViewport) { visualViewport.addEventListener("resize", placeTimer); visualViewport.addEventListener("scroll", placeTimer); }
+// la barra cambia altezza (riga delle fasi, "Com'era?", avvisi): si riaggancia subito sopra la tastiera, altrimenti il fondo finisce tagliato (18/11/2026)
+if (window.ResizeObserver && $("timer")) new ResizeObserver(() => placeTimer()).observe($("timer"));
 addEventListener("scroll", () => { if (document.body.classList.contains("kb")) placeTimer(); }, { passive: true });
 // Tocco su un campo già compilato: il numero si seleziona tutto, così scrivi direttamente quello nuovo.
 document.addEventListener("focusin", e => {
