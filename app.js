@@ -584,6 +584,7 @@ function closeFeel() { FE = null; const box = $("feel"); if (box && !box.hidden)
 // durata stimata della serie: ~4" a rep (target del PT, o le reps fatte se di più), il doppio se "per gamba"/"per braccio"; tra 20" e 90"
 const SEC_REP = 4;
 function setSec(ex, i, r) {
+  if (ex && (D.setDur || {})[ex.key]) return D.setDur[ex.key]; // impostata a mano nei dettagli
   const t = ex && ex.sets[i] ? tnum(ex.sets[i].t) : null, n = Math.max(t || 0, (r && r.reps) || 0) || 10;
   const uni = ex && /per (gamba|braccio|lato)/i.test((ex.tec || "") + " " + (ex.sets[i] && ex.sets[i].note || ""));
   return Math.min(90, Math.max(20, n * (uni ? 2 : 1) * SEC_REP));
@@ -836,6 +837,8 @@ function renderLog0() {
       <div class="panel" hidden><div class="exinfo">
         ${ex.setup === false ? "" : `<div class="ir setup"${((D.setup[S.gym] || {})[ex.key]) ? "" : " hidden"}><label class="il" for="su-${ex.key}">Regolazioni</label><div class="iv"><input id="su-${ex.key}" autocomplete="off" placeholder="es. sedile 4, schienale 2"></div></div>`}
         ${ex.tec ? `<div class="ir"><span class="il">Schema</span><div class="iv tecv">${esc(ex.tec)}</div></div>` : ""}
+        ${ex.nolog ? "" : (() => { const own = (D.setDur || {})[ex.key], est = setSec({ ...ex, key: "__" }, 0, null);
+          return `<div class="ir"><span class="il">Durata serie<i>${own ? "impostata da te" : "stimata"}</i></span><div class="iv durset"><button type="button" data-sd="-5" aria-label="Meno 5 secondi">−5"</button><b>${own || est}"</b><button type="button" data-sd="5" aria-label="Più 5 secondi">+5"</button>${own ? `<button type="button" class="sd-reset" data-sd="0">stimata</button>` : ""}</div></div>`; })()}
         <div class="ir"><span class="il">Recupero${hasRest(ex) ? "" : "<i>non indicato</i>"}</span><div class="iv restsel" role="group" aria-label="Recupero tra le serie">${REST_OPT.map(v => `<button type="button" data-rest-set="${v}" aria-pressed="${hasRest(ex) && restFor(ex) === v}">${fmtSec(v)}</button>`).join("")}</div></div>
         ${ex.bw ? "" : `<div class="ir"><span class="il">Salto pesi${stp.auto && stp.v ? "<i>stimato</i>" : ""}</span><div class="iv stepsel" role="group" aria-label="Salto dei pesi">${STEPS.map(v => `<button type="button" data-step="${v}" aria-pressed="${stp.v === v}" class="${stp.v === v && stp.auto ? "auto" : ""}">${fmt(v)}</button>`).join("")}</div></div>`}
         ${ex.setup === false || ((D.setup[S.gym] || {})[ex.key]) ? "" : `<button type="button" class="addsetup" data-addsetup>⚙ Aggiungi regolazioni della macchina</button>`}
@@ -865,6 +868,9 @@ function renderLog0() {
       const fb = row.querySelector(".fb"), dq = row.querySelector(".dq");
       const isDirty = () => !!(exSets(current(), ex.key)[i] || {}).dirty;
       const upd = () => {
+        if (row._gap) { const all = exSets(current(), ex.key), g = restGap(all[i - 1], all[i], ex, i), pl = restFor(ex);
+          row._gap.hidden = g == null; if (g != null) { const lg = lrOn(all[i]); row._gap.className = "rgap" + (lg ? " long" : g < pl * 0.8 ? " short" : "");
+            row._gap.innerHTML = `<span>⏱ recupero ${fmtSec(Math.round(g / 5) * 5)}</span><small>previsto ${fmtSec(pl)} · serie ~${setSec(ex, i, all[i])}"</small>`; } }
         const cr = exSets(current(), ex.key)[i] || {}, fv = feelOf(cr);
         judge(kg, rp, fb, tn, rr, jc, isDirty(), cr.eff, goal);
         { const pv = i > 0 ? exSets(current(), ex.key)[i - 1] : null, k = num(kg.value), rv = num(rp.value);
@@ -899,10 +905,11 @@ function renderLog0() {
         if (g && !g.last) { toast(`Subito: ${d.ex[idx + 1].name}`); return; } // circuito: niente recupero tra gli esercizi
         // ultima serie (o ultimo giro): tra un esercizio e l'altro il recupero NON parte (scelta dell'utente, 17/11/2026);
         // riparte dopo la prima serie dell'esercizio successivo
-        if (i === ex.sets.length - 1) { if (running() || T.left != null) stopRest(); { const tr = setsTrend(ex, exSets(current(), ex.key), current()); toast(tr && !isOffDay(current()) ? `Esercizio finito · ${tr.msg}` : "Esercizio finito · recupero in pausa fino alla prima serie del prossimo"); } return; }
+        if (i === ex.sets.length - 1) { { const n = nextOpenUnit(d, idx); S.between = { next: n ? (d.ex.find(e => e.key === n.k) || {}).name : "" }; } if (running() || T.left != null) stopRest(); else drawTimer(); { const tr = setsTrend(ex, exSets(current(), ex.key), current()); toast(tr && !isOffDay(current()) ? `Esercizio finito · ${tr.msg}` : "Esercizio finito · recupero in pausa fino alla prima serie del prossimo"); } return; }
         if (g) { startRest(restFor(ex), `Giro ${i + 1} finito · poi giro ${i + 2}`, tKey(ex)); return; }
         startRest(restFor(ex), `${ex.name} · poi serie ${i + 2}`, tKey(ex));
       });
+      if (i > 0 && !circGroup(d, idx)) { const gp = document.createElement("div"); gp.className = "rgap"; gp.hidden = true; setsEl.appendChild(gp); row._gap = gp; }
       upd(); setsEl.appendChild(row);
     });
     const su = card.querySelector(".setup input");
@@ -910,6 +917,8 @@ function renderLog0() {
       su.value = ((D.setup[S.gym] || {})[ex.key]) || ""; su.oninput = () => { D.setup[S.gym] = D.setup[S.gym] || {}; D.setup[S.gym][ex.key] = su.value.trim(); save(); S.setupDirty = true; const t = card.querySelector("[data-editsetup]"); if (t) t.textContent = su.value.trim() || "—"; };
     }
     card.querySelectorAll("[data-act]").forEach(b => b.onclick = () => exAct(ex, b.dataset.act));
+    card.querySelectorAll("[data-sd]").forEach(b => b.onclick = () => { const d = +b.dataset.sd, cur = (D.setDur || {})[ex.key] || setSec({ ...ex, key: "__" }, 0, null);
+      D.setDur = { ...(D.setDur || {}) }; if (!d) delete D.setDur[ex.key]; else D.setDur[ex.key] = Math.max(10, Math.min(180, cur + d)); save(); renderLog(); });
     card.querySelectorAll("[data-rest-set]").forEach(b => b.onclick = () => { const v = +b.dataset.restSet; setRest(ex.key, (D.rest || {})[ex.key] === v ? null : v); toast((D.rest || {})[ex.key] ? `Recupero ${ex.name}: ${fmtSec(v)}` : "Recupero tolto: torna quello di base"); });
     card.querySelectorAll("[data-addsetup]").forEach(b => b.onclick = () => { const r = b.parentNode.querySelector(".ir.setup"); if (r) { r.hidden = false; b.remove(); const i = r.querySelector("input"); i.focus(); i.scrollIntoView({ block: "center", behavior: "smooth" }); } });
     card.querySelectorAll("[data-undo]").forEach(b => b.onclick = () => exAct(ex, b.dataset.undo, true));
@@ -1160,7 +1169,7 @@ function edit(ex, i, field, val) {
     else if (!r.at && s.date === todayISO()) { r.at = Date.now();
       const g = i > 0 && !circGroup(d, idx) ? restGap(s.ex[ex.key][i - 1], r, ex, i) : null; if (isLong(g, restFor(ex), s.buddy)) r.lr = g; } }
   if (v != null && !["dirty", "eff"].includes(field) && !(s.ord || []).includes(ex.key)) s.ord = [...(s.ord || []), ex.key]; // ordine reale di esecuzione
-  if (v != null && !["dirty", "eff"].includes(field)) { stampTime(s); if (s.later && s.later[ex.key]) delete s.later[ex.key]; }
+  if (v != null && !["dirty", "eff"].includes(field)) { stampTime(s); if (S.between && field === "kg") { S.between = null; setTimeout(drawTimer, 0); } if (s.later && s.later[ex.key]) delete s.later[ex.key]; }
   if (field === "kg" && FE && (FE.key !== ex.key || FE.i !== i)) closeFeel();
   if (v != null && !["dirty", "eff"].includes(field) && T.key && T.key !== tKey(ex) && (running() || T.left != null)) stopRest(); // altro esercizio: il recupero si ferma // passi alla serie dopo: la domanda sparisce
   s.updatedAt = Date.now(); D.sessions[s.id] = s; save(); updateProgress();
@@ -1498,7 +1507,7 @@ $("bkFile").onchange = async e => {
     for (const [id, s] of Object.entries(inc.sessions || {})) { const l = D.sessions[id]; if (!l || (s.updatedAt || 0) > (l.updatedAt || 0)) { D.sessions[id] = s; added++; } }
     for (const g of Object.keys(inc.setup || {})) D.setup[g] = { ...(inc.setup[g] || {}), ...(D.setup[g] || {}) };
     for (const g of Object.keys(inc.steps || {})) { D.steps = D.steps || {}; D.steps[g] = { ...(inc.steps[g] || {}), ...(D.steps[g] || {}) }; }
-    D.rest = { ...(inc.rest || {}), ...(D.rest || {}) };
+    D.rest = { ...(inc.rest || {}), ...(D.rest || {}) }; D.setDur = { ...(inc.setDur || {}), ...(D.setDur || {}) };
     for (const g of Object.keys(inc.machines || {})) { D.machines = D.machines || {}; D.machines[g] = { ...(inc.machines[g] || {}), ...(D.machines[g] || {}) }; }
     save(true); $("bkMsg").textContent = `Ripristino fatto: ${added} sedute importate o aggiornate.`; toast("Backup ripristinato"); render();
   } catch (err) { $("bkMsg").textContent = "Questo file non è un backup dell'app Palestra."; }
@@ -1569,7 +1578,7 @@ const remaining = () => T.left != null ? T.left : T.end ? (T.end - Date.now()) /
 
 const tKey = ex => ex.circ ? "c:" + ex.circ : ex.key;
 function startRest(sec, label, key) {
-  unlockAudio();
+  unlockAudio(); S.between = null;
   T = { end: Date.now() + sec * 1000, dur: sec, label: label || "Recupero", key: key || null }; tDone = 0; tWarned = sec <= 6; tSave();
   notifSchedule(); keepAwake(true); audioKeep(true); tickLoop(); drawTimer();
 }
@@ -1582,19 +1591,49 @@ function tick() {
   if (r <= 0) { T = {}; tSave(); clearInterval(tIv); tIv = null; keepAwake(false); tDone = Date.now(); alarm(false); setTimeout(() => { if (!running()) audioKeep(false); }, 3000); drawTimer(); setTimeout(drawTimer, 6100); return; }
   drawTimer();
 }
+// Fase del timer (18/11/2026): riga sopra la barra con cosa sta succedendo e il recupero previsto modificabile (✎)
+function phaseKey() {
+  if (T.key && !String(T.key).startsWith("c:")) return T.key;
+  const d = dayObj(); if (!d) return null; const s = current(), u = currentUnit(d, s, dayUnitsList(d, s)); return u && u.ex && !u.ex.nolog ? u.ex.key : null;
+}
+function drawPhase(run, paused, done) {
+  const ph = $("tPhase"); if (!ph || S.phaseEdit) return; const k = phaseKey(), ex = k ? dayObj().ex.find(e => e.key === k) : null, pl = ex ? fmtSec(restFor(ex)) : fmtSec(tPrefs().sec);
+  const edit = ex ? `<button type="button" class="tp-ed" id="tpEd">previsto ${pl} ✎</button>` : "";
+  let h; const m = /^(.*) · poi serie (\d+)$/.exec(T.label || ""), lb = m ? `S${m[2] - 1} → S${m[2]} · ${m[1]}` : (T.label || "");
+  if (run) h = `<span class="tp-k run">● Recupero</span><span class="tp-t">${esc(lb)}</span>${edit}`;
+  else if (paused) h = `<span class="tp-k pau">⏸ In pausa</span><span class="tp-t">${esc(lb)}</span>${edit}`;
+  else if (done) h = `<span class="tp-k ok">✓ Recupero finito</span><span class="tp-t">tocca il tempo per la prossima serie</span>`;
+  else if (S.between) h = `<span class="tp-k chg">↪ Cambio esercizio</span><span class="tp-t">recupero in pausa${S.between.next ? ` · poi ${esc(S.between.next)}` : ""}</span>`;
+  else h = `<span class="tp-k">▶ Pronto</span><span class="tp-t">${ex ? esc(ex.name) : "recupero di base"}</span>${edit}`;
+  ph.innerHTML = h;
+  const b = $("tpEd"); if (b) { b.onmousedown = e => e.preventDefault(); b.onclick = () => openPhaseEdit(ex); }
+}
+function openPhaseEdit(ex) {
+  const ph = $("tPhase"); S.phaseEdit = true; ph.classList.add("edit"); const cur = restFor(ex);
+  ph.innerHTML = `<span class="tp-k">Recupero previsto · <b>${esc(ex.name)}</b></span><div class="tp-opts">${REST_OPT.map(v => `<button type="button" data-tv="${v}" aria-pressed="${hasRest(ex) && cur === v}">${fmtSec(v)}</button>`).join("")}<button type="button" data-tv="0">base</button><button type="button" data-tv="x" aria-label="Chiudi">✕</button></div>`;
+  ph.querySelectorAll("[data-tv]").forEach(b => { b.onmousedown = e => e.preventDefault(); b.onclick = () => {
+    const v = b.dataset.tv; S.phaseEdit = false; ph.classList.remove("edit");
+    if (v !== "x") { const n = v === "0" ? null : +v; D.rest = { ...(D.rest || {}) }; if (n == null) delete D.rest[ex.key]; else D.rest[ex.key] = n; save();
+      const nd = restFor(ex);
+      if (T.key === ex.key && (running() || T.left != null)) { if (running()) { const start = T.end - T.dur * 1000; T.end = start + nd * 1000; notifSchedule(); } else T.left = Math.max(0, T.left + nd - T.dur); T.dur = nd; tSave(); }
+      toast(`Recupero ${ex.name}: ${fmtSec(nd)}${n == null ? " (base)" : ""}`); if (S.view === "log") renderLog(); }
+    drawTimer(); placeTimer(); }; });
+  placeTimer();
+}
 function drawTimer() {
   const box = $("timer"), tb = $("tbox");
   const run = running(), paused = T.left != null, done = Date.now() - tDone < 6000;
   box.hidden = !(run || paused || done || S.view === "log");
   tb.classList.toggle("run", run); tb.classList.toggle("paused", paused); tb.classList.toggle("done", done && !run && !paused);
   $("tStop").hidden = !(run || paused);
+  drawPhase(run, paused, done);
   $("tPause").innerHTML = run ? `<svg viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg>` : `<svg viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z"/></svg>`;
   $("tPause").setAttribute("aria-label", run ? "Pausa" : paused ? "Riprendi" : "Avvia il recupero");
   $("tPause").classList.toggle("go", !run);
   if (run || paused) {
     const r = remaining();
     $("tTime").textContent = fmtSec(r);
-    $("tLabel").textContent = paused ? "In pausa" : T.label;
+    $("tLabel").textContent = `su ${fmtSec(T.dur || 0)}`;
     $("tFill").style.width = Math.max(0, Math.min(100, (1 - r / (T.dur || 1)) * 100)) + "%";
     tb.classList.toggle("last", run && r <= 5);
   } else {
