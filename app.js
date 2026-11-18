@@ -677,7 +677,9 @@ const lrOn = r => !!(r && r.lr && !r.lrOk);
 // ---------- durata dell'allenamento: dal primo inserimento all'ultimo (sessione.t0 / t1), tasti Inizia / Fine (tEnd) ----------
 function stampTime(s) { if (s.date !== todayISO()) return; const n = Date.now(); if (!s.t0) s.t0 = n; s.t1 = n; }
 const fmtDur = ms => { const m = Math.max(1, Math.round(ms / 60000)); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")} min`; };
-const live = s => s.t0 && !s.tEnd && s.date === todayISO() && Date.now() - (s.t1 || s.t0) < 45 * 60000;
+// in corso solo se oggi, non chiusa a mano, ultimo inserimento < 45' fa e non ancora finita (18/11/2026: a scheda completata il tempo si ferma all'ultima serie)
+const sessDone = s => { const p = SCHEDE.find(x => x.id === s.plan), d = p && p.days.find(x => x.id === s.day); if (!d) return false; const u = dayUnitsList(d, s); return u.length > 0 && u.every(x => x.done); };
+const live = s => s.t0 && !s.tEnd && s.date === todayISO() && Date.now() - (s.t1 || s.t0) < 45 * 60000 && !sessDone(s);
 function durTxt(s, done) { if (!s || !s.t0) return ""; const end = s.tEnd || (live(s) && !done ? Date.now() : (s.t1 || s.t0)); return fmtDur(end - s.t0); }
 const hhmm = t => new Date(t).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
 // Cancella una seduta iniziata per sbaglio: due tocchi (il secondo entro 4"), poi "Annulla" per 8" nel messaggio
