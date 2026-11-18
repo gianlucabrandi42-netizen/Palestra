@@ -857,7 +857,9 @@ function renderLog0() {
         ${ex.tec ? `<div class="ir"><span class="il">Schema</span><div class="iv tecv">${esc(ex.tec)}</div></div>` : ""}
         ${ex.nolog ? "" : (() => { const own = (D.setDur || {})[ex.key], est = setSec({ ...ex, key: "__" }, 0, null);
           return `<div class="ir"><span class="il">Durata serie<i>${own ? "impostata da te" : "stimata"}</i></span><div class="iv durset"><button type="button" data-sd="-5" aria-label="Meno 5 secondi">−5"</button><b>${own || est}"</b><button type="button" data-sd="5" aria-label="Più 5 secondi">+5"</button>${own ? `<button type="button" class="sd-reset" data-sd="0">stimata</button>` : ""}</div></div>`; })()}
-        <div class="ir"><span class="il">Recupero${hasRest(ex) ? "" : "<i>non indicato</i>"}</span><div class="iv restsel" role="group" aria-label="Recupero tra le serie">${REST_OPT.map(v => `<button type="button" data-rest-set="${v}" aria-pressed="${hasRest(ex) && restFor(ex) === v}">${fmtSec(v)}</button>`).join("")}</div></div>
+        <div class="ir"><span class="il">Recupero${hasRest(ex) ? "" : "<i>non indicato</i>"}</span><div class="iv restsel" role="group" aria-label="Recupero tra le serie">${S.restEdit === ex.key
+          ? `<input class="stepin" id="rsin-${ex.key}" inputmode="text" autocomplete="off" placeholder="es. 1:45" value="${hasRest(ex) && !REST_QUICK.includes(restFor(ex)) ? fmtSec(restFor(ex)) : ""}"><button type="button" data-restok>OK</button><button type="button" data-restx aria-label="Annulla">✕</button>`
+          : REST_QUICK.map(v => `<button type="button" data-rest-set="${v}" aria-pressed="${hasRest(ex) && restFor(ex) === v}">${fmtSec(v)}</button>`).join("") + (() => { const cu = hasRest(ex) && !REST_QUICK.includes(restFor(ex)); return `<button type="button" data-restc aria-pressed="${cu}" class="cust">${cu ? fmtSec(restFor(ex)) : "altro"}</button>`; })()}</div></div>
         ${ex.bw ? "" : `<div class="ir"><span class="il">Salto pesi${stp.auto && stp.v ? "<i>stimato</i>" : ""}</span><div class="iv stepsel" role="group" aria-label="Salto dei pesi">${S.stepEdit === ex.key
           ? `<input class="stepin" id="stin-${ex.key}" inputmode="decimal" autocomplete="off" placeholder="kg, es. 1,25" value="${stp.v && !STEPS.includes(stp.v) ? fmt(stp.v) : ""}"><button type="button" data-stepok>OK</button><button type="button" data-stepx aria-label="Annulla">✕</button>`
           : STEPS.map(v => `<button type="button" data-step="${v}" aria-pressed="${stp.v === v}" class="${stp.v === v && stp.auto ? "auto" : ""}">${fmt(v)}</button>`).join("") + (() => { const cu = stp.v && !STEPS.includes(stp.v); return `<button type="button" data-stepc aria-pressed="${!!cu}" class="cust${cu && stp.auto ? " auto" : ""}">${cu ? fmt(stp.v) : "altro"}</button>`; })()}</div></div>`}
@@ -947,6 +949,13 @@ function renderLog0() {
     });
     card.querySelectorAll("[data-sd]").forEach(b => b.onclick = () => { const d = +b.dataset.sd, cur = (D.setDur || {})[ex.key] || setSec({ ...ex, key: "__" }, 0, null);
       D.setDur = { ...(D.setDur || {}) }; if (!d) delete D.setDur[ex.key]; else D.setDur[ex.key] = Math.max(10, Math.min(180, cur + d)); save(); renderLog(); });
+    card.querySelectorAll("[data-restc]").forEach(b => b.onclick = () => { S.restEdit = ex.key; renderLog(); setTimeout(() => { const i = $(`rsin-${ex.key}`); if (i) { i.focus(); i.select(); } }, 60); });
+    { const ri = card.querySelector(`#rsin-${CSS.escape(ex.key)}`); if (ri) {
+      const ok = () => { const v = parseRest(ri.value.trim()); S.restEdit = null; if (v && v >= 10 && v <= 600) { setRest(ex.key, v); toast(`Recupero ${ex.name}: ${fmtSec(v)}`); } else renderLog(); };
+      ri.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); ok(); } };
+      const bo = card.querySelector("[data-restok]"), bx = card.querySelector("[data-restx]");
+      if (bo) { bo.onmousedown = e => e.preventDefault(); bo.onclick = ok; }
+      if (bx) { bx.onmousedown = e => e.preventDefault(); bx.onclick = () => { S.restEdit = null; renderLog(); }; } } }
     card.querySelectorAll("[data-rest-set]").forEach(b => b.onclick = () => { const v = +b.dataset.restSet; setRest(ex.key, (D.rest || {})[ex.key] === v ? null : v); toast((D.rest || {})[ex.key] ? `Recupero ${ex.name}: ${fmtSec(v)}` : "Recupero tolto: torna quello di base"); });
     card.querySelectorAll("[data-addsetup]").forEach(b => b.onclick = () => { const r = b.parentNode.querySelector(".ir.setup"); if (r) { r.hidden = false; b.remove(); const i = r.querySelector("input"); i.focus(); i.scrollIntoView({ block: "center", behavior: "smooth" }); } });
     card.querySelectorAll("[data-undo]").forEach(b => b.onclick = () => exAct(ex, b.dataset.undo, true));
@@ -1608,6 +1617,7 @@ function parseRest(r) {
 const restFor = ex => (ex && (D.rest || {})[ex.key]) || parseRest(ex && ex.rest) || tPrefs().sec;
 const hasRest = ex => !!(ex && ((D.rest || {})[ex.key] || ex.rest));
 const REST_OPT = [45, 60, 75, 90, 120, 150, 180];
+const REST_QUICK = [45, 60, 90, 120, 180]; // una riga sola (18/11/2026); gli altri tempi con "altro"
 function setRest(key, v) { D.rest = { ...(D.rest || {}) }; if (v == null) delete D.rest[key]; else D.rest[key] = v; save(); renderLog(); }
 // circuito: esercizi consecutivi con lo stesso "circ" → {start, end, last}
 function circGroup(d, idx) {
@@ -1658,7 +1668,7 @@ function drawPhase(run, paused, done) {
 }
 function openPhaseEdit(ex) {
   const ph = $("tPhase"); S.phaseEdit = true; ph.classList.add("edit"); const cur = restFor(ex);
-  ph.innerHTML = `<span class="tp-k">Recupero previsto · <b>${esc(ex.name)}</b></span><div class="tp-opts">${REST_OPT.map(v => `<button type="button" data-tv="${v}" aria-pressed="${hasRest(ex) && cur === v}">${fmtSec(v)}</button>`).join("")}<button type="button" data-tv="0">base</button><button type="button" data-tv="x" aria-label="Chiudi">✕</button></div>`;
+  ph.innerHTML = `<span class="tp-k">Recupero previsto · <b>${esc(ex.name)}</b></span><div class="tp-opts">${REST_QUICK.map(v => `<button type="button" data-tv="${v}" aria-pressed="${hasRest(ex) && cur === v}">${fmtSec(v)}</button>`).join("")}<button type="button" data-tv="0">base</button><button type="button" data-tv="x" aria-label="Chiudi">✕</button></div>`;
   ph.querySelectorAll("[data-tv]").forEach(b => { b.onmousedown = e => e.preventDefault(); b.onclick = () => {
     const v = b.dataset.tv; S.phaseEdit = false; ph.classList.remove("edit");
     if (v !== "x") { const n = v === "0" ? null : +v; D.rest = { ...(D.rest || {}) }; if (n == null) delete D.rest[ex.key]; else D.rest[ex.key] = n; save();
