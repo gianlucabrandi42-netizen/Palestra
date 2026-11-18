@@ -641,8 +641,8 @@ function todayBanners(s, ex, painRef, rs) {
 // Prescrizione del PT, sempre in evidenza sotto il nome: "3 × 10 reps" o "3 serie: 10 · 8 · 8 reps" + recupero
 function rxLine(ex) {
   const ts = ex.sets.map(st => st.t + (st.type === "ced" ? " RP" : st.type === "strip" ? " strip" : "")), same = ts.every(t => t === ts[0]);
-  // il recupero compare solo se il PT l'ha indicato nella scheda (campo "rest" in schede.js)
-  return `<div class="rx"><b>${same ? `${ts.length} × ${esc(ts[0])}` : `${ts.length} serie: ${ts.map(esc).join(" · ")}`}</b>${hasRest(ex) ? `<span>recupero ${fmtSec(restFor(ex))}</span>` : ""}</div>`;
+  // recupero sempre visibile: quello dell'esercizio o il predefinito 1:30 (richiesta dell'utente del 18/11/2026)
+  return `<div class="rx"><b>${same ? `${ts.length} × ${esc(ts[0])}` : `${ts.length} serie: ${ts.map(esc).join(" · ")}`}</b><span>recupero ${fmtSec(restFor(ex))}</span></div>`;
 }
 // ---------- sensazione della serie: striscia "Com'era?" sopra il timer ----------
 const FEEL = { easy: { n: "Facile", b: 1 }, ok: { n: "Giusta", b: 2 }, hard: { n: "Al limite", b: 3 }, dirty: { n: "Sporca" }, help: { n: "Aiutata" } };
@@ -944,9 +944,9 @@ function renderLog0() {
         ${ex.tec ? `<div class="ir"><span class="il">Schema</span><div class="iv tecv">${esc(ex.tec)}</div></div>` : ""}
         ${ex.nolog ? "" : (() => { const own = (D.setDur || {})[ex.key], est = setSec({ ...ex, key: "__" }, 0, null);
           return `<div class="ir"><span class="il">Durata serie<i>${own ? "impostata da te" : "stimata"}</i></span><div class="iv durset"><button type="button" data-sd="-5" aria-label="Meno 5 secondi">−5"</button><b>${own || est}"</b><button type="button" data-sd="5" aria-label="Più 5 secondi">+5"</button>${own ? `<button type="button" class="sd-reset" data-sd="0">stimata</button>` : ""}</div></div>`; })()}
-        <div class="ir"><span class="il">Recupero${hasRest(ex) ? "" : "<i>non indicato</i>"}</span><div class="iv restsel" role="group" aria-label="Recupero tra le serie">${S.restEdit === ex.key
+        <div class="ir"><span class="il">Recupero${hasRest(ex) ? "" : "<i>predefinito</i>"}</span><div class="iv restsel" role="group" aria-label="Recupero tra le serie">${S.restEdit === ex.key
           ? `<input class="stepin" id="rsin-${ex.key}" inputmode="text" autocomplete="off" placeholder="es. 1:45" value="${hasRest(ex) && !REST_QUICK.includes(restFor(ex)) ? fmtSec(restFor(ex)) : ""}"><button type="button" data-restok>OK</button><button type="button" data-restx aria-label="Annulla">✕</button>`
-          : REST_QUICK.map(v => `<button type="button" data-rest-set="${v}" aria-pressed="${hasRest(ex) && restFor(ex) === v}">${fmtSec(v)}</button>`).join("") + (() => { const cu = hasRest(ex) && !REST_QUICK.includes(restFor(ex)); return `<button type="button" data-restc aria-pressed="${cu}" class="cust">${cu ? fmtSec(restFor(ex)) : "altro"}</button>`; })()}</div></div>
+          : REST_QUICK.map(v => `<button type="button" data-rest-set="${v}" aria-pressed="${restFor(ex) === v}">${fmtSec(v)}</button>`).join("") + (() => { const cu = !REST_QUICK.includes(restFor(ex)); return `<button type="button" data-restc aria-pressed="${cu}" class="cust">${cu ? fmtSec(restFor(ex)) : "altro"}</button>`; })()}</div></div>
         ${ex.bw ? "" : `<div class="ir"><span class="il">Salto pesi${stp.auto && stp.v ? "<i>stimato</i>" : ""}</span><div class="iv stepsel" role="group" aria-label="Salto dei pesi">${S.stepEdit === ex.key
           ? `<input class="stepin" id="stin-${ex.key}" inputmode="decimal" autocomplete="off" placeholder="kg, es. 1,25" value="${stp.v && !STEPS.includes(stp.v) ? fmt(stp.v) : ""}"><button type="button" data-stepok>OK</button><button type="button" data-stepx aria-label="Annulla">✕</button>`
           : STEPS.map(v => `<button type="button" data-step="${v}" aria-pressed="${stp.v === v}" class="${stp.v === v && stp.auto ? "auto" : ""}">${fmt(v)}</button>`).join("") + (() => { const cu = stp.v && !STEPS.includes(stp.v); return `<button type="button" data-stepc aria-pressed="${!!cu}" class="cust${cu && stp.auto ? " auto" : ""}">${cu ? fmt(stp.v) : "altro"}</button>`; })()}</div></div>`}
@@ -1072,7 +1072,7 @@ function renderLog0() {
       const bo = card.querySelector("[data-restok]"), bx = card.querySelector("[data-restx]");
       if (bo) { bo.onmousedown = e => e.preventDefault(); bo.onclick = ok; }
       if (bx) { bx.onmousedown = e => e.preventDefault(); bx.onclick = () => { S.restEdit = null; renderLog(); }; } } }
-    card.querySelectorAll("[data-rest-set]").forEach(b => b.onclick = () => { const v = +b.dataset.restSet; setRest(ex.key, (D.rest || {})[ex.key] === v ? null : v); toast((D.rest || {})[ex.key] ? `Recupero ${ex.name}: ${fmtSec(v)}` : "Recupero tolto: torna quello di base"); });
+    card.querySelectorAll("[data-rest-set]").forEach(b => b.onclick = () => { const v = +b.dataset.restSet; if (!hasRest(ex) && v === restFor(ex)) return toast(`Già ${fmtSec(v)} (predefinito)`); setRest(ex.key, (D.rest || {})[ex.key] === v || v === tPrefs().sec ? null : v); toast((D.rest || {})[ex.key] ? `Recupero ${ex.name}: ${fmtSec(v)}` : "Recupero tolto: torna quello di base"); });
     card.querySelectorAll("[data-addsetup]").forEach(b => b.onclick = () => { const r = b.parentNode.querySelector(".ir.setup"); if (r) { r.hidden = false; b.remove(); const i = r.querySelector("input"); i.focus(); i.scrollIntoView({ block: "center", behavior: "smooth" }); } });
     card.querySelectorAll("[data-mach]").forEach(b => b.onclick = () => { if (b.dataset.mach === "orig") setExMap("machOk", ex.key, true); else { S.subEdit = ex.key; renderLog(); } });
     card.querySelectorAll("[data-undo]").forEach(b => b.onclick = () => exAct(ex, b.dataset.undo, true));
@@ -1746,6 +1746,7 @@ function render() {
 // Recupero di base 1:30 (regolabile); se l'esercizio ha "rest" nella scheda, vale quello.
 // A fine recupero: vibrazione (Android), suono e tocco aptico (iPhone, dove possibile). Lo schermo resta acceso mentre conta.
 const TKEY = "palestra-timer";
+if (D.prefs && !D.prefs.rest90) { D.prefs.timer = { ...(D.prefs.timer || {}), sec: 90 }; D.prefs.rest90 = true; try { localStorage.setItem("palestra-v1", JSON.stringify(D)); } catch (e) {} } // 18/11/2026: predefinito 1:30 per tutti
 const tPrefs = () => { const t = D.prefs.timer = D.prefs.timer || {}; return { sec: t.sec ?? 90, auto: t.auto ?? true, vib: t.vib ?? true, snd: t.snd ?? true, warn: t.warn ?? true, push: t.push ?? false, pushSub: t.pushSub || null, pushId: t.pushId || "", lockNote: t.lockNote ?? false }; };
 const setTPref = (k, v) => { D.prefs.timer = D.prefs.timer || {}; D.prefs.timer[k] = v; save(); };
 const fmtSec = s => { s = Math.max(0, Math.ceil(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
@@ -1861,7 +1862,7 @@ let nudgeT;
 const nudge = d => {
   if (running()) { T.end = Math.max(Date.now() + 1000, T.end + d * 1000); T.dur = Math.max(T.dur + d, remaining()); if (remaining() > 5) tWarned = false; tSave(); clearTimeout(nudgeT); nudgeT = setTimeout(notifSchedule, 700); }
   else if (T.left != null) { T.left = Math.max(1, T.left + d); T.dur = Math.max(T.dur + d, T.left); tSave(); }
-  else { setTPref("sec", Math.max(15, Math.min(600, tPrefs().sec + d))); tDone = 0; if (S.view === "more") renderMore(); }
+  else { toast(`Recupero predefinito ${fmtSec(tPrefs().sec)}: si cambia in Impostazioni → Timer`); return; }
   drawTimer();
 };
 $("tMinus").onclick = () => nudge(-15);
