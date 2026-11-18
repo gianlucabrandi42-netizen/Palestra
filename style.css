@@ -972,3 +972,14 @@ html[data-theme="sparta"] .gdots i.on{background:var(--gold)}
 .rep{padding:4px 16px 10px;display:grid;gap:12px}
 .rep-b{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .rep pre{margin:0;white-space:pre-wrap;word-break:break-word;font:13px/1.5 ui-monospace,Menlo,monospace;color:var(--ink);background:var(--raised);border:1px solid var(--line);border-radius:12px;padding:12px}
+/* riscaldamento e serie centrati nel riquadro (18/11/2026) */
+.warm{justify-items:center;text-align:center}
+.warm>span{text-align:center}
+.sh span{text-align:center}
+.set .sn,.set .prev{text-align:center;justify-self:center;align-items:center}
+.set .sn small{display:block}
+.set .prev{display:flex;flex-direction:column}
+.set input{text-align:center}
+.advice.trend.ok{color:color-mix(in srgb,var(--ok) 70%,var(--muted))}
+.advice.trend.up{color:color-mix(in srgb,var(--ok) 70%,var(--muted))}
+.advice.trend.near{color:color-mix(in srgb,var(--near) 75%,var(--muted))}

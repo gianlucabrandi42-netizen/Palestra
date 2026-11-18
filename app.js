@@ -397,6 +397,37 @@ function closeSheet(keep) {
   grab.addEventListener("touchmove", e => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); box.style.transform = `translateY(${dy}px)`; }, { passive: true });
   grab.addEventListener("touchend", () => { box.style.transition = ""; if (dy > 90) closeSheet(); else box.style.transform = ""; y0 = null; });
 })();
+// ---------- Confronto tra le serie dello stesso esercizio nella stessa seduta (18/11/2026) ----------
+// Forza stimata (Epley) di ogni serie valida (pulita, non aiutata, con kg e reps). Casi: "light" (S1 leggera: le serie dopo
+// valgono >8% in più e la S1 era a target o facile), "climb" (salito troppo: ultima serie più pesante della precedente,
+// ≥2 reps sotto target e calo >15%), "drop" (stesso peso e calo >15%), "pyr" (piramide giusta), "ok" (calo ≤12%), "mid".
+function setsTrend(ex, sets, s) {
+  if (!ex || ex.bw || ex.nolog) return null;
+  const v = (sets || []).map((r, i) => ({ r, i, t: tnum(ex.sets[i] && ex.sets[i].t) })).filter(x => x.r && x.r.reps != null && x.r.kg != null && !x.r.dirty && !x.r.help);
+  if (v.length < 2 || !(sets[ex.sets.length - 1] && sets[ex.sets.length - 1].reps != null)) return null;
+  const e = v.map(x => e1rm(x.r.kg, x.r.reps)), f = v[0], l = v[v.length - 1], p = v[v.length - 2];
+  const drop = (e[e.length - 1] / e[0] - 1) * 100, later = Math.max(...e.slice(1)), pc = x => `${x > 0 ? "+" : "−"}${Math.abs(x).toFixed(0)}%`;
+  const kgs = v.map(x => x.r.kg), same = kgs.every(k => k === kgs[0]), up = kgs.every((k, i) => !i || k >= kgs[i - 1]) && !same;
+  const pushed = v.slice(1).filter(x => x.t != null && x.r.reps >= x.t + 2).map(x => "S" + (x.i + 1));
+  // 1) salito troppo: una serie più pesante della precedente chiusa 2+ reps sotto il target (con l'Epley a poche reps non si vede)
+  const cl = v.slice(1).map((x, j) => ({ x, p: v[j] })).filter(o => o.x.r.kg > o.p.r.kg && o.x.t != null && o.x.r.reps <= o.x.t - 2).pop();
+  if (cl) return { kind: "climb", cls: "near", pct: drop, last: cl.x.i, keep: cl.p.r.kg, msg: `Salita troppo: la S${cl.x.i + 1} a ${fmt(cl.x.r.kg)} kg si è fermata a ${cl.x.r.reps} su ${cl.x.t}. Prossima volta tieni ${fmt(cl.p.r.kg)} kg.` };
+  // 2) prima serie leggera
+  if (later > e[0] * 1.08 && (f.t == null || f.r.reps >= f.t || f.r.eff === "easy"))
+    return { kind: "light", cls: "up", pct: drop, msg: `S1 leggera: ${pushed.length ? `hai spinto dopo (${listIt(pushed)} oltre il target)` : "le serie dopo valgono di più"}. Prossima volta parti più pesante.` };
+  // 3) stesso peso: conta il calo di reps (10 → 9 → 8 normale, 10 → 8 → 6 forte)
+  if (same) {
+    const rd = (l.r.reps / f.r.reps - 1) * 100, rr = `${f.r.reps} → ${l.r.reps} reps`;
+    if (rd >= -20) return { kind: "ok", cls: "ok", pct: rd, msg: `Tenuta buona con lo stesso peso (${rr}).` };
+    if (rd < -30) { const short = s && v.slice(1).some(x => { const g = restGap(sets[x.i - 1], x.r, ex, x.i); return g != null && g < restFor(ex) * 0.8; });
+      return { kind: "drop", cls: "near", pct: rd, msg: `Calo forte con lo stesso peso (${rr}): ${short ? "recupero più corto del previsto" : "carico alto o recupero corto"}. Se si ripete, scendi di un salto.` }; }
+    return { kind: "mid", cls: "", pct: rd, msg: `Un po' di calo con lo stesso peso (${rr}): normale verso la fine.` };
+  }
+  // 4) pesi diversi: forza stimata
+  if (drop >= -12) return up ? { kind: "pyr", cls: "ok", pct: drop, msg: `Piramide ben impostata (${pc(drop)}).` } : { kind: "ok", cls: "ok", pct: drop, msg: `Tra le serie ${pc(drop)}: tenuta buona.` };
+  if (drop < -20) return { kind: "drop", cls: "near", pct: drop, msg: `Calo forte tra le serie (${pc(drop)}): carico alto o recupero corto.` };
+  return { kind: "mid", cls: "", pct: drop, msg: `Tra le serie ${pc(drop)}: un po' di calo, normale verso la fine.` };
+}
 // ---------- Report per il PT a fine scheda (17/11/2026): testo da mandare (WhatsApp/mail) prima della scheda nuova ----------
 function ptReport() {
   const p = plan(), all = Object.values(D.sessions).filter(s => s.plan === p.id && hasData(s)).sort((a, b) => a.date < b.date ? -1 : 1);
@@ -424,7 +455,8 @@ function ptReport() {
         exSets(s, ex.key).forEach((r, i) => { if (!r || r.reps == null) return; done++; if (!r.dirty) clean++; if (r.eff === "hard") hard++; if (r.eff === "easy") easy++;
           if (i > 0) { const gp = restGap(exSets(s, ex.key)[i - 1], r, ex, i); if (gp != null) { rN++; rS += gp; rP += restFor(ex); } } }); }
       if (!done && !parts.length) { L.push(`• ${ex.name}: non fatto`); continue; }
-      const notes = [done ? `pulite ${Math.round(clean / done * 100)}%` : "", hard ? `al limite ${hard}` : "", easy ? `facili ${easy}` : "", pains[ex.name] ? `⚠ fastidio ${pains[ex.name]}×` : ""].filter(Boolean).join(", ");
+      const tk = {}; ds.filter(s => home(s) && !isOffDay(s) && !subOf(s, ex.key)).forEach(s => { const tr = setsTrend(ex, exSets(s, ex.key), s); if (tr && ["climb", "drop", "light"].includes(tr.kind)) tk[tr.kind] = (tk[tr.kind] || 0) + 1; });
+      const notes = [done ? `pulite ${Math.round(clean / done * 100)}%` : "", tk.climb ? `ultima serie crolla dopo la salita ${tk.climb}×` : "", tk.drop ? `calo forte tra le serie ${tk.drop}×` : "", tk.light ? `S1 leggera ${tk.light}×` : "", hard ? `al limite ${hard}` : "", easy ? `facili ${easy}` : "", pains[ex.name] ? `⚠ fastidio ${pains[ex.name]}×` : ""].filter(Boolean).join(", ");
       L.push(`• ${ex.name}: ${parts.join(" · ") || "—"}${notes ? `\n   ${notes}` : ""}`);
     }
   }
@@ -639,6 +671,8 @@ function recapCard(d, s, units) {
       <div><span>Volume</span><b>${Math.round(vol).toLocaleString("it-IT")}<i> kg</i></b>${vd != null ? `<small class="${vd >= 0 ? "up" : "dn"}">${vd >= 0 ? "+" : "−"}${Math.abs(vd).toFixed(0)}% vs ${new Date(prevDay.date + "T12:00").toLocaleDateString("it-IT", { day: "numeric", month: "short" })}</small>` : ""}</div>
     </div>
     ${better.length ? `<p class="rc-l up">↑ <b>Meglio dell'ultima volta:</b> ${better.sort((a, b) => b.pc - a.pc).map(x => `${esc(x.n)} ${pcs(x)}`).join(" · ")}</p>` : ""}
+    ${(() => { if (special) return ""; const k = d.ex.map(e => ({ e, tr: subOf(s, e.key) ? null : setsTrend(e, exSets(s, e.key), s) })).filter(x => x.tr && ["climb", "drop", "light"].includes(x.tr.kind));
+      return k.length ? `<p class="rc-l">↕ <b>Tra le serie:</b> ${k.map(x => `${esc(x.e.name)}: ${{ climb: "salita troppo", drop: "calo forte", light: "S1 leggera" }[x.tr.kind]}`).join(" · ")}</p>` : ""; })()}
     ${worse.length ? `<p class="rc-l dn">↓ <b>Sotto l'ultima volta:</b> ${worse.map(x => `${esc(x.n)} ${pcs(x)}`).join(" · ")}${special ? " (giornata particolare, non conta)" : ""}</p>` : ""}
     ${skipEx.length ? `<p class="rc-l">⤼ <b>Saltati oggi:</b> ${esc(listIt(skipEx))}</p>` : ""}
     <div class="rc-feel" aria-label="Com'erano le serie">${["easy", "ok", "hard", "dirty", "help"].map(f => { const n = f === "easy" ? nE : f === "hard" ? nH : f === "dirty" ? dirty : f === "help" ? nA : clean - nE - nH - nA; return n ? `<span data-f="${f}"><i>${feelIcon(f)}</i>${n} ${FEEL[f].n.toLowerCase()}</span>` : ""; }).join("")}</div>
@@ -693,11 +727,16 @@ function renderLog0() {
       hit = hit1 && !!pr && allHit(exSets(pr, ex.key), ex) && allClean(exSets(pr, ex.key)), cond = condition(sess), sbN = subOf(sess, ex.key), stp = ex.bw || sbN ? { v: null } : stepFor(ex.key);
     const pr2 = rs ? prevRef(ex.key, rs) : null, prSets = pr2 ? exSets(pr2, ex.key) : [], nUp = i => easy2(refSets[i], prSets[i], tnum(ex.sets[i].t)) ? 2 : 1;
     const painRef = rs && hasPain(rs, ex.key);
-    const advise2 = (r, pl, t, step, f, n) => { const a = advise(r, pl, t, step, f, n);
+    const trRef = rs && !subOf(rs, ex.key) ? setsTrend(ex, exSets(rs, ex.key), rs) : null;
+    const advise2 = (r, pl, t, step, f, n) => { let a = advise(r, pl, t, step, f, n);
+      if (a && r && trRef && f >= 1 && !cond.hold) { const i = refSets.indexOf(r);
+        if (trRef.kind === "light" && i === 0 && a.kg > r.kg && step) a = { ...a, kg: roundKg(a.kg + step), why: "S1 leggera l'ultima volta: un salto in più" };
+        if (trRef.kind === "climb" && i === trRef.last && a.kg > trRef.keep) a = { ...a, kg: trRef.keep, why: "Salita troppo l'ultima volta: tieni il carico della serie prima" }; }
       if (a && cond.hold && r && r.kg != null && a.kg > r.kg) return { kg: r.kg, reps: t, why: "Rientro: stessi carichi dell'ultima volta", mode: "back" };
       return a && painRef && r && a.kg > r.kg ? { kg: r.kg, reps: t, why: "Fastidio l'ultima volta: carico fermo finché non passa", mode: "pain" } : a; };
     const ref = sbN ? null : ex.ref && ex.ref[S.gym];
     const stl = ex.bw ? null : stallInfo(ex, S.gym, S.date);
+    const trendToday = sbN ? null : setsTrend(ex, exSets(sess, ex.key), sess);
     // riscaldamento: primo esercizio del giorno o primo che lavora muscoli nuovi; 50%×10 · 70%×5 · 85%×2 del carico di S1, al salto disponibile
     const warm = (() => {
       if (ex.bw || sbN || isCircNoLog(d, idx)) return "";
@@ -762,6 +801,7 @@ function renderLog0() {
       ${warm ? `<p class="warm"><span>🔥 Riscaldamento <i>· non si registra</i></span>${warm}</p>` : ""}
       <div class="sets"><div class="sh"><span>Serie</span><span>Ultima</span><span>${ex.bw ? "kg (opz.)" : "kg"}</span><span>Reps</span><span></span></div></div>
       ${load ? `<p class="advice ${load.c}"><span>Consiglio</span>${load.t}</p>` : ""}
+      ${trendToday && !isOffDay(sess) ? `<p class="advice trend ${trendToday.cls}"><span>Tra le serie</span>${trendToday.msg}</p>` : ""}
       ${stl && !sbN && !cond.deload ? `<p class="advice stall"><span>Fermo</span>⏸ Nessun miglioramento da ${stl.n} sedute. Prova: salto più piccolo o una rep in più invece del peso, recuperi pieni, tecnica pulita. Se continua, dillo al PT.</p>` : ""}
       <div class="exfoot${manual ? " two" : ""}">
         ${manual ? `<button class="more" data-close>Chiudi</button>` : ""}
@@ -800,6 +840,9 @@ function renderLog0() {
       const upd = () => {
         const cr = exSets(current(), ex.key)[i] || {}, fv = feelOf(cr);
         judge(kg, rp, fb, tn, rr, jc, isDirty(), cr.eff, goal);
+        { const pv = i > 0 ? exSets(current(), ex.key)[i - 1] : null, k = num(kg.value), rv = num(rp.value);
+          if (pv && pv.kg != null && k != null && rv != null && tn != null && k > pv.kg && rv <= tn - 2 && !cr.dirty) { fb.className = "fb near"; fb.hidden = false;
+            fb.textContent = `Salita troppo rispetto alla S${i}: ${rv} su ${tn}. Prossima volta tieni ${fmt(pv.kg)} kg qui.`; } }
         if (cond.hold && num(rp.value) != null && tn != null && num(rp.value) <= tn - 3 && i < ex.sets.length - 1 && num(kg.value) != null) {
           const st = stp.v || 2.5, low = Math.max(0, num(kg.value) - st); fb.className = "fb near"; fb.hidden = false;
           fb.textContent = `Rientro: ${num(rp.value)} su ${tn}. Nella prossima serie scendi a ${fmt(low)} kg, poi riprendi piano.`; }
@@ -826,7 +869,7 @@ function renderLog0() {
         if (g && !g.last) { toast(`Subito: ${d.ex[idx + 1].name}`); return; } // circuito: niente recupero tra gli esercizi
         // ultima serie (o ultimo giro): tra un esercizio e l'altro il recupero NON parte (scelta dell'utente, 17/11/2026);
         // riparte dopo la prima serie dell'esercizio successivo
-        if (i === ex.sets.length - 1) { if (running() || T.left != null) stopRest(); toast("Esercizio finito · recupero in pausa fino alla prima serie del prossimo"); return; }
+        if (i === ex.sets.length - 1) { if (running() || T.left != null) stopRest(); { const tr = setsTrend(ex, exSets(current(), ex.key), current()); toast(tr && !isOffDay(current()) ? `Esercizio finito · ${tr.msg}` : "Esercizio finito · recupero in pausa fino alla prima serie del prossimo"); } return; }
         if (g) { startRest(restFor(ex), `Giro ${i + 1} finito · poi giro ${i + 2}`, tKey(ex)); return; }
         startRest(restFor(ex), `${ex.name} · poi serie ${i + 2}`, tKey(ex));
       });
@@ -923,7 +966,7 @@ function miniCard(u, s) {
   if (u.circ) { const c = circCount(s, e.circ); sub = u.done ? `${c}/${e.sets.length} giri` : `${e.sets.length} giri · ${e.sets[0].t} reps · recupero ${fmtSec(restFor(u.circ ? d_last(u) : e))}`; }
   else if (u.skip && !u.started) sub = "⤼ saltato oggi";
   else if (isLater(s, e.key) && !u.started) sub = "⏳ occupato · lo fai dopo";
-  else if (u.started || u.done) sub = (u.skip ? "⤼ " : "") + (subOf(s, e.key) ? "↔ " : "") + (oooOff(s, e.key) ? "↕ " : "") + exSets(s, e.key).filter(r => r && (r.kg != null || r.reps != null)).map(r => `${r.kg != null ? fmt(r.kg) + "×" : ""}${r.reps ?? "–"}${r.dirty ? "~" : r.help ? "🤝" : ""}`).join(" · ");
+  else if (u.started || u.done) sub = (u.done && !u.skip && !isOffDay(s) && (tr => tr ? { light: "S1 leggera · ", climb: "salita troppo · ", drop: "calo forte · " }[tr.kind] || "" : "")(setsTrend(e, exSets(s, e.key), s))) + (u.skip ? "⤼ " : "") + (subOf(s, e.key) ? "↔ " : "") + (oooOff(s, e.key) ? "↕ " : "") + exSets(s, e.key).filter(r => r && (r.kg != null || r.reps != null)).map(r => `${r.kg != null ? fmt(r.kg) + "×" : ""}${r.reps ?? "–"}${r.dirty ? "~" : r.help ? "🤝" : ""}`).join(" · ");
   else { const l = lastBefore(e.key), mk = l ? maxKg(exSets(l, e.key)) : null; sub = `${e.sets.length} serie · ${e.sets.map(x => x.t).join("-")}${mk != null ? ` · ultima ${fmt(mk)} kg` : ""}`; }
   b.innerHTML = `<span class="mk">${u.done ? "✓" : exNum(u.n)}</span>${f ? `<img src="${f.src}" alt="" loading="lazy">` : ""}
     <span class="t"><b>${u.done ? exNum(u.n) + " · " : ""}${esc(u.name)}</b><small>${esc(sub)}</small></span><span class="chev">›</span>`;
