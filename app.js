@@ -18,6 +18,7 @@ const CAP = {f1:"Foto · inizio", f2:"Foto · fine", d1:"Disegno · inizio", d2:
 
 // ---------- archivio locale ----------
 const KEY = "palestra-v1";
+const PIC = new Map(); // pausa per data (pauseInfo), svuotata a ogni salvataggio
 let D = load();
 function load() {
   let d = null;
@@ -45,7 +46,7 @@ function mergeNightSessions(d) {
 }
 let saveT;
 function save(now) {
-  clearTimeout(saveT);
+  clearTimeout(saveT); PIC.clear();
   const w = () => { try { localStorage.setItem(KEY, JSON.stringify(D)); } catch (e) { toast("Memoria piena o bloccata: fai subito un backup"); } };
   if (now) w(); else saveT = setTimeout(w, 250);
 }
@@ -72,7 +73,7 @@ function dayUnits(d, s) {
   d.ex.forEach((e, idx) => {
     const g = isCircNoLog(d, idx);
     if (g) { if (idx === g.start) { tot += e.sets.length; done += Math.min(e.sets.length, circCount(s, e.circ)); nEx++; } return; }
-    tot += e.sets.length; done += s ? doneSets(s, e) : 0; nEx++;
+    tot += need(e, s); done += s ? Math.min(need(e, s), doneSets(s, e)) : 0; nEx++;
   });
   return { tot, done, nEx };
 }
@@ -98,7 +99,8 @@ function index(sets) { const k = sets.some(r => r && r.kg != null); let t = 0; f
 // dell'ultima volta senza aumenti (hold); se una serie viene ≥3 reps sotto il target, l'app dice di scendere di un salto.
 const READY = { top: { n: "Al top", f: 1 }, ok: { n: "Normale", f: 1 }, low: { n: "Stanco / giù", f: 0.9 } };
 function lastWorkoutBefore(date) { const l = Object.values(D.sessions).filter(s => s.date < date && hasData(s)).sort((a, b) => a.date < b.date ? -1 : 1); return l[l.length - 1] || null; }
-function pauseInfo(date) { const l = lastWorkoutBefore(date); if (!l) return { days: null, f: 1 }; const days = Math.round((new Date(date) - new Date(l.date)) / 864e5); return { days, f: 1, back: days >= 10 }; }
+function pauseInfo(date) { if (PIC.has(date)) return PIC.get(date); const v = pauseInfo0(date); PIC.set(date, v); return v; }
+function pauseInfo0(date) { const l = lastWorkoutBefore(date); if (!l) return { days: null, f: 1 }; const days = Math.round((new Date(date) - new Date(l.date)) / 864e5); return { days, f: 1, back: days >= 10 }; }
 function condition(s) {
   const r = READY[s.readiness || "ok"] || READY.ok, p = s.ignorePause ? { days: null, f: 1 } : pauseInfo(s.date);
   const dl = typeof isDeload === "function" && isDeload(s);
@@ -108,7 +110,10 @@ function condition(s) {
 const isOffDay = s => { const c = condition(s); return c.f < 1 || c.hold; };
 // Settimana di scarico (17/11/2026): D.prefs.deload = lunedì della settimana scelta → carichi −35%, 2 serie consigliate; esclusa dai progressi.
 const DELOAD_F = 0.65;
-const isDeload = s => !!(D.prefs && D.prefs.deload && s && weekStart(s.date) === D.prefs.deload);
+const deloadWeeks = () => new Set([...((D.prefs && D.prefs.deloads) || []), D.prefs && D.prefs.deload].filter(Boolean));
+const isDeload = s => !!(s && D.prefs && deloadWeeks().has(weekStart(s.date)));
+// serie da fare: in scarico una serie in meno ogni 3 (3 → 2, 4 → 3); circuiti invariati
+const need = (e, s) => isDeload(s) && !e.circ && !e.nolog ? e.sets.length - Math.floor(e.sets.length / 3) : e.sets.length;
 // Stallo: sedute normali (palestra, sede abituale, niente giornate no/fuori ordine/sostituzioni) in cui la serie migliore
 // (forza stimata) non supera la migliore di prima: "fermo da N sedute" se N ≥ 2 sedute dopo l'ultimo record (= 3 sedute piatte).
 function stallInfo(ex, gym, before) {
@@ -118,9 +123,12 @@ function stallInfo(ex, gym, before) {
   return since >= 2 ? { n: since + 1 } : null;
 }
 // seduta normale precedente a "rs" per questo esercizio (per l'aumento serve 2 volte di fila a target e pulite)
-function prevRef(k, rs) { const l = gymSessions(S.gym).filter(s => s.date < rs.date && exHas(s, k, subOf(rs, k)) && home(s) && !isOffDay(s) && !oooOff(s, k)); return l[l.length - 1] || null; }
+// Riferimento (18/11/2026): si saltano solo le sedute a carico ridotto (giornata no, scarico). Il rientro dopo una pausa NON si
+// salta più: dal 17/11 si fa a carichi pieni, quindi è la misura più recente di quanto riesci a fare.
+const reduced = s => condition(s).f < 1;
+function prevRef(k, rs) { const l = gymSessions(S.gym).filter(s => s.date < rs.date && exHas(s, k, subOf(rs, k)) && home(s) && !reduced(s) && !oooOff(s, k)); return l[l.length - 1] || null; }
 // Riferimento per i suggerimenti: l'ultima seduta "normale" (salta fino a 2 giornate no o di rientro).
-function lastRef(k) { const sb = subOf(current(), k), l = gymSessions(S.gym).filter(s => s.date < S.date && exHas(s, k, sb) && home(s)); for (let i = l.length - 1; i >= Math.max(0, l.length - 3); i--) if (!isOffDay(l[i]) && !oooOff(l[i], k)) return l[i]; return l[l.length - 1] || null; }
+function lastRef(k) { const sb = subOf(current(), k), l = gymSessions(S.gym).filter(s => s.date < S.date && exHas(s, k, sb) && home(s)); for (let i = l.length - 1; i >= Math.max(0, l.length - 3); i--) if (!reduced(l[i]) && !oooOff(l[i], k)) return l[i]; return l[l.length - 1] || null; }
 // ---------- esercizi fatti fuori ordine (macchina occupata) ----------
 // sessione.ord = ordine in cui hai iniziato gli esercizi (prima serie compilata). Un esercizio è "fuori ordine" se prima
 // di lui hai iniziato un esercizio che nella scheda viene dopo. Quel giorno, per quell'esercizio: valutazione tollerante,
@@ -184,7 +192,7 @@ function advise(r, pl, t, step, f, n = 1) {
     if (lrOn(r) && !r.dirty && r.reps >= t) return { kg: r.kg, reps: t, why: "Recupero troppo lungo l'ultima volta: stesso carico, rifallo col recupero giusto", mode: "rest" };
     const rebuild = !!pl && pl.kg != null && pl.kg > r.kg && pl.reps != null && pl.reps < t * 0.6, big = !!step && step / r.kg >= 0.1;
     if ((big || rebuild) && !r.dirty && r.reps >= t) {
-      if (r.reps >= t + 2 && r.eff !== "hard") return { kg: roundKg(r.kg + step), reps: t, why: "Reps in più fatte: prova il peso nuovo", mode: "jump" };
+      if (r.reps >= t + 2 && r.eff !== "hard") return { kg: rebuild ? pl.kg : roundKg(r.kg + step), reps: t, why: "Reps in più fatte: prova il peso nuovo", mode: "jump" };
       return { kg: r.kg, reps: Math.min(t + 2, r.reps + 1), why: big ? "Salto pesante: aggiungi una rep a seduta, con 2 in più pulite sali" : "Prima più reps, poi riprova il peso nuovo", mode: "reps" };
     }
   }
@@ -245,7 +253,7 @@ function dayUnitsList(d, s) {
     if (g) { if (idx !== g.start) return; const mem = d.ex.slice(g.start, g.end + 1), c = circCount(s, e.circ);
       u.push({ circ: g, ex: e, keys: mem.map(x => x.key), name: `Circuito ${e.circ}`, done: c >= e.sets.length, started: c > 0 }); return; }
     const n = doneSets(s, e), sk = isSkip(s, e.key);
-    u.push({ idx, ex: e, keys: [e.key], name: subOf(s, e.key) || e.name, done: n === e.sets.length || sk, skip: sk && n < e.sets.length, started: n > 0 });
+    u.push({ idx, ex: e, keys: [e.key], name: subOf(s, e.key) || e.name, done: n >= need(e, s) || sk, skip: sk && n < need(e, s), started: n > 0 });
   });
   u.forEach((x, i) => x.n = i + 1);
   return u;
@@ -290,7 +298,7 @@ function persistPrefs() { D.prefs.gym = S.gym; D.prefs.day = S.day; save(); }
 function updateProgress() { renderWeek();
   const d = dayObj(), s = current();
   const units = dayUnitsList(d, s); drawHeader(d, s, units, currentUnit(d, s, units));
-  d.ex.forEach(e => { const c = document.querySelector(`[data-ex="${e.key}"]`); if (c) c.classList.toggle("done", doneSets(s, e) === e.sets.length); });
+  d.ex.forEach(e => { const c = document.querySelector(`[data-ex="${e.key}"]`); if (c) c.classList.toggle("done", doneSets(s, e) >= need(e, s)); });
   document.querySelectorAll(".circ-card").forEach(c => { const e = d.ex.find(x => x.circ === c.dataset.circ); if (e) c.classList.toggle("done", circCount(s, e.circ) >= e.sets.length); });
   checkMissing();
 }
@@ -402,23 +410,25 @@ function closeSheet(keep) {
 // Forza stimata (Epley) di ogni serie valida (pulita, non aiutata, con kg e reps). Casi: "light" (S1 leggera: le serie dopo
 // valgono >8% in più e la S1 era a target o facile), "climb" (salito troppo: ultima serie più pesante della precedente,
 // ≥2 reps sotto target e calo >15%), "drop" (stesso peso e calo >15%), "pyr" (piramide giusta), "ok" (calo ≤12%), "mid".
+const CLIMB_MISS = 3; // "salita troppo" da 3 reps sotto il target: 1-2 in meno col peso nuovo sono accettate (opzione B)
 function setsTrend(ex, sets, s) {
   if (!ex || ex.bw || ex.nolog) return null;
   const v = (sets || []).map((r, i) => ({ r, i, t: tnum(ex.sets[i] && ex.sets[i].t) })).filter(x => x.r && x.r.reps != null && x.r.kg != null && !x.r.dirty && !x.r.help);
   if (v.length < 2 || !(sets[ex.sets.length - 1] && sets[ex.sets.length - 1].reps != null)) return null;
   const e = v.map(x => e1rm(x.r.kg, x.r.reps)), f = v[0], l = v[v.length - 1], p = v[v.length - 2];
-  const drop = (e[e.length - 1] / e[0] - 1) * 100, later = Math.max(...e.slice(1)), pc = x => `${x > 0 ? "+" : "−"}${Math.abs(x).toFixed(0)}%`;
+  const drop = Math.round((e[e.length - 1] / e[0] - 1) * 1000) / 10, later = Math.max(...e.slice(1)), pc = x => `${x > 0 ? "+" : "−"}${Math.abs(x).toFixed(0)}%`;
   const kgs = v.map(x => x.r.kg), same = kgs.every(k => k === kgs[0]), up = kgs.every((k, i) => !i || k >= kgs[i - 1]) && !same;
   const pushed = v.slice(1).filter(x => x.t != null && x.r.reps >= x.t + 2).map(x => "S" + (x.i + 1));
   // 1) salito troppo: una serie più pesante della precedente chiusa 2+ reps sotto il target (con l'Epley a poche reps non si vede)
-  const cl = v.slice(1).map((x, j) => ({ x, p: v[j] })).filter(o => o.x.r.kg > o.p.r.kg && o.x.t != null && o.x.r.reps <= o.x.t - 2).pop();
+  const cl = v.slice(1).map((x, j) => ({ x, p: v[j] })).filter(o => o.x.r.kg > o.p.r.kg && o.x.t != null && o.x.r.reps <= o.x.t - CLIMB_MISS).pop();
   if (cl) return { kind: "climb", cls: "near", pct: drop, last: cl.x.i, keep: cl.p.r.kg, msg: `Salita troppo: la S${cl.x.i + 1} a ${fmt(cl.x.r.kg)} kg si è fermata a ${cl.x.r.reps} su ${cl.x.t}. Prossima volta tieni ${fmt(cl.p.r.kg)} kg.` };
   // 2) prima serie leggera
-  if (later > e[0] * 1.08 && (f.t == null || f.r.reps >= f.t || f.r.eff === "easy"))
+  const top = v[e.indexOf(later)];
+  if (later > e[0] * 1.08 && (f.t == null || f.r.reps >= f.t || f.r.eff === "easy") && (top.t == null || top.r.reps >= top.t))
     return { kind: "light", cls: "up", pct: drop, msg: `S1 leggera: ${pushed.length ? `hai spinto dopo (${listIt(pushed)} oltre il target)` : "le serie dopo valgono di più"}. Prossima volta parti più pesante.` };
   // 3) stesso peso: conta il calo di reps (10 → 9 → 8 normale, 10 → 8 → 6 forte)
   if (same) {
-    const rd = (l.r.reps / f.r.reps - 1) * 100, rr = `${f.r.reps} → ${l.r.reps} reps`;
+    const rd = Math.round((l.r.reps / f.r.reps - 1) * 1000) / 10, rr = `${f.r.reps} → ${l.r.reps} reps`;
     if (rd >= -20) return { kind: "ok", cls: "ok", pct: rd, msg: `Tenuta buona con lo stesso peso (${rr}).` };
     if (rd < -30) { const short = s && v.slice(1).some(x => { const g = restGap(sets[x.i - 1], x.r, ex, x.i); return g != null && g < restFor(ex) * 0.8; });
       return { kind: "drop", cls: "near", pct: rd, msg: `Calo forte con lo stesso peso (${rr}): ${short ? "recupero più corto del previsto" : "carico alto o recupero corto"}. Se si ripete, scendi di un salto.` }; }
@@ -490,7 +500,7 @@ function ptReport() {
     Object.keys(pains).length ? `Fastidi: ${Object.entries(pains).map(([k, v]) => `${k} (${v})`).join("; ")}` : "",
     rN ? `Recupero medio tra le serie: ~${fmtSec(Math.round(rS / rN / 5) * 5)} (previsto ~${fmtSec(Math.round(rP / rN / 5) * 5)})` : "",
     buddy ? `Sedute in 2: ${buddy}` : "", backs ? `Rientri dopo pause: ${backs}` : "",
-    D.prefs.deload ? `Settimana di scarico fatta dal ${dd(D.prefs.deload)}` : ""
+    (() => { const w = [...deloadWeeks()].filter(x => x >= weekStart(p.from || x)).sort(); return w.length ? `Settimana di scarico dal ${w.map(dd).join(", dal ")}` : ""; })()
   ].filter(Boolean);
   if (extra.length) L.push("", "Note", ...extra.map(x => "• " + x));
   L.push("", "Legenda: kg×reps della serie migliore pulita, prima → ultima seduta; % = forza stimata. ⏸ = nessun miglioramento nelle ultime 3 sedute.");
@@ -629,7 +639,7 @@ function renderDur() {
 setInterval(() => { const s = current && current(); if (s && live(s) && S.view !== "prog") { renderConsole(); renderDur(); } }, 30000);
 // ---------- recap a fine allenamento (tutti gli esercizi fatti, oppure "Fine allenamento") ----------
 const e1 = (r, bw) => !r || r.reps == null ? 0 : bw || !r.kg ? r.reps : r.kg * (1 + r.reps / 30);
-const durWords = m => { m = Math.max(1, m || 0); const h = Math.floor(m / 60), r = m % 60; return `${h} ${h === 1 ? "ora" : "ore"} e ${r} ${r === 1 ? "minuto" : "minuti"}`; };
+const durWords = m => { m = Math.max(1, m || 0); const h = Math.floor(m / 60), r = m % 60, hs = `${h} ${h === 1 ? "ora" : "ore"}`, rs = `${r} ${r === 1 ? "minuto" : "minuti"}`; return !h ? rs : !r ? hs : `${hs} e ${rs}`; };
 function recapCard(d, s, units) {
   const done = units.filter(u => u.done).length;
   if (!hasData(s) || (done < units.length && !s.tEnd)) return null;
@@ -642,7 +652,7 @@ function recapCard(d, s, units) {
     if (sk) skipEx.push(nm); if (hasPain(s, ex.key)) painEx.push(nm);
     if (sk && !cur.some(r => r && r.reps != null)) return;
     nEx++;
-    ex.sets.forEach((st, i) => { const r = cur[i]; if (sk && !(r && r.reps != null)) return; nSet++; if (r && r.reps != null) { nDone++; if (!r.dirty) { clean++; if (r.help) nA++; else if (r.eff === "easy") nE++; else if (r.eff === "hard") nH++; } vol += (r.kg || 0) * r.reps; }
+    ex.sets.forEach((st, i) => { const r = cur[i]; if ((sk || i >= need(ex, s)) && !(r && r.reps != null)) return; nSet++; if (r && r.reps != null) { nDone++; if (!r.dirty) { clean++; if (r.help) nA++; else if (r.eff === "easy") nE++; else if (r.eff === "hard") nH++; } vol += (r.kg || 0) * r.reps; }
       if (i > 0 && !circGroup(d, idx)) { const g = restGap(cur[i - 1], r, ex, i); if (g != null) rests.push({ g, p: restFor(ex), long: lrOn(r) }); } });
     if (!cur.some(r => r && r.reps != null)) return;
     if (!ex.bw && !hasPain(s, ex.key)) { const stv = sb ? null : stepFor(ex.key).v, pv = gymSessions(S.gym).filter(x => x.date < s.date && home(x) && exHas(x, ex.key, sb)).pop(), ps = pv ? exSets(pv, ex.key) : [];
@@ -690,7 +700,7 @@ function recapCard(d, s, units) {
     <div class="rc-v"><p><span>${head[0]}</span><b>${head[1]}</b> ${head[2]}</p>
       ${good.slice(0, 2).map(x => `<p class="g">✓ ${esc(x)}</p>`).join("")}${bad.slice(0, 3).map(x => `<p class="b">! ${esc(x)}</p>`).join("")}</div>
     <div class="rc-g">
-      <div><span>Durata</span><b>${durMin != null ? `${Math.floor(durMin / 60)}<i> h </i>${String(Math.max(durMin < 60 ? 1 : 0, durMin % 60)).padStart(2, "0")}<i> min</i>` : "—"}</b>${usual && durMin ? `<small class="${durMin <= usual ? "up" : "dn"}">${durMin <= usual ? "−" : "+"}${Math.abs(Math.round(durMin - usual))} min vs solito</small>` : ""}</div>
+      <div><span>Durata</span><b>${durMin != null ? (durMin < 60 ? `${Math.max(1, durMin)}<i> min</i>` : `${Math.floor(durMin / 60)}<i> h </i>${String(durMin % 60).padStart(2, "0")}<i> min</i>`) : "—"}</b>${usual && durMin ? `<small class="${durMin <= usual ? "up" : "dn"}">${durMin <= usual ? "−" : "+"}${Math.abs(Math.round(durMin - usual))} min vs solito</small>` : ""}</div>
       <div><span>Serie</span><b>${nDone}<i>/${nSet}</i></b>${avgR != null ? `<small>recupero ~${fmtSec(Math.round(avgR / 5) * 5)}</small>` : ""}</div>
       <div><span>Pulite</span><b>${Math.round(cp * 100)}<i>%</i></b></div>
       <div><span>Volume</span><b>${Math.round(vol).toLocaleString("it-IT")}<i> kg</i></b>${vd != null ? `<small class="${vd >= 0 ? "up" : "dn"}">${vd >= 0 ? "+" : "−"}${Math.abs(vd).toFixed(0)}% vs ${new Date(prevDay.date + "T12:00").toLocaleDateString("it-IT", { day: "numeric", month: "short" })}</small>` : ""}</div>
@@ -702,7 +712,7 @@ function recapCard(d, s, units) {
     ${skipEx.length ? `<p class="rc-l">⤼ <b>Saltati oggi:</b> ${esc(listIt(skipEx))}</p>` : ""}
     <div class="rc-feel" aria-label="Com'erano le serie">${["easy", "ok", "hard", "dirty", "help"].map(f => { const n = f === "easy" ? nE : f === "hard" ? nH : f === "dirty" ? dirty : f === "help" ? nA : clean - nE - nH - nA; return n ? `<span data-f="${f}"><i>${feelIcon(f)}</i>${n} ${FEEL[f].n.toLowerCase()}</span>` : ""; }).join("")}</div>
     ${needBackup() ? `<button type="button" class="rc-bk" data-bk>💾 Salva il backup <small>File → iCloud Drive · i dati sono solo su questo telefono</small></button>` : ""}
-    <p class="rc-l nx">→ <b>Prossima volta:</b> ${!upEx.length ? "stessi carichi, punta alle reps piene" : upEx.length <= 3 ? `carico su in ${esc(listIt(upEx))}` : `carico su in ${upEx.length} esercizi`}.</p>`;
+    <p class="rc-l nx">→ <b>Prossima volta:</b> ${reduced(s) ? "si riparte dai carichi dell'ultima seduta normale" : !upEx.length ? "stessi carichi, punta alle reps piene" : upEx.length <= 3 ? `carico su in ${esc(listIt(upEx))}` : `carico su in ${upEx.length} esercizi`}.</p>`;
   return el;
 }
 function renderLog() {
@@ -711,7 +721,7 @@ function renderLog() {
   if (S.sheet) { if (document.querySelector(`.ex[data-ex="${S.sheet}"]`)) openSheet(S.sheet); else closeSheet(); }
 }
 function renderLog0() {
-  renderConsole(); renderWeek(); renderSite(); renderDur();
+  PIC.clear(); renderConsole(); renderWeek(); renderSite(); renderDur();
   const p = plan(), d = dayObj(), sess = current();
   // forma del giorno
   const cond = condition(sess);
@@ -724,11 +734,11 @@ function renderLog0() {
   if ($("noPause")) $("noPause").onclick = () => setSess({ ignorePause: !sess.ignorePause });
   { const wk = weekStart(todayISO()), stalls = plan().days.flatMap(dd => dd.ex.filter(e => !e.nolog && stallInfo(e, S.gym)).map(e => e.name));
     let h = "";
-    if (D.prefs.deload === wk) h = `<div class="nag info"><span><b>Settimana di scarico.</b> Carichi −35% e 2 serie per esercizio invece di 3. Non conta per i progressi: serve a recuperare e ripartire più forte.</span><button class="btn sm" id="dlOff">Annulla</button></div>`;
-    else if (stalls.length >= 3 && D.prefs.deloadAsk !== wk) h = `<div class="nag"><span>⏸ <b>${stalls.length} esercizi fermi da 3 sedute.</b> Valuta una settimana di scarico (meglio sentire il PT).</span><button class="btn sm" id="dlOn">Scarico</button><button class="btn sm ghost" id="dlNo">Non ora</button></div>`;
+    if (D.prefs.deload === wk) h = `<div class="nag info"><span><b>Settimana di scarico.</b> Carichi −35% e una serie in meno per esercizio (2 invece di 3). Non conta per i progressi: serve a recuperare e ripartire più forte.</span><button class="btn sm" id="dlOff">Annulla</button></div>`;
+    else if (stalls.length >= 3 && D.prefs.deloadAsk !== wk && ![...deloadWeeks()].some(w => w < wk && (new Date(wk) - new Date(w)) / 864e5 <= 28)) h = `<div class="nag"><span>⏸ <b>${stalls.length} esercizi fermi da 3 sedute.</b> Valuta una settimana di scarico (meglio sentire il PT).</span><button class="btn sm" id="dlOn">Scarico</button><button class="btn sm ghost" id="dlNo">Non ora</button></div>`;
     $("pauseNag").insertAdjacentHTML("beforeend", h);
-    if ($("dlOff")) $("dlOff").onclick = () => { delete D.prefs.deload; save(); renderLog(); };
-    if ($("dlOn")) $("dlOn").onclick = () => { D.prefs.deload = wk; save(); renderLog(); toast("Settimana di scarico attiva"); };
+    if ($("dlOff")) $("dlOff").onclick = () => { delete D.prefs.deload; D.prefs.deloads = (D.prefs.deloads || []).filter(w => w !== wk); save(); renderLog(); };
+    if ($("dlOn")) $("dlOn").onclick = () => { D.prefs.deload = wk; D.prefs.deloads = [...new Set([...(D.prefs.deloads || []), wk])]; save(); renderLog(); toast("Settimana di scarico attiva"); };
     if ($("dlNo")) $("dlNo").onclick = () => { D.prefs.deloadAsk = wk; save(); renderLog(); }; }
   // promemoria backup
   const ds = daysSince(D.prefs.lastBackup), nSess = Object.keys(D.sessions).length, since = sessSinceBackup();
@@ -755,16 +765,16 @@ function renderLog0() {
     const trRef = rs && !subOf(rs, ex.key) ? setsTrend(ex, exSets(rs, ex.key), rs) : null;
     const advise2 = (r, pl, t, step, f, n) => { let a = advise(r, pl, t, step, f, n);
       if (a && r && trRef && f >= 1 && !cond.hold) { const i = refSets.indexOf(r);
-        if (trRef.kind === "light" && i === 0 && a.kg > r.kg && step) a = { ...a, kg: roundKg(a.kg + step), why: "S1 leggera l'ultima volta: un salto in più" };
+        if (trRef.kind === "light" && i === 0 && a.kg > r.kg && step && !a.mode && a.kg < r.kg + 2 * step - 1e-9) a = { ...a, kg: roundKg(r.kg + 2 * step), why: "S1 leggera l'ultima volta: un salto in più" };
         if (trRef.kind === "climb" && i === trRef.last && a.kg > trRef.keep) a = { ...a, kg: trRef.keep, why: "Salita troppo l'ultima volta: tieni il carico della serie prima" }; }
-      if (a && cond.hold && r && r.kg != null && a.kg > r.kg) return { kg: r.kg, reps: t, why: "Rientro: stessi carichi dell'ultima volta", mode: "back" };
+      if (a && cond.hold && r && r.kg != null && (a.kg > r.kg || (t != null && a.reps > t))) return { kg: Math.min(a.kg, r.kg), reps: t, why: "Rientro: stessi carichi dell'ultima volta", mode: "back" };
       return a && painRef && r && a.kg > r.kg ? { kg: r.kg, reps: t, why: "Fastidio l'ultima volta: carico fermo finché non passa", mode: "pain" } : a; };
     const ref = sbN ? null : ex.ref && ex.ref[S.gym];
     const stl = ex.bw ? null : stallInfo(ex, S.gym, S.date);
     const trendToday = sbN ? null : setsTrend(ex, exSets(sess, ex.key), sess);
     // record di sempre per questo esercizio in questa palestra (serie pulite, non aiutate, sedute normali precedenti)
     const prBest = ex.bw ? 0 : Math.max(0, ...gymSessions(S.gym).filter(x => x.date < S.date && home(x) && exHas(x, ex.key, sbN)).flatMap(x => exSets(x, ex.key).filter(r => r && !r.dirty && !r.help && r.kg != null && r.reps != null).map(r => e1rm(r.kg, r.reps))));
-    const isPR = r => prBest > 0 && r && !r.dirty && !r.help && r.kg != null && r.reps != null && e1rm(r.kg, r.reps) > prBest * 1.001 && !isOffDay(sess);
+    const isPR = r => prBest > 0 && r && !r.dirty && !r.help && r.kg != null && r.reps != null && e1rm(r.kg, r.reps) > prBest * 1.001 && !isOffDay(sess) && home(sess);
     // riscaldamento: primo esercizio del giorno o primo che lavora muscoli nuovi; 50%×10 · 70%×5 · 85%×2 del carico di S1, al salto disponibile
     const warm = (() => {
       if (ex.bw || sbN || isCircNoLog(d, idx)) return "";
@@ -801,7 +811,7 @@ function renderLog0() {
       else if (dirty.length) load = { c: "near", t: "~ Serie sporche l'ultima volta: stesso carico, falle pulite." };
       else load = { c: "", t: "= Stesso carico: l'ultima volta nessuna serie a target." };
     }
-    else if (ref) load = { c: "", t: `Scheda precedente: ${fmt(ref)} kg` };
+    else if (ref) load = { c: "", t: `Scheda precedente: ${fmt(ref)} kg${cond.f < 1 ? ` · oggi ${fmt(roundKg(ref * cond.f))} kg (${esc(cond.why)})` : ""}` };
     const cg = circGroup(d, idx);
     if (cg) pills += cg.last ? `<span class="pill circ">Circuito · recupero ${fmtSec(restFor(ex))} a fine giro</span>` : `<span class="pill circ">Circuito · subito il prossimo</span>`;
     const isCur = u === curU, manual = !isCur;
@@ -858,10 +868,10 @@ function renderLog0() {
       const r = cur[i] || {}, lr = lastSets[i], tn = tnum(st.t), rr = refSets[i];
       const adv = ex.bw ? null : advise2(rr, prSets[i], tn, stp.v, cond.f, nUp(i)), sug = adv ? adv.kg : null, goal = adv && adv.reps != null && tn != null && adv.reps > tn ? adv.reps : null, lk = lr && lr.kg != null ? lr.kg : null;
       const dir = sug == null || lk == null ? "" : sug > lk + 1e-9 ? "up" : sug < lk - 1e-9 ? "dn" : "eq";
-      const row = document.createElement("div"); row.className = "set";
+      const row = document.createElement("div"); row.className = "set" + (i >= need(ex, sess) ? " xset" : "");
       row.innerHTML = `<div class="sn" style="--tc:var(${ty.c})">${label}<small>×${esc(st.t)}</small>${ty.n || st.note ? `<em>${esc([ty.n, st.note].filter(Boolean).join(" · "))}</em>` : ""}</div>
         <div class="prev">${lr && (lr.kg != null || lr.reps != null) ? `<b class="lv${lr.dirty ? " dirty" : ""}"${lr.dirty ? ' title="Sporca l\'ultima volta"' : ""}>${lr.kg != null ? fmt(lr.kg) + " × " : ""}${lr.reps ?? "–"}${lr.dirty ? "<i>~</i>" : ""}</b>` : `<b class="lv none">—</b>`}${sug != null ? `<span class="sug ${dir}">${{ up: "↑", dn: "↓", eq: "=" }[dir] || "oggi"} ${goal ? `${fmt(sug)} × ${goal}` : `${fmt(sug)} kg`}</span>` : ""}</div>
-        <input id="kg-${ex.key}-${i}" inputmode="decimal" enterkeyhint="next" autocomplete="off" aria-label="${esc(ex.name)} serie ${i + 1} kg" placeholder="${sug != null ? fmt(sug) : lr && lr.kg != null ? fmt(lr.kg) : ref ? fmt(ref) : "kg"}">
+        <input id="kg-${ex.key}-${i}" inputmode="decimal" enterkeyhint="next" autocomplete="off" aria-label="${esc(ex.name)} serie ${i + 1} kg" placeholder="${sug != null ? fmt(sug) : lr && lr.kg != null ? fmt(lr.kg) : ref ? fmt(roundKg(ref * cond.f)) : "kg"}">
         <input id="rp-${ex.key}-${i}" inputmode="numeric" enterkeyhint="next" autocomplete="off" aria-label="${esc(ex.name)} serie ${i + 1} ripetizioni" placeholder="${tn != null ? tn : "max"}">
         <button type="button" class="dq" aria-label="Com'era la serie?"></button><div class="fb"></div>`;
       const [kg, rp] = row.querySelectorAll("input"); kg.value = fmt(r.kg); rp.value = r.reps ?? "";
@@ -872,9 +882,9 @@ function renderLog0() {
           row._gap.hidden = g == null; if (g != null) { const lg = lrOn(all[i]); row._gap.className = "rgap" + (lg ? " long" : g < pl * 0.8 ? " short" : "");
             row._gap.innerHTML = `<span>⏱ recupero ${fmtSec(Math.round(g / 5) * 5)}</span><small>previsto ${fmtSec(pl)} · serie ~${setSec(ex, i, all[i])}"</small>`; } }
         const cr = exSets(current(), ex.key)[i] || {}, fv = feelOf(cr);
-        judge(kg, rp, fb, tn, rr, jc, isDirty(), cr.eff, goal);
+        judge(kg, rp, fb, tn, rr, { ...jc, step: stp.v }, isDirty(), cr.eff, goal);
         { const pv = i > 0 ? exSets(current(), ex.key)[i - 1] : null, k = num(kg.value), rv = num(rp.value);
-          if (pv && pv.kg != null && k != null && rv != null && tn != null && k > pv.kg && rv <= tn - 2 && !cr.dirty) { fb.className = "fb near"; fb.hidden = false;
+          if (pv && pv.kg != null && k != null && rv != null && tn != null && k > pv.kg && rv <= tn - CLIMB_MISS && !cr.dirty && !cond.hold) { fb.className = "fb near"; fb.hidden = false;
             fb.textContent = `Salita troppo: prossima volta ${fmt(pv.kg)} kg qui`; } }
         if (cond.hold && num(rp.value) != null && tn != null && num(rp.value) <= tn - 3 && i < ex.sets.length - 1 && num(kg.value) != null) {
           const st = stp.v || 2.5, low = Math.max(0, num(kg.value) - st); fb.className = "fb near"; fb.hidden = false;
@@ -905,7 +915,7 @@ function renderLog0() {
         if (g && !g.last) { toast(`Subito: ${d.ex[idx + 1].name}`); return; } // circuito: niente recupero tra gli esercizi
         // ultima serie (o ultimo giro): tra un esercizio e l'altro il recupero NON parte (scelta dell'utente, 17/11/2026);
         // riparte dopo la prima serie dell'esercizio successivo
-        if (i === ex.sets.length - 1) { { const n = nextOpenUnit(d, idx); S.between = { next: n ? (d.ex.find(e => e.key === n.k) || {}).name : "" }; } if (running() || T.left != null) stopRest(); else drawTimer(); { const tr = setsTrend(ex, exSets(current(), ex.key), current()); toast(tr && !isOffDay(current()) ? `Esercizio finito · ${tr.msg}` : "Esercizio finito · recupero in pausa fino alla prima serie del prossimo"); } return; }
+        if (i >= need(ex, current()) - 1) { { const n = nextOpenUnit(d, idx); S.between = { next: n ? (d.ex.find(e => e.key === n.k) || {}).name : "" }; } if (running() || T.left != null) stopRest(); else drawTimer(); { const tr = setsTrend(ex, exSets(current(), ex.key), current()); toast(tr && !isOffDay(current()) ? `Esercizio finito · ${tr.msg}` : "Esercizio finito · recupero in pausa fino alla prima serie del prossimo"); } return; }
         if (g) { startRest(restFor(ex), `Giro ${i + 1} finito · poi giro ${i + 2}`, tKey(ex)); return; }
         startRest(restFor(ex), `${ex.name} · poi serie ${i + 2}`, tKey(ex));
       });
@@ -973,7 +983,7 @@ function missingSlots(d, s) {
     if (u.circ) { if (movedOn && circCount(s, u.ex.circ) < u.ex.sets.length) miss.push({ k: u.keys[0], i: 0, what: "giri" }); return; }
     const sets = exSets(s, u.ex.key), lastFilled = u.ex.sets.reduce((a, _, i) => sets[i] && (sets[i].kg != null || sets[i].reps != null) ? i : a, -1);
     u.ex.sets.forEach((_, i) => {
-      const r = sets[i];
+      const r = sets[i]; if (i >= need(u.ex, s) && !(r && (r.kg != null || r.reps != null))) return;
       if ((!r || r.reps == null) && (i < lastFilled || movedOn)) miss.push({ k: u.ex.key, i, what: "reps" });
       else if (r && r.reps != null && r.kg == null && !u.ex.bw) miss.push({ k: u.ex.key, i, what: "kg" });
     });
@@ -1127,6 +1137,7 @@ function judge(kgEl, rpEl, fb, t, lr, cond, dirty, eff, goal) {
     const e1 = hasLast ? e1rm(kg, reps) : 0, exp = hasLast ? e1rm(lr.kg, lr.reps) * f : 0;
     if (reps >= t) { cls = "ok"; msg = reps > t ? `+${reps - t} oltre il target 🔥` : off ? "Target pieno anche oggi 💪" : cheer; }
     else if (hasLast && e1 >= exp * 0.99 && (up > 0 || off)) { cls = "prog"; msg = off ? `${missTxt} in meno, ma ci sei 👍` : `−${missTxt} ma +${fmt(up)} kg: più forte 💪`; }
+    else if (hasLast && up > 0 && pct < 0.6 && !off) { cls = "prog"; msg = `Peso nuovo troppo: prossima volta ${fmt(lr.kg)} kg e più reps`; }
     else if (hasLast && up > 0) { cls = "prog"; msg = `+${fmt(up)} kg: ci sta perdere qualche rep`; }
     else if (pct >= 0.6 || off) { cls = "prog"; msg = `Pulita, −${missTxt}: carico giusto 👍`; }
     else { cls = "prog"; msg = `${reps} su ${t}: se si ripete, scendi un po'`; }
@@ -1136,7 +1147,7 @@ function judge(kgEl, rpEl, fb, t, lr, cond, dirty, eff, goal) {
   else if (!dirty && reps != null && t != null && reps >= t && eff === "easy") { cls = "ok"; msg = "Facile: prossima volta si sale 🚀"; }
   if (dirty && reps != null) { // serie sporca: mai verde; dice cosa succede la prossima volta
     if (t == null || reps >= t) { cls = "near"; msg = "Sporca: meglio 1 rep in meno ma pulita"; }
-    else { cls = "near"; msg = "Sporca: prossima volta −5% qui"; }
+    else { cls = "near"; const nk = kg != null ? suggestKg({ kg, reps, dirty: true }, null, 1, t, cond && cond.step) : null; msg = nk != null && nk < kg ? `Sporca: prossima volta ${fmt(nk)} kg qui` : "Sporca e sotto target: prossima volta un po' meno"; }
   }
   for (const c of ["ok", "prog", "near", "ko"]) rpEl.classList.toggle(c, c === cls);
   fb.textContent = msg; fb.className = "fb " + cls; fb.hidden = !msg;
@@ -1182,7 +1193,7 @@ function nextSet(d, idx, i) {
   let k = ex.key;
   if (r && r.reps != null) {
     if (g) { if (!g.last) k = d.ex[idx + 1].key; else { k = d.ex[g.start].key; i++; } if (!$(`rp-${k}-${i}`)) { k = (d.ex[g.end + 1] || ex).key; i = 0; } }
-    else if (i < ex.sets.length - 1) i++;
+    else if (i < need(ex, current()) - 1) i++;
     else { const n = nextOpenUnit(d, idx); if (n) ({ k, i } = n); else if (d.ex[idx + 1]) { k = d.ex[idx + 1].key; i = 0; } }
   }
   return { k, i };
@@ -1554,7 +1565,8 @@ const fmtSec = s => { s = Math.max(0, Math.ceil(s)); return `${Math.floor(s / 60
 function parseRest(r) {
   if (r == null || r === "") return null; if (typeof r === "number") return r;
   const s = String(r).trim(); let m;
-  if ((m = s.match(/^(\d+)\s*[:'’]\s*(\d{1,2})?/))) return +m[1] * 60 + (+m[2] || 0); // 1:30 · 1'30 · 2'
+  if ((m = s.match(/^(\d+)\s*(''|’’|"|″|”|s\b|sec)/i))) return +m[1];                    // 90'' · 90" · 90″ · 90 sec = secondi
+  if ((m = s.match(/^(\d+)\s*[:'’′]\s*(\d{1,2})?/))) return +m[1] * 60 + (+m[2] || 0); // 1:30 · 1'30 · 1'30'' · 2'
   if ((m = s.match(/^(\d+)/))) return +m[1];                                         // 90" · 90
   return null;
 }
@@ -1615,7 +1627,7 @@ function openPhaseEdit(ex) {
     const v = b.dataset.tv; S.phaseEdit = false; ph.classList.remove("edit");
     if (v !== "x") { const n = v === "0" ? null : +v; D.rest = { ...(D.rest || {}) }; if (n == null) delete D.rest[ex.key]; else D.rest[ex.key] = n; save();
       const nd = restFor(ex);
-      if (T.key === ex.key && (running() || T.left != null)) { if (running()) { const start = T.end - T.dur * 1000; T.end = start + nd * 1000; notifSchedule(); } else T.left = Math.max(0, T.left + nd - T.dur); T.dur = nd; tSave(); }
+      if (T.key === ex.key && (running() || T.left != null)) { if (running()) { const start = T.end - T.dur * 1000; T.end = Math.max(Date.now() + 1000, start + nd * 1000); if (remaining() > 5) tWarned = false; notifSchedule(); } else T.left = Math.max(1, T.left + nd - T.dur); T.dur = nd; tSave(); }
       toast(`Recupero ${ex.name}: ${fmtSec(nd)}${n == null ? " (base)" : ""}`); if (S.view === "log") renderLog(); }
     drawTimer(); placeTimer(); }; });
   placeTimer();
@@ -1741,7 +1753,7 @@ function nextInfo() {
     return { name: `Circuito ${ex.circ}`, set: `Giro ${c + 1} di ${n}`, what: `${ex.sets[0].t} reps per esercizio` }; }
   const r = exSets(current(), k)[i]; if (r && r.reps != null) return { done: true };
   const kgEl = $(`kg-${k}-${i}`), kg = kgEl ? (kgEl.value || (/\d/.test(kgEl.placeholder) ? kgEl.placeholder : "")) : "";
-  return { name: ex.name, set: `Serie ${i + 1} di ${ex.sets.length}`, what: [`${ex.sets[i].t} reps`, kg && !ex.bw ? `${kg} kg` : ""].filter(Boolean).join(" · ") };
+  return { name: ex.name, set: `Serie ${i + 1} di ${need(ex, current())}`, what: [`${ex.sets[i].t} reps`, kg && !ex.bw ? `${kg} kg` : ""].filter(Boolean).join(" · ") };
 }
 function endMsg() {
   const n = nextInfo();

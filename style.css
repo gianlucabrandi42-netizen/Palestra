@@ -1027,3 +1027,7 @@ body.kb .tphase{margin-bottom:3px;min-height:26px;padding:3px 8px}
 .tphase.edit .tp-k{width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tphase.edit .tp-k b{color:var(--ink);font-weight:700;letter-spacing:.02em;text-transform:none}
 .tphase.edit .tp-opts{flex-wrap:wrap;overflow:visible}
+/* settimana di scarico: la serie in più non serve */
+.set.xset{opacity:.4}
+.set.xset .sn small{font-size:0}
+.set.xset .sn small::after{content:"scarico";font-size:11px;font-weight:600}
