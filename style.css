@@ -1058,3 +1058,9 @@ body.kb .tphase{margin-bottom:3px;min-height:26px;padding:3px 8px}
 .set .fb.live{color:color-mix(in srgb,var(--accent) 80%,var(--ink))}
 .prev .sug.live{color:var(--accent);font-weight:800}
 .set.live input::placeholder{color:color-mix(in srgb,var(--accent) 70%,transparent)}
+/* "Sporca": quante reps sporche (18/11/2026) */
+.fopts.fcount{grid-template-columns:auto repeat(3,1fr);align-items:center}
+.fopts.fcount .fc-q{font-size:10.5px;line-height:1.15;font-weight:700;color:var(--muted);padding:0 8px;text-transform:uppercase;letter-spacing:.06em}
+.fopts.fcount button{--fc:var(--near)}
+.fopts.fcount button b{font-size:16px;line-height:1;color:var(--ink)}
+.fopts.fcount button span{font-size:10.5px}
