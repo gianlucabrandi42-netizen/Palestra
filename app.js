@@ -581,7 +581,7 @@ function copyText(t) { (navigator.clipboard ? navigator.clipboard.writeText(t) :
 function setExMap(field, key, val) { const x = JSON.parse(JSON.stringify(current())); x[field] = { ...(x[field] || {}) }; if (val == null || val === false) delete x[field][key]; else x[field][key] = val; x.updatedAt = Date.now(); D.sessions[x.id] = x; save(); renderLog(); }
 function exAct(ex, a, undo) {
   const s = current(); closeSheet();
-  if (a === "subx") { S.subEdit = null; return renderLog(); }
+  if (a === "subx") { S.subEdit = null; S.subPic = null; return renderLog(); }
   if (a === "sub") { S.subEdit = null; if (undo || subOf(s, ex.key)) return setExMap("sub", ex.key, null); S.subEdit = ex.key; return renderLog(); }
   if (a === "later") { setExMap("later", ex.key, undo ? null : !isLater(s, ex.key));
     if (!undo && isLater(current(), ex.key)) { S.exOpen.delete(ex.key); const d = dayObj(), n = nextOpenUnit(d, d.ex.findIndex(e => e.key === ex.key));
@@ -594,10 +594,19 @@ function exAct(ex, a, undo) {
 }
 function todayBanners(s, ex, painRef, rs) {
   const out = [];
+  { const used = [...new Set(gymSessions(S.gym).filter(x => x.id !== s.id).map(x => subOf(x, ex.key)).filter(Boolean))].reverse();
+    const started = exSets(s, ex.key).some(r => r && (r.kg != null || r.reps != null));
+    if (used.length && !subOf(s, ex.key) && !started && !((s.machOk || {})[ex.key]) && S.subEdit !== ex.key && !isSkip(s, ex.key))
+      out.push(`<div class="xb ask col"><p class="askq">🏋️ Che macchina usi oggi?</p><div class="alts">
+        <div class="alt"><button type="button" class="altn" data-mach="orig"><b>${esc(ex.name)}</b><small>quella della scheda</small></button></div>
+        ${used.map(n => `<div class="alt"><button type="button" class="altn" data-alt="${esc(n)}">${machinePic(n) ? `<img src="${machinePic(n)}" alt="">` : ""}<b>${esc(n)}</b></button></div>`).join("")}
+        <div class="alt"><button type="button" class="altn" data-mach="other"><b>Un'altra…</b><small>scrivi il nome o fai una foto</small></button></div></div></div>`); }
   if (S.subEdit === ex.key && !subOf(s, ex.key)) {
     const used = [...new Set(gymSessions(S.gym).map(x => subOf(x, ex.key)).filter(Boolean))].reverse();
     const cat = ((window.MACCHINE || {})[ex.key] || []).filter(m => !m.gym || m.gym.includes(S.gym) ).filter(m => !used.some(u => sameSub(u, m.n)));
-    out.push(`<div class="xb sub col"><label class="subin">↔ <input autocomplete="off" placeholder="Scrivi il nome della macchina o scegli sotto"></label>
+    const pp = S.subPic && S.subPic.key === ex.key ? S.subPic.url : "";
+    out.push(`<div class="xb sub col"><div class="subrow"><label class="subin">↔ <input autocomplete="off" placeholder="${pp ? "Nome sulla targhetta della macchina" : "Scrivi il nome della macchina o scegli sotto"}"></label><label class="subcam${pp ? " on" : ""}" aria-label="Scatta una foto alla macchina">${pp ? `<img src="${pp}" alt="">` : `<svg viewBox="0 0 24 24"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13.2" r="3.6"/></svg>`}<input type="file" accept="image/*" capture="environment" hidden data-subpic></label></div>
+      ${pp ? `<p class="subhint">📷 Foto pronta: scrivi il nome che leggi sulla targhetta (o scegli sotto) e la salvo con la macchina.</p>` : ""}
       ${used.length ? `<div class="alts"><span class="altk">Già usate qui</span>${used.map(n => `<div class="alt"><button type="button" class="altn" data-alt="${esc(n)}">${machinePic(n) ? `<img src="${machinePic(n)}" alt="">` : ""}<b>${esc(n)}</b></button></div>`).join("")}</div>` : ""}
       ${cat.length ? `<div class="alts"><span class="altk">Macchine che allenano gli stessi muscoli</span>${cat.map(m => `<div class="alt"><button type="button" class="altn" data-alt="${esc(m.n)}"><b>${esc(m.n)}</b><small>${esc(m.d)}</small></button><a class="altq" href="https://www.google.com/search?tbm=isch&q=${encodeURIComponent("Panatta " + m.n)}" target="_blank" rel="noopener">Com'è fatta ↗</a></div>`).join("")}</div>` : ""}
       <button class="chip" data-undo="subx">Annulla</button></div>`);
@@ -1044,10 +1053,15 @@ function renderLog0() {
       if (bx) { bx.onmousedown = e => e.preventDefault(); bx.onclick = () => { S.restEdit = null; renderLog(); }; } } }
     card.querySelectorAll("[data-rest-set]").forEach(b => b.onclick = () => { const v = +b.dataset.restSet; setRest(ex.key, (D.rest || {})[ex.key] === v ? null : v); toast((D.rest || {})[ex.key] ? `Recupero ${ex.name}: ${fmtSec(v)}` : "Recupero tolto: torna quello di base"); });
     card.querySelectorAll("[data-addsetup]").forEach(b => b.onclick = () => { const r = b.parentNode.querySelector(".ir.setup"); if (r) { r.hidden = false; b.remove(); const i = r.querySelector("input"); i.focus(); i.scrollIntoView({ block: "center", behavior: "smooth" }); } });
+    card.querySelectorAll("[data-mach]").forEach(b => b.onclick = () => { if (b.dataset.mach === "orig") setExMap("machOk", ex.key, true); else { S.subEdit = ex.key; renderLog(); } });
     card.querySelectorAll("[data-undo]").forEach(b => b.onclick = () => exAct(ex, b.dataset.undo, true));
-    card.querySelectorAll("[data-alt]").forEach(b => b.onclick = () => { S.subEdit = null; setExMap("sub", ex.key, b.dataset.alt); });
+    const withPic = n => { const sp = S.subPic && S.subPic.key === ex.key ? S.subPic : null; S.subPic = null; S.subEdit = null; setExMap("sub", ex.key, n); if (sp && n) saveMachinePic(n, sp.file); };
+    card.querySelectorAll("[data-alt]").forEach(b => b.onclick = () => withPic(b.dataset.alt));
+    { const cam = card.querySelector(".subcam"); if (cam) cam.addEventListener("pointerdown", () => { S.camTap = Date.now(); }); }
+    const spi = card.querySelector("[data-subpic]"); if (spi) spi.onchange = () => { const f = spi.files[0]; if (!f) return; const nm = (card.querySelector(".subin input") || {}).value;
+      if (nm && nm.trim()) return withPic(nm.trim()); S.subPic = { key: ex.key, file: f, url: URL.createObjectURL(f) }; renderLog(); };
     const pin = card.querySelector("[data-pic]"); if (pin) pin.onchange = () => { if (pin.files[0]) saveMachinePic(subOf(current(), ex.key), pin.files[0]); };
-    const sbi = card.querySelector(".subin input"); if (sbi) { sbi.onkeydown = e => { if (e.key === "Enter") sbi.blur(); }; sbi.onchange = () => { S.subEdit = null; setExMap("sub", ex.key, sbi.value.trim() || null); }; setTimeout(() => sbi.focus(), 60); }
+    const sbi = card.querySelector(".subin input"); if (sbi) { sbi.onkeydown = e => { if (e.key === "Enter") sbi.blur(); }; sbi.onchange = () => { if (Date.now() - (S.camTap || 0) < 2000) return; withPic(sbi.value.trim() || null); }; /* toccando la fotocamera il nome aspetta la foto */ setTimeout(() => sbi.focus(), 60); }
     const cp = card.querySelector("[data-copy]") || { set hidden(v) {} };
     if (ex.bw || !rs || !refSets.some(r => r && r.kg != null)) { const row = cp.closest && cp.closest(".ir"); if (row) row.remove(); }
     cp.onclick = () => (closeSheet(), ex.sets).forEach((_, i) => { const el0 = $(`kg-${ex.key}-${i}`), a = advise2(refSets[i], prSets[i], tnum(ex.sets[i].t), stp.v, cond.f, nUp(i)), k = el0 && el0.value === "" && /\d/.test(el0.placeholder) ? num(el0.placeholder) : a && a.kg; if (k != null) { const el = $(`kg-${ex.key}-${i}`); el.value = fmt(k); edit(ex, i, "kg", el.value); el.dispatchEvent(new Event("input")); } });
