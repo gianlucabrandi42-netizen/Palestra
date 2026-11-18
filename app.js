@@ -1429,6 +1429,8 @@ function resumeLast(force) {
   if (!L || L.date !== todayISO()) return false;
   if (S.view !== "log") { if (!force) return false; S.view = "log"; render(); }
   if (L.gym !== S.gym || L.day !== S.day || S.date !== L.date) { if (!GYMS.some(g => g.id === L.gym) || !plan().days.some(d => d.id === L.day)) return; S.gym = L.gym; S.day = L.day; S.date = L.date; render(); }
+  // giorno già completato: niente da riprendere, si riparte dall'alto (recap in cima) (18/11/2026)
+  if (sessDone(current())) { const top = () => window.scrollTo({ top: 0, behavior: force ? "smooth" : "auto" }); top(); if (!force) setTimeout(top, 350); return true; }
   const d = dayObj(), idx = d.ex.findIndex(e => e.key === L.key); if (idx < 0) return;
   // prossima serie da fare: la stessa se mancano le reps, altrimenti la successiva (nel circuito segue l'ordine del giro)
   const { k, i } = nextSet(d, idx, L.i);
@@ -1996,6 +1998,12 @@ document.addEventListener("visibilitychange", () => {
   if (running()) { keepAwake(true); if (AC && AC.state !== "running") AC.resume().catch(() => {}); tick(); if (!tIv && running()) tickLoop(); }
 });
 if (running()) { keepAwake(true); tickLoop(); }
+// tornando nell'app dopo un po' (anche senza ricaricarla) col giorno già completato: si riparte dall'alto (18/11/2026)
+let hidAt = 0;
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") { hidAt = Date.now(); return; }
+  if (hidAt && Date.now() - hidAt > 60000 && S.view === "log" && sessDone(current()) && !document.activeElement?.matches("input,textarea")) window.scrollTo({ top: 0 });
+});
 
 function renderTimerSet() {
   const p = tPrefs(), canVib = !!navigator.vibrate;
