@@ -983,3 +983,21 @@ html[data-theme="sparta"] .gdots i.on{background:var(--gold)}
 .advice.trend.ok{color:color-mix(in srgb,var(--ok) 70%,var(--muted))}
 .advice.trend.up{color:color-mix(in srgb,var(--ok) 70%,var(--muted))}
 .advice.trend.near{color:color-mix(in srgb,var(--near) 75%,var(--muted))}
+/* messaggio sotto la serie: una riga sola (18/11/2026) */
+.set .fb{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:0;text-align:center}
+.set .fb span{overflow:hidden;text-overflow:ellipsis}
+.set .fb .lrok{padding:1px 8px;font-size:11px;margin-left:6px}
+/* gratificazioni */
+.streak{display:block;font-size:11.5px;font-weight:800;color:#F2A33A;margin-top:2px}
+.cel{position:fixed;left:50%;top:22%;z-index:70;transform:translate(-50%,-10px) scale(.92);opacity:0;pointer-events:none;transition:opacity .25s,transform .35s cubic-bezier(.2,1.4,.4,1);
+  display:grid;gap:4px;text-align:center;padding:18px 26px;border-radius:22px;background:var(--grad);color:var(--on-accent);box-shadow:0 20px 50px -10px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.15) inset;min-width:220px}
+.cel.on{opacity:1;transform:translate(-50%,0) scale(1);pointer-events:auto}
+.cel b{font-size:22px;font-weight:900}
+.cel span{font-size:14px;font-weight:700;opacity:.85}
+.goals{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 12px}
+.goals>div{display:grid;gap:1px;padding:10px 12px;border-radius:14px;background:var(--surface);border:1px solid var(--line)}
+.goals b{font-family:var(--display);font-size:22px;color:var(--ink)}
+.goals span{font-size:12px;font-weight:700;color:var(--ink)}
+.goals small{font-size:11px;color:var(--muted)}
+.cel{min-width:260px;max-width:86vw}
+.cel b{white-space:nowrap}

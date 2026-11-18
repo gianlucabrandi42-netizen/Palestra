@@ -324,13 +324,14 @@ function planAge() {
 function renderWeek() {
   const box = $("week"); if (!box) return;
   const w = weekStatus(), left = w.filter(x => !x.done).length;
-  box.innerHTML = `<div class="wk-h">${planAge()}<div class="wk-s"><span>Questa settimana</span><b>${left ? `${left === 1 ? "manca" : "mancano"} ${left}` : "completa ✓"}</b></div></div>
-  { const rb = box.querySelector("[data-report]"); if (rb) rb.onclick = openReport; }
+  box.innerHTML = `<div class="wk-h">${planAge()}<div class="wk-s"><span>Questa settimana</span><b>${left ? `${left === 1 ? "manca" : "mancano"} ${left}` : "completa ✓"}</b>${(st => st.n >= 2 ? `<small class="streak">🔥 ${st.n} settimane di fila</small>` : "")(streakInfo())}</div></div>
     <div class="wk-r" role="group" aria-label="Giorno">${w.map(x => `<button class="wk ${x.done ? "done" : x.part ? "part" : ""}${x.d.id === S.day ? " sel" : ""}" data-d="${x.d.id}" aria-pressed="${x.d.id === S.day}">
       <span class="wk-i">${x.done ? "✓" : x.part ? "◐" : ""}</span><b>${esc(x.d.id)}</b>
       <em>${esc(x.d.name)}</em>
       <small>${x.done || x.part ? `${x.when} · ${esc(x.gym)}` : "da fare"}</small></button>`).join("")}</div>`;
   box.querySelectorAll("[data-d]").forEach(b => b.onclick = () => { if (b.dataset.d === S.day) return; S.day = b.dataset.d; S.open.clear(); S.exOpen.clear(); persistPrefs(); render(); scrollTo(0, 0); });
+  { const rb = box.querySelector("[data-report]"); if (rb) rb.onclick = openReport; }
+  { const mon = weekStart(todayISO()); if (!left && D.prefs.weekCel !== mon && weekFull(mon)) { D.prefs.weekCel = mon; save(); const st = streakInfo(); celebrate("🔥 Settimana completa!", st.n >= 2 ? `${st.n} settimane di fila` : "Tutti i giorni della scheda fatti"); } }
 }
 function renderSite() {
   const box = $("site"); if (!box) return; const s = current();
@@ -428,6 +429,28 @@ function setsTrend(ex, sets, s) {
   if (drop < -20) return { kind: "drop", cls: "near", pct: drop, msg: `Calo forte tra le serie (${pc(drop)}): carico alto o recupero corto.` };
   return { kind: "mid", cls: "", pct: drop, msg: `Tra le serie ${pc(drop)}: un po' di calo, normale verso la fine.` };
 }
+// ---------- Gratificazioni (18/11/2026): record, settimane complete di fila, traguardi ----------
+function weekFull(mon) {
+  const sun = (() => { const t = new Date(mon + "T12:00"); t.setDate(t.getDate() + 6); return t.toISOString().slice(0, 10); })();
+  const ss = Object.values(D.sessions).filter(s => s.date >= mon && s.date <= sun && hasData(s)), byPlan = {};
+  ss.forEach(s => { const p = SCHEDE.find(x => x.id === s.plan), d = p && p.days.find(x => x.id === s.day); if (!d) return; const us = dayUnitsList(d, s);
+    if (us.length && us.filter(u => u.done).length / us.length >= 0.75) { byPlan[p.id] = byPlan[p.id] || new Set(); byPlan[p.id].add(d.id); } });
+  return Object.entries(byPlan).some(([id, set]) => set.size >= SCHEDE.find(x => x.id === id).days.length);
+}
+const prevMon = mon => { const t = new Date(mon + "T12:00"); t.setDate(t.getDate() - 7); return t.toISOString().slice(0, 10); };
+function streakInfo() {
+  const cur = weekStart(todayISO()); let n = weekFull(cur) ? 1 : 0, w = prevMon(cur), k = 0;
+  while (k++ < 156 && weekFull(w)) { n++; w = prevMon(w); }
+  const first = Object.values(D.sessions).filter(hasData).map(s => s.date).sort()[0]; let best = 0, run = 0;
+  if (first) for (let m = weekStart(first), g = 0; m <= cur && g < 400; g++) { const t = new Date(m + "T12:00"); if (weekFull(m)) best = Math.max(best, ++run); else if (m !== cur) run = 0; t.setDate(t.getDate() + 7); m = t.toISOString().slice(0, 10); }
+  return { n, best: Math.max(best, n) };
+}
+function celebrate(title, sub) {
+  let el = $("cel"); if (!el) { el = document.createElement("div"); el.id = "cel"; el.className = "cel"; document.body.appendChild(el); el.onclick = () => el.classList.remove("on"); }
+  el.innerHTML = `<b>${esc(title)}</b>${sub ? `<span>${esc(sub)}</span>` : ""}`; el.classList.remove("on"); void el.offsetWidth; el.classList.add("on");
+  try { navigator.vibrate && navigator.vibrate([30, 40, 30]); } catch (e) {} clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove("on"), 2600);
+}
+const MILESTONES = [5, 10, 25, 50, 75, 100, 150, 200, 300, 500];
 // ---------- Report per il PT a fine scheda (17/11/2026): testo da mandare (WhatsApp/mail) prima della scheda nuova ----------
 function ptReport() {
   const p = plan(), all = Object.values(D.sessions).filter(s => s.plan === p.id && hasData(s)).sort((a, b) => a.date < b.date ? -1 : 1);
@@ -644,6 +667,7 @@ function recapCard(d, s, units) {
   if (nDone && cp >= 0.9) { sc += 1; good.push(`Esecuzione pulita: ${Math.round(cp * 100)}% delle serie`); }
   if (rests.length >= 4 && !nLong) { sc += 1; good.push(bud ? "Recuperi rispettati anche in 2" : "Recuperi rispettati"); }
   if (!miss) sc += 1;
+  { const tot = Object.values(D.sessions).filter(x => hasData(x) && x.date <= s.date).length; if (MILESTONES.includes(tot)) good.unshift(`🎖 ${tot}ª seduta registrata: costanza da campione`); }
   if (dirty >= 3 || (nDone >= 6 && cp < 0.85)) { sc -= 2; bad.push(`${dirty} serie sporche: stai caricando più di quello che controlli. Prima la tecnica, poi il peso.`); }
   if (bud && nLong) bad.push(`In 2: ${nLong === 1 ? "una serie" : nLong + " serie"} con recupero oltre il doppio (media ${fmtSec(Math.round(avgR))}). Quelle reps non contano per salire.`);
   else if (nLong >= 3 || (rests.length >= 4 && nLong / rests.length >= 0.25)) { sc -= 2; bad.push(`Hai riposato troppo in ${nLong} serie (media ${fmtSec(Math.round(avgR))} invece di ${fmtSec(Math.round(avgP))}). Rispetta il timer: le reps devono venire dal muscolo, non dalla pausa.`); }
@@ -737,6 +761,9 @@ function renderLog0() {
     const ref = sbN ? null : ex.ref && ex.ref[S.gym];
     const stl = ex.bw ? null : stallInfo(ex, S.gym, S.date);
     const trendToday = sbN ? null : setsTrend(ex, exSets(sess, ex.key), sess);
+    // record di sempre per questo esercizio in questa palestra (serie pulite, non aiutate, sedute normali precedenti)
+    const prBest = ex.bw ? 0 : Math.max(0, ...gymSessions(S.gym).filter(x => x.date < S.date && home(x) && exHas(x, ex.key, sbN)).flatMap(x => exSets(x, ex.key).filter(r => r && !r.dirty && !r.help && r.kg != null && r.reps != null).map(r => e1rm(r.kg, r.reps))));
+    const isPR = r => prBest > 0 && r && !r.dirty && !r.help && r.kg != null && r.reps != null && e1rm(r.kg, r.reps) > prBest * 1.001 && !isOffDay(sess);
     // riscaldamento: primo esercizio del giorno o primo che lavora muscoli nuovi; 50%×10 · 70%×5 · 85%×2 del carico di S1, al salto disponibile
     const warm = (() => {
       if (ex.bw || sbN || isCircNoLog(d, idx)) return "";
@@ -842,14 +869,15 @@ function renderLog0() {
         judge(kg, rp, fb, tn, rr, jc, isDirty(), cr.eff, goal);
         { const pv = i > 0 ? exSets(current(), ex.key)[i - 1] : null, k = num(kg.value), rv = num(rp.value);
           if (pv && pv.kg != null && k != null && rv != null && tn != null && k > pv.kg && rv <= tn - 2 && !cr.dirty) { fb.className = "fb near"; fb.hidden = false;
-            fb.textContent = `Salita troppo rispetto alla S${i}: ${rv} su ${tn}. Prossima volta tieni ${fmt(pv.kg)} kg qui.`; } }
+            fb.textContent = `Salita troppo: prossima volta ${fmt(pv.kg)} kg qui`; } }
         if (cond.hold && num(rp.value) != null && tn != null && num(rp.value) <= tn - 3 && i < ex.sets.length - 1 && num(kg.value) != null) {
           const st = stp.v || 2.5, low = Math.max(0, num(kg.value) - st); fb.className = "fb near"; fb.hidden = false;
-          fb.textContent = `Rientro: ${num(rp.value)} su ${tn}. Nella prossima serie scendi a ${fmt(low)} kg, poi riprendi piano.`; }
-        if (cr.help && num(rp.value) != null && !cr.dirty) { fb.className = "fb prog"; fb.hidden = false; fb.textContent = "🤝 Aiutata: conta per il volume, non per salire. La prossima volta stesso carico, prova a farla da solo"; }
+          fb.textContent = `Rientro: prossima serie ${fmt(low)} kg`; }
+        if (isPR(cr) && !cr.help) { fb.className = "fb ok"; fb.hidden = false; fb.textContent = `🏆 Nuovo record: ${fmt(cr.kg)}×${cr.reps}!`; }
+        if (cr.help && num(rp.value) != null && !cr.dirty) { fb.className = "fb prog"; fb.hidden = false; fb.textContent = "🤝 Aiutata: prossima volta da solo"; }
         if (lrOn(cr) && num(rp.value) != null && !cr.dirty) {
           fb.className = "fb prog"; fb.hidden = false;
-          fb.innerHTML = `⏱ Recupero lungo (~${fmtSec(cr.lr)} invece di ${fmtSec(restFor(ex))}): reps aiutate dalla pausa, non contano per salire. <button type="button" class="lrok">Non ha influito</button>`;
+          fb.innerHTML = `<span>⏱ Pausa ~${fmtSec(cr.lr)}: non conta per salire</span><button type="button" class="lrok">Non ha influito</button>`;
           const b = fb.querySelector(".lrok"); b.onmousedown = e => e.preventDefault();
           b.onclick = () => { const s2 = JSON.parse(JSON.stringify(current())); s2.ex[ex.key][i] = { ...s2.ex[ex.key][i], lrOk: true }; s2.updatedAt = Date.now(); D.sessions[s2.id] = s2; save(); upd(); };
         }
@@ -864,6 +892,8 @@ function renderLog0() {
       // serie completata (reps inserite e campo lasciato) → parte il recupero
       rp.addEventListener("change", () => {
         if (num(rp.value) != null) openFeel(ex, i, label);
+        { const cr = exSets(current(), ex.key)[i]; S.cel = S.cel || new Set(); const ck = `${current().id}|${ex.key}|${i}`;
+          if (isPR(cr) && !S.cel.has(ck)) { S.cel.add(ck); celebrate(`🏆 Nuovo record`, `${sbN || ex.name} · ${fmt(cr.kg)}×${cr.reps}`); } }
         if (num(rp.value) == null || S.date !== todayISO() || !tPrefs().auto) return;
         const g = circGroup(d, idx);
         if (g && !g.last) { toast(`Subito: ${d.ex[idx + 1].name}`); return; } // circuito: niente recupero tra gli esercizi
@@ -1081,23 +1111,23 @@ function judge(kgEl, rpEl, fb, t, lr, cond, dirty, eff, goal) {
   const kg = num(kgEl.value), reps = num(rpEl.value), f = cond ? cond.f : 1, off = f < 1 || !!(cond && (cond.ooo || cond.hold));
   let cls = "", msg = "";
   if (reps != null && t != null) {
-    const miss = t - reps, pct = reps / t, missTxt = miss === 1 ? "1 rep" : miss + " reps";
+    const miss = t - reps, pct = reps / t, missTxt = miss === 1 ? "1 rep" : miss + " reps", cheer = ["Target centrato 💪", "Pulita e a target ✓", "Perfetta così 👌", "Ottima serie 💪"][(reps + Math.round(kg || 0)) % 4];
     const hasLast = lr && lr.kg != null && lr.reps != null && kg != null;
     const up = hasLast ? kg - lr.kg : 0;
     // forza attesa oggi = forza dell'ultima volta × fattore di forma/rientro
     const e1 = hasLast ? e1rm(kg, reps) : 0, exp = hasLast ? e1rm(lr.kg, lr.reps) * f : 0;
-    if (reps >= t) { cls = "ok"; msg = reps > t ? `Target superato di ${reps - t}` : (off ? (cond && cond.ooo && cond.f >= 1 ? "Target pieno anche fuori ordine" : "Target pieno anche in una giornata difficile") : ""); }
-    else if (hasLast && e1 >= exp * 0.99 && (up > 0 || off)) { cls = "prog"; msg = off ? `${missTxt} in meno, ma forza in linea con oggi (${cond.why}): va bene così` : `${missTxt} in meno ma +${fmt(up)} kg: forza pari o superiore all'ultima volta`; }
-    else if (hasLast && up > 0) { cls = "prog"; msg = `Carico salito di ${fmt(up)} kg: normale perdere qualche rep (${repsTxt(miss)})`; }
-    else if (pct >= 0.6 || off) { cls = "prog"; msg = `Pulita, ${repsTxt(miss)}: carico giusto per oggi` + (off ? " · " + cond.why : ""); }
-    else { cls = "prog"; msg = `Pulita, ${reps} su ${t}: se succede ancora, scendi un po' di carico`; }
+    if (reps >= t) { cls = "ok"; msg = reps > t ? `+${reps - t} oltre il target 🔥` : off ? "Target pieno anche oggi 💪" : cheer; }
+    else if (hasLast && e1 >= exp * 0.99 && (up > 0 || off)) { cls = "prog"; msg = off ? `${missTxt} in meno, ma ci sei 👍` : `−${missTxt} ma +${fmt(up)} kg: più forte 💪`; }
+    else if (hasLast && up > 0) { cls = "prog"; msg = `+${fmt(up)} kg: ci sta perdere qualche rep`; }
+    else if (pct >= 0.6 || off) { cls = "prog"; msg = `Pulita, −${missTxt}: carico giusto 👍`; }
+    else { cls = "prog"; msg = `${reps} su ${t}: se si ripete, scendi un po'`; }
   }
-  if (!dirty && goal && reps != null && t != null && reps >= t) { cls = "ok"; msg = reps >= goal ? (reps >= t + 2 ? `${reps} reps: la prossima volta prova il salto` : `Obiettivo ${goal} reps preso: ti avvicini al salto`) : `Target pieno; obiettivo di oggi ${goal} reps`; }
-  else if (!dirty && reps != null && t != null && reps >= t && eff === "hard") { cls = "ok"; msg = "Target pieno ma al limite: la prossima volta stesso carico, per consolidarlo"; }
-  else if (!dirty && reps != null && t != null && reps >= t && eff === "easy") { cls = "ok"; msg = "Facile: la prossima volta si sale"; }
+  if (!dirty && goal && reps != null && t != null && reps >= t) { cls = "ok"; msg = reps >= goal ? (reps >= t + 2 ? `${reps} reps: prossima volta il salto 🚀` : `Obiettivo ${goal} preso, quasi al salto ✓`) : `Target pieno · obiettivo ${goal}`; }
+  else if (!dirty && reps != null && t != null && reps >= t && eff === "hard") { cls = "ok"; msg = "A target ma al limite: consolida 💪"; }
+  else if (!dirty && reps != null && t != null && reps >= t && eff === "easy") { cls = "ok"; msg = "Facile: prossima volta si sale 🚀"; }
   if (dirty && reps != null) { // serie sporca: mai verde; dice cosa succede la prossima volta
-    if (t == null || reps >= t) { cls = "near"; msg = "Sporca: meglio una rep in meno ma pulita. La prossima volta stesso carico"; }
-    else { cls = "near"; msg = "Sporca: la prossima volta −5% su questa serie, per farla pulita"; }
+    if (t == null || reps >= t) { cls = "near"; msg = "Sporca: meglio 1 rep in meno ma pulita"; }
+    else { cls = "near"; msg = "Sporca: prossima volta −5% qui"; }
   }
   for (const c of ["ok", "prog", "near", "ko"]) rpEl.classList.toggle(c, c === cls);
   fb.textContent = msg; fb.className = "fb " + cls; fb.hidden = !msg;
@@ -1284,7 +1314,19 @@ function setTheme() {
 // ---------- progressi ----------
 function renderProg() {
   const p = plan(); S.pday = S.pday || S.day;
-  if (!$("progReport")) { $("pdays").insertAdjacentHTML("beforebegin", `<button type="button" class="infobtn rep-btn" id="progReport"><span><b>📋 Report per il PT</b><small>progressi, fastidi e sostituzioni della scheda, da mandargli</small></span><svg viewBox="0 0 24 24" class="ib-c"><path d="M9 6l6 6-6 6"/></svg></button>`); $("progReport").onclick = openReport; }
+  { // traguardi
+    const st = streakInfo(), all = Object.values(D.sessions).filter(hasData), p0 = plan();
+    let recs = 0; const ps = gymSessions(S.gym).filter(x => home(x) && !isOffDay(x));
+    for (const dd of p0.days) for (const e of dd.ex) { if (e.nolog || e.bw) continue; let best = 0;
+      for (const x of ps.filter(x => exHas(x, e.key, ""))) { const b = bestSet(exSets(x, e.key), false); if (!b) continue; if (best && b.v > best * 1.001 && x.plan === p0.id) recs++; best = Math.max(best, b.v); } }
+    const sets = all.filter(x => x.plan === p0.id).flatMap(x => Object.values(x.ex || {}).flat()).filter(r => r && r.reps != null), cl = sets.length ? Math.round(sets.filter(r => !r.dirty).length / sets.length * 100) : null;
+    let box = $("goals"); if (!box) { box = document.createElement("div"); box.id = "goals"; box.className = "goals"; const h = $("pdays").parentNode.querySelector("h2"); (h || $("pdays")).before(box); }
+    box.innerHTML = `<div><b>🔥 ${st.n}</b><span>settimane complete di fila</span><small>record ${st.best}</small></div>
+      <div><b>🏆 ${recs}</b><span>record in questa scheda</span><small>${esc(GYMS.find(g => g.id === S.gym).name.split(" ")[0])}</small></div>
+      <div><b>💪 ${all.length}</b><span>sedute registrate</span><small>${(n => n ? `prossimo traguardo ${n}` : "")(MILESTONES.find(m => m > all.length))}</small></div>
+      <div><b>✨ ${cl == null ? "—" : cl + "%"}</b><span>serie pulite</span><small>in questa scheda</small></div>`;
+  }
+  if (!$("progReport")) { ($("goals") || $("pdays")).insertAdjacentHTML("afterend", `<button type="button" class="infobtn rep-btn" id="progReport"><span><b>📋 Report per il PT</b><small>progressi, fastidi e sostituzioni della scheda, da mandargli</small></span><svg viewBox="0 0 24 24" class="ib-c"><path d="M9 6l6 6-6 6"/></svg></button>`); $("progReport").onclick = openReport; }
   const d = p.days.find(x => x.id === S.pday) || p.days[0];
   document.body.classList.toggle("g1", GYMS.findIndex(g => g.id === S.gym) === 1); setTheme();
   $("pk").textContent = `${GYMS.find(g => g.id === S.gym).name} · ${p.name}`;
