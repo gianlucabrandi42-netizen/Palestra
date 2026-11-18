@@ -928,7 +928,7 @@ function renderLog0() {
         if (g && !g.last) { toast(`Subito: ${d.ex[idx + 1].name}`); return; } // circuito: niente recupero tra gli esercizi
         // ultima serie (o ultimo giro): tra un esercizio e l'altro il recupero NON parte (scelta dell'utente, 17/11/2026);
         // riparte dopo la prima serie dell'esercizio successivo
-        if (i >= need(ex, current()) - 1) { { const n = nextOpenUnit(d, idx); S.between = { next: n ? (d.ex.find(e => e.key === n.k) || {}).name : "" }; } if (running() || T.left != null) stopRest(); else drawTimer(); { const tr = setsTrend(ex, exSets(current(), ex.key), current()); toast(tr && !isOffDay(current()) ? `Esercizio finito · ${tr.msg}` : "Esercizio finito · recupero in pausa fino alla prima serie del prossimo"); } return; }
+        if (i >= need(ex, current()) - 1) { { const n = nextOpenUnit(d, idx); S.between = { next: n ? (d.ex.find(e => e.key === n.k) || {}).name : "" }; } if (running() || T.left != null) stopRest(); else drawTimer(); return; } // niente avviso a fine esercizio (18/11/2026, l'utente non lo vuole): bastano la barra del timer e "Tra le serie" nella scheda
         if (g) { startRest(restFor(ex), `Giro ${i + 1} finito · poi giro ${i + 2}`, tKey(ex)); return; }
         startRest(restFor(ex), `${ex.name} · poi serie ${i + 2}`, tKey(ex));
       });
