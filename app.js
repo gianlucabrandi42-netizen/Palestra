@@ -121,8 +121,8 @@ const isDeload = s => !!(s && D.prefs && deloadWeeks().has(weekStart(s.date)));
 const need = (e, s) => isDeload(s) && !e.circ && !e.nolog ? e.sets.length - Math.floor(e.sets.length / 3) : e.sets.length;
 // Stallo: sedute normali (palestra, sede abituale, niente giornate no/fuori ordine/sostituzioni) in cui la serie migliore
 // (forza stimata) non supera la migliore di prima: "fermo da N sedute" se N ≥ 2 sedute dopo l'ultimo record (= 3 sedute piatte).
-function stallInfo(ex, gym, before) {
-  const ss = gymSessions(gym).filter(s => (!before || s.date < before) && home(s) && !isOffDay(s) && !oooOff(s, ex.key) && exHas(s, ex.key, ""));
+function stallInfo(ex, gym, before, sub = "") {
+  const ss = gymSessions(gym).filter(s => (!before || s.date < before) && home(s) && !isOffDay(s) && !oooOff(s, ex.key) && exHas(s, ex.key, sub));
   let best = 0, since = 0;
   for (const s of ss) { const b = bestSet(exSets(s, ex.key), ex.bw); if (!b) continue; if (b.v > best * 1.005) { best = b.v; since = 0; } else since++; }
   return since >= 2 ? { n: since + 1 } : null;
@@ -215,20 +215,21 @@ function advise(r, pl, t, step, f, n = 1) {
 // ---------- salto dei pesi ----------
 const STEPS = [1, 2, 2.5, 5, 10];
 // stimato dai pesi già usati in questa palestra: la differenza più piccola tra due carichi diversi, agganciata ai salti tipici
-function stepAuto(key, gym) {
-  const ks = [...new Set(gymSessions(gym).filter(s => home(s) && !subOf(s, key)).flatMap(s => exSets(s, key).map(r => r && r.kg).filter(v => v != null && v > 0)))].sort((a, b) => a - b);
+const stepK = (key, sub) => sub ? `${key}@${sub.trim().toLowerCase()}` : key; // salto pesi del sostituto: suo, per macchina
+function stepAuto(key, gym, sub = "") {
+  const ks = [...new Set(gymSessions(gym).filter(s => home(s) && sameSub(subOf(s, key), sub)).flatMap(s => exSets(s, key).map(r => r && r.kg).filter(v => v != null && v > 0)))].sort((a, b) => a - b);
   let m = null; for (let i = 1; i < ks.length; i++) { const d = ks[i] - ks[i - 1]; if (d >= 0.9 && (m == null || d < m)) m = d; }
   if (m == null) return null; const near = STEPS.find(x => Math.abs(x - m) <= 0.15); return near || Math.round(m * 4) / 4;
 }
-function stepFor(key) { const v = ((D.steps || {})[S.gym] || {})[key]; return v ? { v, auto: false } : { v: stepAuto(key, S.gym), auto: true }; }
+function stepFor(key, sub = "") { const v = ((D.steps || {})[S.gym] || {})[stepK(key, sub)]; return v ? { v, auto: false } : { v: stepAuto(key, S.gym, sub), auto: true }; }
 function setStep(key, v) { D.steps = D.steps || {}; D.steps[S.gym] = { ...(D.steps[S.gym] || {}) }; if (v == null) delete D.steps[S.gym][key]; else D.steps[S.gym][key] = v; save(); renderLog(); }
 const e1rm = (kg, reps) => kg * (1 + reps / 30);
 const maxKg = sets => { const k = sets.filter(r => r && r.kg != null).map(r => r.kg); return k.length ? Math.max(...k) : null; };
 const doneSets = (s, ex) => ex.sets.filter((_, i) => { const r = exSets(s, ex.key)[i]; return r && r.reps != null; }).length;
 
 // ---------- immagini ----------
-function imgs(ex) { return (ex.img && ex.img.local || []).map(f => ({ src: "img/" + f, cap: CAP[f.split("-").pop().slice(0, 2)] || "", draw: /-d\d/.test(f) })); }
-function execFrames(ex) { const a = imgs(ex); const f = a.filter(x => !x.draw); return (f.length >= 2 ? f : a).slice(0, 2); }
+function imgs(ex) { const a = (ex.img && ex.img.local || []).map(f => ({ src: "img/" + f, cap: CAP[f.split("-").pop().slice(0, 2)] || "", draw: /-d\d/.test(f) })); return ex._pic ? [{ src: ex._pic, cap: "La tua foto", own: true }, ...a] : a; }
+function execFrames(ex) { const a = imgs(ex).filter(x => !x.own); const f = a.filter(x => !x.draw); return (f.length >= 2 ? f : a).slice(0, 2); }
 
 // ---------- mappa muscoli ----------
 function bodySVG(m) {
@@ -293,7 +294,7 @@ function drawHeader(d, s, units, cur) {
   const dt = durTxt(s, !left);
   $("dsub").innerHTML = `${dt ? `<span class="dlive">⏱ ${dt}</span> · ` : ""}${left ? (left === 1 ? "manca 1 esercizio" : `mancano ${left} esercizi`) : "completato"}${dt && when === "oggi" ? "" : " · " + when}${r !== "ok" ? " · " + READY[r].n : ""}${isBuddy(s) ? " · 👥 in 2" : ""}${isAway(current()) ? " · 📍 " + esc(current().site || "altra sede") : ""} ▾`;
   const strip = $("strip");
-  strip.innerHTML = units.map(u => { const f = execFrames(u.circ ? u.ex : u.ex)[0], c = u === cur;
+  strip.innerHTML = units.map(u => { const f = (t => t ? { src: t } : null)(u.circ ? (execFrames(u.ex)[0] || {}).src : thumbOf(u.ex, s)), c = u === cur;
     return `<button class="schip${u.done ? " d" : ""}${c ? " c" : ""}${u.started && !u.done ? " p" : ""}" data-k="${u.keys[0]}" aria-label="${esc(u.name)}${u.done ? ", fatto" : ""}">${f ? `<img src="${f.src}" alt="" loading="lazy">` : ""}<span>${u.done ? "✓ " : ""}${u.n}${c ? " " + esc(shortName(u.name)) : ""}</span></button>`; }).join("");
   strip.querySelectorAll("[data-k]").forEach(b => b.onclick = () => openUnit(b.dataset.k));
   const c = strip.querySelector(".c"); if (c) strip.scrollLeft = Math.max(0, c.offsetLeft - strip.clientWidth / 2 + c.offsetWidth / 2);
@@ -385,7 +386,7 @@ function openSheet(key) {
   { const prev = sh.querySelector(".is-c .panel"); if (prev && sh._card && sh._card !== card && document.contains(sh._card)) { prev.hidden = true; sh._card.appendChild(prev); } }
   const ex = dayObj().ex.find(e => e.key === key), panel = card.querySelector(".panel") || (sh._card === card ? sh.querySelector(".is-c .panel") : null);
   if (!panel || !ex) return; const pbody = panel.querySelector(".pbody");
-  if (pbody && !pbody.firstChild) fillPanel(pbody, ex);
+  if (pbody && !pbody.firstChild) fillPanel(pbody, exView(ex));
   const body = sh.querySelector(".is-c"); body.textContent = ""; panel.hidden = false; body.appendChild(panel); sh._card = card;
   sh.querySelector(".is-h").innerHTML = `<b>${esc(subOf(current(), key) || ex.name)}</b>${rxLine(ex)}`;
   const was = !sh.hidden || S.sheet === key && sh.classList.contains("on"); S.sheet = key;
@@ -608,6 +609,25 @@ function dbSearch(q, exKey) {
 }
 const dbName = m => `${m.b} ${m.l} ${m.n}`;
 const dbFind = n => { const DB = window.MACCHINE_DB, k = dbNorm(n); return DB ? DB.list.find(m => dbNorm(dbName(m)) === k) || null : null; };
+// ---------- scheda completa del sostituto (18/11/2026, richiesta dell'utente) ----------
+// Tipo di movimento: dal database (nome esatto), poi dalla ricerca sul nome scritto, altrimenti il movimento dell'esercizio sostituito.
+function subCat(name, exKey) {
+  const DB = window.MACCHINE_DB; if (!DB || !name) return null; const m = dbFind(name); if (m) return m.c;
+  const r = dbSearch(name, exKey); if (r.length) return r[0].c;
+  const c = Object.keys(DB.CAT).find(k => DB.CAT[k].k.includes(exKey)); return c || null;
+}
+// Esercizio "come lo vedi oggi": col sostituto prende nome, muscoli, consigli, esecuzione, errori e foto del suo tipo di macchina
+// (macchine-schede.js) + la tua foto; serie, schema e recupero restano quelli del PT.
+function subEx(ex, name) {
+  if (!name || !ex) return ex;
+  const c = subCat(name, ex.key), T = c && (window.MACCHINE_SCHEDE || {})[c];
+  const img = T ? (T.imgs || (T.img ? [T.img + "-f1.webp", T.img + "-f2.webp"] : [])) : [];
+  return { ...ex, name, flash: T ? T.f : [], cues: T ? T.c : [], errors: T ? T.e : [], m: T ? { p: T.p, s: T.s } : ex.m, ml: T ? T.ml : ex.ml,
+    img: { local: img }, imgNote: T && T.note || "", ref: null, _sub: name, _cat: c, _pic: machinePic(name) || "" };
+}
+const exView = (ex, s = current()) => subEx(ex, s && ex ? subOf(s, ex.key) : "");
+// miniatura: la tua foto della macchina, altrimenti la prima foto del movimento
+const thumbOf = (ex, s) => { const v = exView(ex, s); if (v._pic) return v._pic; const f = execFrames(v)[0]; return f ? f.src : ""; };
 const imgQ = q => `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(q)}`;
 // ricerca precisa: marca + linea + nome del modello tra virgolette (frase esatta), così escono le foto di quel modello e non di macchine simili (18/11/2026)
 const mQ = m => imgQ(`${m.b} ${m.l} "${m.n}"`);
@@ -750,7 +770,7 @@ function recapCard(d, s, units) {
     ex.sets.forEach((st, i) => { const r = cur[i]; if ((sk || i >= need(ex, s)) && !(r && r.reps != null)) return; nSet++; if (r && r.reps != null) { nDone++; const dn = dN(r); if (dn === 1) push1++; else if (dn === 2) dirty2++; else if (dn >= 3) dirty3++; if (!r.dirty) { clean++; if (r.help) nA++; else if (r.eff === "easy") nE++; else if (r.eff === "hard") nH++; } vol += (r.kg || 0) * r.reps; }
       if (i > 0 && !circGroup(d, idx)) { const g = restGap(cur[i - 1], r, ex, i); if (g != null) rests.push({ g, p: restFor(ex), long: lrOn(r) }); } });
     if (!cur.some(r => r && r.reps != null)) return;
-    if (!ex.bw && !hasPain(s, ex.key)) { const stv = sb ? null : stepFor(ex.key).v, pv = gymSessions(S.gym).filter(x => x.date < s.date && home(x) && exHas(x, ex.key, sb)).pop(), ps = pv ? exSets(pv, ex.key) : [];
+    if (!ex.bw && !hasPain(s, ex.key)) { const stv = stepFor(ex.key, sb).v, pv = gymSessions(S.gym).filter(x => x.date < s.date && home(x) && exHas(x, ex.key, sb)).pop(), ps = pv ? exSets(pv, ex.key) : [];
       if (ex.sets.some((st, i) => { const r = cur[i], a = r && r.reps != null ? advise(r, ps[i], tnum(st.t), stv, 1) : null; return a && a.kg > r.kg; })) upEx.push(nm); }
     if (prevDay) exSets(prevDay, ex.key).forEach(r => { if (r && r.reps != null) volPrev += (r.kg || 0) * r.reps; });
     const best = Math.max(0, ...cur.filter(ok1).map(r => e1(recR(r), ex.bw)));
@@ -855,7 +875,7 @@ function renderLog0() {
     if (cg0) { list.appendChild(circCard(d, cg0, exN, u === curU)); return; }
     const last = lastBefore(ex.key), lastSets = last ? exSets(last, ex.key) : [];
     const rs = lastRef(ex.key), refSets = rs ? exSets(rs, ex.key) : [], hit1 = rs ? allHit(refSets, ex) && allClean(refSets) : false, pr = hit1 ? prevRef(ex.key, rs) : null,
-      hit = hit1 && !!pr && allHit(exSets(pr, ex.key), ex) && allClean(exSets(pr, ex.key)), cond = condition(sess), sbN = subOf(sess, ex.key), stp = ex.bw || sbN ? { v: null } : stepFor(ex.key);
+      hit = hit1 && !!pr && allHit(exSets(pr, ex.key), ex) && allClean(exSets(pr, ex.key)), cond = condition(sess), sbN = subOf(sess, ex.key), stp = ex.bw ? { v: null } : stepFor(ex.key, sbN), exD = sbN ? subEx(ex, sbN) : ex;
     const pr2 = rs ? prevRef(ex.key, rs) : null, prSets = pr2 ? exSets(pr2, ex.key) : [], nUp = i => easy2(refSets[i], prSets[i], tnum(ex.sets[i].t)) ? 2 : 1;
     const painRef = rs && hasPain(rs, ex.key);
     const trRef = rs && !subOf(rs, ex.key) ? setsTrend(ex, exSets(rs, ex.key), rs) : null;
@@ -866,14 +886,14 @@ function renderLog0() {
       if (a && cond.hold && r && r.kg != null && (a.kg > r.kg || (t != null && a.reps > t))) return { kg: Math.min(a.kg, r.kg), reps: t, why: "Rientro: stessi carichi dell'ultima volta", mode: "back" };
       return a && painRef && r && a.kg > r.kg ? { kg: r.kg, reps: t, why: "Fastidio l'ultima volta: carico fermo finché non passa", mode: "pain" } : a; };
     const ref = sbN || resetOf(ex.key) ? null : ex.ref && ex.ref[S.gym];
-    const stl = ex.bw ? null : stallInfo(ex, S.gym, S.date);
-    const trendToday = sbN ? null : setsTrend(ex, exSets(sess, ex.key), sess);
+    const stl = ex.bw ? null : stallInfo(ex, S.gym, S.date, sbN || "");
+    const trendToday = setsTrend(ex, exSets(sess, ex.key), sess);
     // record di sempre per questo esercizio in questa palestra (serie pulite, non aiutate, sedute normali precedenti)
     const prBest = ex.bw ? 0 : Math.max(0, ...gymSessions(S.gym).filter(x => x.date < S.date && home(x) && exHas(x, ex.key, sbN)).flatMap(x => exSets(x, ex.key).filter(r => okRec(r) && r.kg != null && r.reps != null).map(r => e1rm(r.kg, r.reps))));
     const isPR = r => prBest > 0 && okRec(r) && r.kg != null && r.reps != null && e1rm(r.kg, cleanR(r)) > prBest * 1.001 && !isOffDay(sess) && home(sess);
     // riscaldamento: primo esercizio del giorno o primo che lavora muscoli nuovi; 50%×10 · 70%×5 · 85%×2 del carico di S1, al salto disponibile
     const warm = (() => {
-      if (ex.bw || sbN || isCircNoLog(d, idx)) return "";
+      if (ex.bw || isCircNoLog(d, idx)) return "";
       const before = d.ex.slice(0, idx).filter(e => !e.nolog), seen = new Set(before.flatMap(e => (e.m && e.m.p) || []));
       if (before.length && ((ex.m && ex.m.p) || []).some(m => seen.has(m))) return "";
       const a0 = refSets[0] ? advise2(refSets[0], prSets[0], tnum(ex.sets[0].t), stp.v, cond.f, nUp(0)) : null, base = a0 && a0.kg;
@@ -915,19 +935,19 @@ function renderLog0() {
     const oi = oooInfo(sess, ex.key, S.date === todayISO()), prosp = oi && !oi.started;
     let jc = oi && oi.off && !prosp ? { ...cond, ooo: true, why: [cond.why, "fuori ordine"].filter(Boolean).join(" + ") } : cond;
     if (isAway(sess)) { jc = { ...jc, ooo: true, why: [jc.why, "altra sede"].filter(Boolean).join(" + ") }; load = { c: "near", t: `📍 Altra sede: kg della tua palestra solo indicativi, macchine diverse. Non conta per i progressi.` }; }
-    const fr = sbN ? [] : execFrames(ex), mpic = sbN ? machinePic(sbN) : "";
+    const fr = exD._pic ? [] : execFrames(exD), mpic = exD._pic || "";
     const card = document.createElement("article"); card.className = "ex" + (isCur ? " cur" : ""); card.dataset.ex = ex.key;
     const open = S.open.has(ex.key);
     card.innerHTML = `
       <div class="exh">
         ${fr.length ? `<button class="exec thumb" data-zoom aria-label="Ingrandisci le immagini di ${esc(ex.name)}">
           ${fr.map(f => `<img src="${f.src}" alt="${esc(ex.name)} — ${esc(f.cap)}" class="${f.draw ? "draw" : ""}" loading="lazy">`).join("")}
-          <span class="zoom"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></span></button>` : mpic ? `<span class="exec thumb mpic"><img src="${mpic}" alt="${esc(sbN)}"></span>` : ""}
+          <span class="zoom"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></span></button>` : mpic ? `<button class="exec thumb mpic" data-zoom aria-label="Ingrandisci le immagini di ${esc(sbN)}"><img src="${mpic}" alt="${esc(sbN)}"></button>` : ""}
         <div class="t"><div class="exk">${exNum(exN)}${isCur ? " · Adesso" : ""}</div>
           <h3 class="exname">${esc(sbN || ex.name)}</h3>${sbN ? `<div class="subof">↔ al posto di ${esc(ex.name)}</div>` : ""}${rxLine(ex)}</div>
       </div>
       ${todayBanners(sess, ex, painRef, rs)}
-      ${(ex.flash || []).length && !sbN ? `<p class="tipline" aria-label="Da ricordare">${ex.flash.map(x => `<span>${esc(x)}</span>`).join("")}</p>` : ""}
+      ${(exD.flash || []).length ? `<p class="tipline" aria-label="Da ricordare">${exD.flash.map(x => `<span>${esc(x)}</span>`).join("")}</p>` : ""}
       ${pills ? `<div class="pills">${pills}</div>` : ""}
       ${oi ? oooBox(oi, prosp) : ""}
       ${((D.setup[S.gym] || {})[ex.key]) ? `<div class="exinfo top">
@@ -937,7 +957,7 @@ function renderLog0() {
       <div class="sets"><div class="sh"><span>Serie</span><span>Ultima</span><span>${ex.bw ? "kg (opz.)" : "kg"}</span><span>Reps</span><span></span></div></div>
       ${load ? `<p class="advice ${load.c}"><span>Consiglio</span>${load.t}</p>` : ""}
       ${trendToday && !isOffDay(sess) ? `<p class="advice trend ${trendToday.cls}"><span>Tra le serie</span>${trendToday.msg}</p>` : ""}
-      ${stl && !sbN && !cond.deload ? `<p class="advice stall"><span>Fermo</span>⏸ Nessun miglioramento da ${stl.n} sedute. Prova: salto più piccolo o una rep in più invece del peso, recuperi pieni, tecnica pulita. Se continua, dillo al PT.</p>` : ""}
+      ${stl && !cond.deload ? `<p class="advice stall"><span>Fermo</span>⏸ Nessun miglioramento da ${stl.n} sedute. Prova: salto più piccolo o una rep in più invece del peso, recuperi pieni, tecnica pulita. Se continua, dillo al PT.</p>` : ""}
       <div class="exfoot${manual ? " two" : ""}">
         ${manual ? `<button class="more" data-close>Chiudi</button>` : ""}
         <button class="infobtn" data-more aria-haspopup="dialog"><svg viewBox="0 0 24 24" class="ib-i"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.01"/></svg><span><b>Info ed esecuzione</b><small>foto · muscoli · regolazioni</small></span><svg viewBox="0 0 24 24" class="ib-c"><path d="M9 6l6 6-6 6"/></svg></button></div>
@@ -1021,9 +1041,9 @@ function renderLog0() {
         if (g && !g.last) { toast(`Subito: ${d.ex[idx + 1].name}`); return; } // circuito: niente recupero tra gli esercizi
         // ultima serie (o ultimo giro): tra un esercizio e l'altro il recupero NON parte (scelta dell'utente, 17/11/2026);
         // riparte dopo la prima serie dell'esercizio successivo
-        if (i >= need(ex, current()) - 1) { { const n = nextOpenUnit(d, idx); S.between = { next: n ? (d.ex.find(e => e.key === n.k) || {}).name : "" }; } if (running() || T.left != null) stopRest(); else drawTimer(); return; } // niente avviso a fine esercizio (18/11/2026, l'utente non lo vuole): bastano la barra del timer e "Tra le serie" nella scheda
+        if (i >= need(ex, current()) - 1) { { const n = nextOpenUnit(d, idx); S.between = { next: n ? (subOf(current(), n.k) || (d.ex.find(e => e.key === n.k) || {}).name) : "" }; } if (running() || T.left != null) stopRest(); else drawTimer(); return; } // niente avviso a fine esercizio (18/11/2026, l'utente non lo vuole): bastano la barra del timer e "Tra le serie" nella scheda
         if (g) { startRest(restFor(ex), `Giro ${i + 1} finito · poi giro ${i + 2}`, tKey(ex)); return; }
-        startRest(restFor(ex), `${ex.name} · poi serie ${i + 2}`, tKey(ex));
+        startRest(restFor(ex), `${subOf(current(), ex.key) || ex.name} · poi serie ${i + 2}`, tKey(ex));
       });
       if (i > 0 && !circGroup(d, idx)) { const gp = document.createElement("div"); gp.className = "rgap"; gp.hidden = true; setsEl.appendChild(gp); row._gap = gp; }
       upd(); setsEl.appendChild(row);
@@ -1031,7 +1051,7 @@ function renderLog0() {
     // adattamento in tempo reale delle serie ancora da fare (vedi liveAdj)
     card._live = () => {
       if (ex.bw || circGroup(d, idx)) return;
-      const sets = exSets(current(), ex.key), stv = stepFor(ex.key).v, canUp = cond.f >= 1 && !cond.hold && !hasPain(current(), ex.key);
+      const sets = exSets(current(), ex.key), stv = stepFor(ex.key, subOf(current(), ex.key)).v, canUp = cond.f >= 1 && !cond.hold && !hasPain(current(), ex.key);
       let first = true;
       setsEl.querySelectorAll(".set").forEach(row => { if (row._i == null) return;
         const i = row._i, r = sets[i] || {}, p = P[i], filled = r.kg != null || r.reps != null, kgTyped = row._kg.value.trim() !== "";
@@ -1094,18 +1114,18 @@ function renderLog0() {
     const cp = card.querySelector("[data-copy]") || { set hidden(v) {} };
     if (ex.bw || !rs || !refSets.some(r => r && r.kg != null)) { const row = cp.closest && cp.closest(".ir"); if (row) row.remove(); }
     cp.onclick = () => (closeSheet(), ex.sets).forEach((_, i) => { const el0 = $(`kg-${ex.key}-${i}`), a = advise2(refSets[i], prSets[i], tnum(ex.sets[i].t), stp.v, cond.f, nUp(i)), k = el0 && el0.value === "" && /\d/.test(el0.placeholder) ? num(el0.placeholder) : a && a.kg; if (k != null) { const el = $(`kg-${ex.key}-${i}`); el.value = fmt(k); edit(ex, i, "kg", el.value); el.dispatchEvent(new Event("input")); } });
-    const panel = card.querySelector(".panel"), pbody = panel.querySelector(".pbody"); if (open) fillPanel(pbody, ex);
+    const panel = card.querySelector(".panel"), pbody = panel.querySelector(".pbody"); if (open) fillPanel(pbody, exD);
     const openInfo = () => openSheet(ex.key);
     card.querySelectorAll("[data-more]").forEach(b => b.onclick = () => {
       openInfo();
     });
     const es = card.querySelector("[data-editsetup]"); if (es) es.onclick = () => { openInfo(); const i = $("isheet").querySelector(".setup input"); if (i) { i.focus(); i.scrollIntoView({ block: "center", behavior: "smooth" }); } };
-    const z = card.querySelector("[data-zoom]"); if (z) z.onclick = () => openLB(ex, -1);
+    const z = card.querySelector("[data-zoom]"); if (z) z.onclick = () => openLB(exD, exD._pic ? 0 : -1);
     // Chiudi: la riga chiusa resta dove stavi guardando (o subito sotto la barra in alto se la scheda iniziava più su)
-    card.querySelectorAll("[data-step]").forEach(b => b.onclick = () => { const v = +b.dataset.step; setStep(ex.key, stp.v === v && !stp.auto ? null : v); });
+    card.querySelectorAll("[data-step]").forEach(b => b.onclick = () => { const v = +b.dataset.step; setStep(stepK(ex.key, sbN), stp.v === v && !stp.auto ? null : v); });
     card.querySelectorAll("[data-stepc]").forEach(b => b.onclick = () => { S.stepEdit = ex.key; renderLog(); setTimeout(() => { const i = $(`stin-${ex.key}`); if (i) { i.focus(); i.select(); } }, 60); });
     { const si = card.querySelector(".stepin"); if (si) {
-      const ok = () => { const v = num(si.value); S.stepEdit = null; if (v != null && v > 0 && v <= 50) { setStep(ex.key, Math.round(v * 100) / 100); toast(`Salto pesi: ${fmt(Math.round(v * 100) / 100)} kg`); } else renderLog(); };
+      const ok = () => { const v = num(si.value); S.stepEdit = null; if (v != null && v > 0 && v <= 50) { setStep(stepK(ex.key, sbN), Math.round(v * 100) / 100); toast(`Salto pesi: ${fmt(Math.round(v * 100) / 100)} kg`); } else renderLog(); };
       si.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); ok(); } };
       const bo = card.querySelector("[data-stepok]"), bx = card.querySelector("[data-stepx]");
       if (bo) { bo.onmousedown = e => e.preventDefault(); bo.onclick = ok; }
@@ -1172,7 +1192,7 @@ function drawMissing() {
 document.addEventListener("focusin", e => { if (e.target.matches && e.target.matches(".set input")) checkMissing(); });
 // scheda chiusa (esercizio fatto o da fare): una riga, tocco = apre
 function miniCard(u, s) {
-  const e = u.ex, f = execFrames(e)[0], b = document.createElement("button");
+  const e = u.ex, f = (t => t ? { src: t } : null)(u.circ ? (execFrames(e)[0] || {}).src : thumbOf(e, s)), b = document.createElement("button");
   b.className = "exmini" + (u.done ? " done" : ""); b.dataset.keys = u.keys.join(" "); b.dataset.mini = u.keys[0];
   let sub;
   if (u.circ) { const c = circCount(s, e.circ); sub = u.done ? `${c}/${e.sets.length} giri` : `${e.sets.length} giri · ${e.sets[0].t} reps · recupero ${fmtSec(restFor(u.circ ? d_last(u) : e))}`; }
@@ -1224,7 +1244,7 @@ function circCard(d, g, n, isCur) {
     if (was !== now) { // completato (o riaperto): la lista si riorganizza; se completato, resta aperto FINISH_HOLD con "Vai ora"
       if (now) { S.exOpen.delete(mem[0].key); clearTimeout(S.moveT); clearInterval(S.moveI);
         if (T.key === tKey(mem[0]) && (running() || T.left != null)) stopRest(); // circuito finito: niente recupero
-        const nx = nextOpenUnit(d, g.start); S.between = { next: nx ? (d.ex.find(e => e.key === nx.k) || {}).name : "" };
+        const nx = nextOpenUnit(d, g.start); S.between = { next: nx ? (subOf(current(), nx.k) || (d.ex.find(e => e.key === nx.k) || {}).name) : "" };
         S.hold = mem[0].key; S.moveAt = Date.now() + FINISH_HOLD;
         S.moveGo = () => { clearTimeout(S.moveT); clearInterval(S.moveI); S.hold = null; S.moveAt = null; S.moveGo = null; renderLog(); drawTimer(); };
         S.moveT = setTimeout(S.moveGo, FINISH_HOLD); S.moveI = setInterval(() => drawTimer(), 1000); }
@@ -1808,7 +1828,7 @@ function drawPhase(run, paused, done) {
   else if (done) h = `<span class="tp-k ok">✓ Recupero finito</span><span class="tp-t">tocca il tempo per la prossima serie</span>`;
   else if (S.moveAt) { const n = Math.max(0, Math.ceil((S.moveAt - Date.now()) / 1000)); h = `<span class="tp-k ok">✓ Finito</span><span class="tp-t">chiudo tra ${n}"${S.between && S.between.next ? ` · poi ${esc(S.between.next)}` : ""}</span><button type="button" class="tp-ed" id="tpGo">Vai ora</button>`; }
   else if (S.between) h = `<span class="tp-k chg">↪ Cambio esercizio</span><span class="tp-t">recupero in pausa${S.between.next ? ` · poi ${esc(S.between.next)}` : ""}</span>`;
-  else h = `<span class="tp-k">▶ Pronto</span><span class="tp-t">${ex ? esc(ex.name) : "recupero di base"}</span>${edit}`;
+  else h = `<span class="tp-k">▶ Pronto</span><span class="tp-t">${ex ? esc(subOf(current(), ex.key) || ex.name) : "recupero di base"}</span>${edit}`;
   ph.innerHTML = h;
   const b = $("tpEd"); if (b) { b.onmousedown = e => e.preventDefault(); b.onclick = () => openPhaseEdit(ex); }
   const g = $("tpGo"); if (g) { g.onmousedown = e => e.preventDefault(); g.onclick = () => S.moveGo && S.moveGo(); }
@@ -1946,7 +1966,7 @@ function nextInfo() {
     return { name: `Circuito ${ex.circ}`, set: `Giro ${c + 1} di ${n}`, what: `${ex.sets[0].t} reps per esercizio` }; }
   const r = exSets(current(), k)[i]; if (r && r.reps != null) return { done: true };
   const kgEl = $(`kg-${k}-${i}`), kg = kgEl ? (kgEl.value || (/\d/.test(kgEl.placeholder) ? kgEl.placeholder : "")) : "";
-  return { name: ex.name, set: `Serie ${i + 1} di ${need(ex, current())}`, what: [`${ex.sets[i].t} reps`, kg && !ex.bw ? `${kg} kg` : ""].filter(Boolean).join(" · ") };
+  return { name: subOf(current(), ex.key) || ex.name, set: `Serie ${i + 1} di ${need(ex, current())}`, what: [`${ex.sets[i].t} reps`, kg && !ex.bw ? `${kg} kg` : ""].filter(Boolean).join(" · ") };
 }
 function endMsg() {
   const n = nextInfo();
