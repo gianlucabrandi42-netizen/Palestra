@@ -2003,7 +2003,9 @@ if (running()) { keepAwake(true); tickLoop(); }
 let hidAt = 0;
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") { hidAt = Date.now(); return; }
-  if (hidAt && Date.now() - hidAt > 60000 && S.view === "log" && sessDone(current()) && !document.activeElement?.matches("input,textarea")) window.scrollTo({ top: 0 });
+  // solo se l'allenamento è chiuso, non mentre sei in sessione (richiesta dell'utente): niente timer/chiusura in corso e "Fine allenamento" o ultimo inserimento da più di 30'
+  const cs = current(), over = cs && (cs.tEnd || (cs.t1 && Date.now() - cs.t1 > 30 * 60000));
+  if (hidAt && Date.now() - hidAt > 60000 && S.view === "log" && sessDone(cs) && over && !running() && !S.hold && !document.activeElement?.matches("input,textarea")) window.scrollTo({ top: 0 });
 });
 
 function renderTimerSet() {
