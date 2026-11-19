@@ -1116,3 +1116,10 @@ body.padon .feel{box-shadow:none;margin-bottom:6px}
 .set input.repl{color:#fff;background:color-mix(in srgb,var(--accent) 45%,transparent);box-shadow:inset 0 0 0 2px var(--accent)}
 .set input.repl::selection{background:transparent}
 .pk:active{background:rgba(255,255,255,.18);transform:scale(.96)}
+/* tasti con interruttore nativo invisibile sotto il dito (tocco aptico su iPhone) */
+.pk{position:relative;overflow:hidden;cursor:pointer}
+.pk .pkl{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:6px;pointer-events:none}
+.pk .hsw{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:.011;z-index:2;cursor:pointer}
+.pk.k-next .pkl{font-size:15px}
+.pk.k-next .pkl span{font-size:22px}
+.pk .hsw{opacity:.002}

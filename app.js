@@ -1310,10 +1310,10 @@ function padStep(el) { const m = el.id.match(/^kg-(.+)-(\d+)$/); return m ? step
 function padLabels() {
   const p = $("pad"), el = document.activeElement; if (!p || !isPadField(el)) return; const isKg = el.id.startsWith("kg-");
   p.classList.toggle("kg", isKg); const st = isKg ? fmt(padStep(el)) : "1";
-  p.querySelector('[data-p="minus"]').innerHTML = `−${st}`; p.querySelector('[data-p="plus"]').innerHTML = `+${st}`;
-  const nx = p.querySelector('[data-p="next"]'); nx.innerHTML = isKg ? `reps <span>→</span>` : `<span>→</span>`;
+  p.querySelector('[data-p="minus"] .pkl').innerHTML = `−${st}`; p.querySelector('[data-p="plus"] .pkl').innerHTML = `+${st}`;
+  p.querySelector('[data-p="next"] .pkl').innerHTML = isKg ? `reps <span>→</span>` : `<span>→</span>`;
 }
-function padKey(k) {
+function padKey(k, real) {
   const el = document.activeElement; if (!isPadField(el)) return; const isKg = el.id.startsWith("kg-");
   if (k === "hide") return el.blur();
   if (k === "next") { clearTimeout(el._t); if (isKg) { const r = $(el.id.replace(/^kg-/, "rp-")); if (r) r.focus(); } else toNextSet(el); return; }
@@ -1325,7 +1325,7 @@ function padKey(k) {
   else { if (v.replace(/\D/g, "").length >= (isKg ? 5 : 3)) return; v += k; }
   el.value = v; el._padEd = true; if (!el._repl) el.classList.remove("repl");
   const ev = new InputEvent("input", { bubbles: true, inputType: type, data: k }); ev._pad = true; el.dispatchEvent(ev);
-  padHaptic();
+  if (!real || !/iP(hone|ad|od)/.test(navigator.userAgent)) padHaptic(); // su iPhone il clic aptico lo dà già l'interruttore toccato
 }
 // tocco aptico a ogni tasto, come la tastiera dell'iPhone (19/11/2026): su iPhone le app web non vibrano, ma un interruttore
 // nativo nascosto (iOS 18+) dà il piccolo "clic"; altrove vibrazione breve
@@ -1343,17 +1343,20 @@ function padHaptic() {
 (function buildPad() {
   const p = $("pad"); if (!p) return;
   const lab = { del: `<svg viewBox="0 0 24 24"><path d="M9 6h11v12H9l-6-6z"/><path d="M12.5 9.5l5 5M17.5 9.5l-5 5"/></svg>`, hide: `<svg viewBox="0 0 24 24"><path d="M6 10l6 6 6-6"/></svg>`, next: "→", minus: "−", plus: "+" };
-  p.innerHTML = PADK.map(k => `<button type="button" class="pk k-${k === "," ? "comma" : k}" data-p="${k}" aria-label="${{ del: "Cancella", hide: "Chiudi il tastierino", next: "Avanti", minus: "Meno", plus: "Più", ",": "Virgola" }[k] || k}">${lab[k] || k}</button>`).join("");
+  // Ogni tasto è un'etichetta con dentro un interruttore nativo invisibile grande quanto il tasto (19/11/2026): il dito tocca
+  // davvero l'interruttore e l'iPhone dà il suo clic aptico (il clic "simulato" da codice su iPhone non bastava)
+  p.innerHTML = PADK.map(k => `<label class="pk k-${k === "," ? "comma" : k}" data-p="${k}" role="button" aria-label="${{ del: "Cancella", hide: "Chiudi il tastierino", next: "Avanti", minus: "Meno", plus: "Più", ",": "Virgola" }[k] || k}"><span class="pkl">${lab[k] || k}</span><input type="checkbox" switch class="hsw" tabindex="-1" aria-hidden="true"></label>`).join("");
   // Tasti sul "click" (19/11/2026): il tocco aptico dell'iPhone (interruttore nativo) scatta solo dentro un click vero;
   // prima rispondevano al touchend con preventDefault e il clic aptico non arrivava. Il campo resta attivo grazie al
   // preventDefault sul mousedown (su iPhone arriva subito prima del click); se il cursore si perde lo rimettiamo.
   const fire = b => { b.classList.add("on"); setTimeout(() => b.classList.remove("on"), 110);
     if (!isPadField(document.activeElement) && S.padEl && document.contains(S.padEl)) { HAPLOCK = true; try { S.padEl.focus({ preventScroll: true }); } finally { HAPLOCK = false; } }
-    padKey(b.dataset.p); padLabels(); };
+    padKey(b.dataset.p, true); padLabels(); const sw = b.querySelector("input"); if (sw) sw.checked = false; };
   p.addEventListener("touchstart", () => {}, { passive: true }); // abilita lo stato :active dei tasti su iPhone
   p.addEventListener("mousedown", e => e.preventDefault());
   p.addEventListener("pointerdown", e => { if (e.pointerType !== "touch") e.preventDefault(); });
-  p.addEventListener("click", e => { const b = e.target.closest("[data-p]"); if (b) fire(b); });
+  // il clic sull'interruttore arriva una volta sola (sull'input); quello sull'etichetta, se arriva, lo ignoriamo
+  p.addEventListener("click", e => { const b = e.target.closest("[data-p]"); if (!b) return; if (e.target.tagName !== "INPUT") { const i = b.querySelector("input"); if (i) return; } fire(b); });
 })();
 function padShow(on) {
   const p = $("pad"); if (!p) return; p.hidden = !on; document.body.classList.toggle("padon", on);
