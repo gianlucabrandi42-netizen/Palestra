@@ -1123,3 +1123,12 @@ body.padon .feel{box-shadow:none;margin-bottom:6px}
 .pk.k-next .pkl{font-size:15px}
 .pk.k-next .pkl span{font-size:22px}
 .pk .hsw{opacity:.002}
+/* ===== Tasti ✕ rossi e più grandi (19/11/2026, richiesta dell'utente) ===== */
+.is-x,#lbclose,.tb.x,#missX,[data-restx],[data-stepx],[data-tv="x"]{color:#FF5F57!important;background:rgba(255,95,87,.16)!important;border:1px solid rgba(255,95,87,.38)!important;font-weight:700}
+.is-x{width:48px;height:48px;top:10px;font-size:21px}
+.lb header #lbclose{width:50px;height:50px;font-size:22px}
+.tb.x{font-size:21px;width:52px}
+body.padon .tb.x{width:52px;height:38px;font-size:20px}
+.misschip #missX{font-size:18px;padding:6px 12px;border-radius:999px;opacity:1}
+.exinfo .restsel [data-restx],.exinfo .stepsel [data-stepx]{font-size:17px;padding:0 14px;min-width:42px}
+.tphase [data-tv="x"]{font-size:17px;min-width:40px}
