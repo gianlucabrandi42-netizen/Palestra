@@ -995,8 +995,8 @@ function renderLog0() {
       const row = document.createElement("div"); row.className = "set" + (i >= need(ex, sess) ? " xset" : "");
       row.innerHTML = `<div class="sn" style="--tc:var(${ty.c})">${label}<small>×${esc(st.t)}</small>${ty.n || st.note ? `<em>${esc([ty.n, st.note].filter(Boolean).join(" · "))}</em>` : ""}</div>
         <div class="prev">${lr && (lr.kg != null || lr.reps != null) ? `<b class="lv${lr.dirty ? " dirty" : ""}"${lr.dirty ? ' title="Sporca l\'ultima volta"' : ""}>${lr.kg != null ? fmt(lr.kg) + " × " : ""}${lr.reps ?? "–"}${lr.dirty ? `<i>~${dN(lr) > 1 ? dN(lr) : ""}</i>` : ""}</b>` : `<b class="lv none">—</b>`}${sug != null ? `<span class="sug ${dir}">${{ up: "↑", dn: "↓", eq: "=" }[dir] || "oggi"} ${goal ? `${fmt(sug)} × ${goal}` : `${fmt(sug)} kg`}</span>` : ""}</div>
-        <input id="kg-${ex.key}-${i}" inputmode="decimal" enterkeyhint="next" autocomplete="off" aria-label="${esc(ex.name)} serie ${i + 1} kg" placeholder="${sug != null ? fmt(sug) : lr && lr.kg != null ? fmt(lr.kg) : ref ? fmt(roundKg(ref * cond.f)) : "kg"}">
-        <input id="rp-${ex.key}-${i}" inputmode="numeric" enterkeyhint="next" autocomplete="off" aria-label="${esc(ex.name)} serie ${i + 1} ripetizioni" placeholder="${tn != null ? tn : "max"}">
+        <input id="kg-${ex.key}-${i}" inputmode="${tPrefs().pad ? "none" : "decimal"}" enterkeyhint="next" autocomplete="off" aria-label="${esc(ex.name)} serie ${i + 1} kg" placeholder="${sug != null ? fmt(sug) : lr && lr.kg != null ? fmt(lr.kg) : ref ? fmt(roundKg(ref * cond.f)) : "kg"}">
+        <input id="rp-${ex.key}-${i}" inputmode="${tPrefs().pad ? "none" : "numeric"}" enterkeyhint="next" autocomplete="off" aria-label="${esc(ex.name)} serie ${i + 1} ripetizioni" placeholder="${tn != null ? tn : "max"}">
         <button type="button" class="dq" aria-label="Com'era la serie?"></button><div class="fb"></div>`;
       const [kg, rp] = row.querySelectorAll("input"); kg.value = fmt(r.kg); rp.value = r.reps ?? "";
       const fb = row.querySelector(".fb"), dq = row.querySelector(".dq");
@@ -1272,15 +1272,16 @@ function rowEl(k, i) {
 // (tastiera giù → parte il timer e si scorre alla serie dopo). Solo per ciò che scrivi tu, non per "Usa kg suggeriti".
 // Correzioni: mentre cancelli non scatta nulla; quando riscrivi, si aspetta un po' di più (el._fix fino all'uscita dal campo).
 const isDel = e => /^delete/.test(e.inputType || "");
+const padAdj = e => e && e._pad && e.inputType === "insertReplacementText"; // −/+ del tastierino: niente passaggio automatico
 function autoKg(e, kg, rp) {
-  if (!e || !e.isTrusted) return; clearTimeout(kg._t);
+  if (!e || !(e.isTrusted || e._pad)) return; clearTimeout(kg._t); if (padAdj(e)) return;
   if (isDel(e)) { kg._fix = true; return; }
   const v = kg.value.trim(); if (!v || /[.,]$/.test(v) || num(v) == null) return;
   // dopo i kg: 1" senza scrivere → reps della stessa serie (scelta dell'utente del 17/11/2026)
   kg._t = setTimeout(() => { if (document.activeElement === kg && rp.value === "") rp.focus(); }, kg._fix ? 1200 : 1000);
 }
 function autoReps(e, rp) {
-  if (!e || !e.isTrusted) return; clearTimeout(rp._t);
+  if (!e || !(e.isTrusted || e._pad)) return; clearTimeout(rp._t); if (padAdj(e)) return;
   if (isDel(e)) { rp._fix = true; return; }
   const v = rp.value.trim(); if (num(v) == null) return;
   // ultima serie dell'esercizio: 1,5" prima di passare all'esercizio dopo (scelta dell'utente, 17/11/2026)
@@ -1299,6 +1300,68 @@ function toNextSet(rp) {
   tgt.focus(); markNext();
   const row = tgt.closest(".set"); if (row) row.scrollIntoView({ block: "center", behavior: "smooth" });
 }
+// ---------- Tastierino compatto dell'app (19/11/2026, richiesta dell'utente) ----------
+// Per kg e reps l'iPhone non apre la sua tastiera (inputmode="none"): in basso compare un tastierino basso, nei colori della
+// palestra, col timer attaccato sopra. −/+ = un salto pesi (kg) o una rep, partendo da quanto scritto o dal suggerito;
+// → = campo dopo (kg → reps → serie dopo); ⌄ = chiude. I tasti non tolgono il cursore dal campo.
+const isPadField = el => !!(el && el.matches && el.matches(".set input") && tPrefs().pad);
+const PADK = ["1", "2", "3", "del", "4", "5", "6", "minus", "7", "8", "9", "plus", ",", "0", "hide", "next"];
+function padStep(el) { const m = el.id.match(/^kg-(.+)-(\d+)$/); return m ? stepFor(m[1], subOf(current(), m[1])).v || 2.5 : 2.5; }
+function padLabels() {
+  const p = $("pad"), el = document.activeElement; if (!p || !isPadField(el)) return; const isKg = el.id.startsWith("kg-");
+  p.classList.toggle("kg", isKg); const st = isKg ? fmt(padStep(el)) : "1";
+  p.querySelector('[data-p="minus"]').innerHTML = `−${st}`; p.querySelector('[data-p="plus"]').innerHTML = `+${st}`;
+  const nx = p.querySelector('[data-p="next"]'); nx.innerHTML = isKg ? `reps <span>→</span>` : `<span>→</span>`;
+}
+function padKey(k) {
+  const el = document.activeElement; if (!isPadField(el)) return; const isKg = el.id.startsWith("kg-");
+  if (k === "hide") return el.blur();
+  if (k === "next") { clearTimeout(el._t); if (isKg) { const r = $(el.id.replace(/^kg-/, "rp-")); if (r) r.focus(); } else toNextSet(el); return; }
+  let v = el._repl ? "" : el.value, type = "insertText"; if (k !== "minus" && k !== "plus") el._repl = false;
+  if (k === ",") { if (!isKg || /[.,]/.test(v)) return; v = (v || "0") + ","; }
+  else if (k === "del") { v = (el._repl ? el.value : v).slice(0, -1); el._repl = false; type = "deleteContentBackward"; }
+  else if (k === "minus" || k === "plus") { const st = isKg ? padStep(el) : 1, base = num(el.value) ?? num(el.placeholder) ?? 0;
+    const n = Math.max(0, r2(base + (k === "plus" ? st : -st))); v = isKg ? fmt(n) : String(Math.round(n)); el._repl = false; type = "insertReplacementText"; }
+  else { if (v.replace(/\D/g, "").length >= (isKg ? 5 : 3)) return; v += k; }
+  el.value = v; el._padEd = true; if (!el._repl) el.classList.remove("repl");
+  const ev = new InputEvent("input", { bubbles: true, inputType: type, data: k }); ev._pad = true; el.dispatchEvent(ev);
+  if (navigator.vibrate) try { navigator.vibrate(5); } catch (e) {}
+}
+(function buildPad() {
+  const p = $("pad"); if (!p) return;
+  const lab = { del: `<svg viewBox="0 0 24 24"><path d="M9 6h11v12H9l-6-6z"/><path d="M12.5 9.5l5 5M17.5 9.5l-5 5"/></svg>`, hide: `<svg viewBox="0 0 24 24"><path d="M6 10l6 6 6-6"/></svg>`, next: "→", minus: "−", plus: "+" };
+  p.innerHTML = PADK.map(k => `<button type="button" class="pk k-${k === "," ? "comma" : k}" data-p="${k}" aria-label="${{ del: "Cancella", hide: "Chiudi il tastierino", next: "Avanti", minus: "Meno", plus: "Più", ",": "Virgola" }[k] || k}">${lab[k] || k}</button>`).join("");
+  let tk = null;
+  const fire = b => { b.classList.add("on"); setTimeout(() => b.classList.remove("on"), 110); padKey(b.dataset.p); padLabels(); };
+  p.addEventListener("touchstart", e => { const b = e.target.closest("[data-p]"); e.preventDefault(); if (b) tk = { b, x: e.touches[0].clientX, y: e.touches[0].clientY }; }, { passive: false });
+  p.addEventListener("touchmove", e => { if (tk && Math.hypot(e.touches[0].clientX - tk.x, e.touches[0].clientY - tk.y) > 14) tk = null; }, { passive: true });
+  p.addEventListener("touchend", e => { e.preventDefault(); if (tk) fire(tk.b); tk = null; }, { passive: false });
+  p.addEventListener("mousedown", e => e.preventDefault()); // col mouse: il campo resta attivo
+  p.addEventListener("click", e => { if (e.sourceCapabilities && e.sourceCapabilities.firesTouchEvents) return; const b = e.target.closest("[data-p]"); if (b && !tk) fire(b); });
+})();
+function padShow(on) {
+  const p = $("pad"); if (!p) return; p.hidden = !on; document.body.classList.toggle("padon", on);
+  if (on) { padLabels(); document.documentElement.style.setProperty("--padh", p.offsetHeight + "px"); }
+  placeTimer();
+}
+document.addEventListener("focusin", e => {
+  if (!isPadField(e.target)) return; const el = e.target; el._repl = !!el.value; padShow(true);
+  // la riga che stai scrivendo resta visibile sopra tastierino e timer
+  setTimeout(() => { const row = el.closest(".set"); if (!row || document.activeElement !== el) return; const r = row.getBoundingClientRect(), tm = $("timer"),
+    lim = innerHeight - ($("pad").offsetHeight || 0) - (tm && !tm.hidden ? tm.offsetHeight : 0) - 14, top = ($("console") ? $("console").getBoundingClientRect().bottom : 0) + 10;
+    if (r.bottom > lim) scrollBy({ top: r.bottom - lim, behavior: "smooth" }); else if (r.top < top) scrollBy({ top: r.top - top, behavior: "smooth" }); }, 60);
+});
+document.addEventListener("focusout", e => {
+  const el = e.target;
+  // i valori scritti col tastierino non generano il "change" del browser: lo mandiamo noi (fa partire il recupero, "Com'era?")
+  if (el && el._padEd) { el._padEd = false; el.dispatchEvent(new Event("change", { bubbles: true })); }
+  setTimeout(() => { if (!isPadField(document.activeElement)) padShow(false); }, 80);
+});
+// tocco fuori (non su un campo, il tastierino o la barra del timer): chiude il tastierino
+document.addEventListener("pointerdown", e => {
+  const el = document.activeElement; if (!isPadField(el)) return;
+  if (e.target.closest("#pad, #timer, .set input, #isheet, .feel")) return; el.blur();
+}, true);
 // Tastiera aperta (qualsiasi campo di testo): via il menu in basso, timer compatto appena sopra la tastiera.
 const isField = el => el && el.matches && el.matches("input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=date]), textarea");
 document.addEventListener("focusin", e => { if (isField(e.target)) { document.body.classList.add("kb"); placeTimer(); setTimeout(placeTimer, 350); } });
@@ -1307,6 +1370,7 @@ document.addEventListener("focusout", () => setTimeout(() => { if (!isField(docu
 // si aggancia al bordo alto dell'area visibile sopra la tastiera (visualViewport) e si riposiziona a ogni scorrimento.
 function placeTimer() {
   const tm = $("timer"), vv = window.visualViewport; if (!tm) return;
+  if (document.body.classList.contains("padon")) { tm.style.top = ""; tm.style.bottom = ($("pad").offsetHeight || 0) + "px"; return; }
   if (!document.body.classList.contains("kb") || !vv) { tm.style.top = ""; tm.style.bottom = ""; return; }
   tm.style.bottom = "auto"; tm.style.top = Math.max(0, vv.offsetTop + vv.height - tm.offsetHeight) + "px";
 }
@@ -1318,9 +1382,10 @@ addEventListener("scroll", () => { if (document.body.classList.contains("kb")) p
 document.addEventListener("focusin", e => {
   const el = e.target; if (!el.matches || !el.matches(".set input")) return;
   el._fix = false; if (!el.value) return;
+  if (isPadField(el)) { el.classList.add("repl"); return; } // tastierino: niente selezione (su iPhone aprirebbe il menu Copia/Incolla), il numero si evidenzia e il primo tasto lo sostituisce
   setTimeout(() => { if (document.activeElement === el) try { el.setSelectionRange(0, el.value.length); } catch (x) { el.select(); } }, 30);
 });
-document.addEventListener("focusout", e => { const el = e.target; if (el.matches && el.matches(".set input")) { clearTimeout(el._t); el._fix = false; } });
+document.addEventListener("focusout", e => { const el = e.target; if (el.matches && el.matches(".set input")) { clearTimeout(el._t); el._fix = false; el.classList.remove("repl"); } });
 // Valutazione della serie: non solo "target sì/no", ma quanto ti sei avvicinato e se hai alzato il carico.
 // Forza stimata (formula di Epley): kg × (1 + reps/30), confrontata con la stessa serie dell'ultima volta.
 const repsTxt = n => n === 1 ? "manca 1 rep" : `mancano ${n} reps`;
@@ -1780,7 +1845,7 @@ const PUSHK = "palestra-push", PUSHF = ["push", "pushSub", "pushId"];
 const devPush = () => { try { return JSON.parse(localStorage.getItem(PUSHK)) || {}; } catch (e) { return {}; } };
 const setDevPush = o => { try { localStorage.setItem(PUSHK, JSON.stringify({ ...devPush(), ...o })); } catch (e) {} };
 { const t = (D.prefs && D.prefs.timer) || {}; if (PUSHF.some(k => k in t)) { if (!localStorage.getItem(PUSHK)) setDevPush({ push: !!t.push, pushSub: null, pushId: "" }); PUSHF.forEach(k => delete t[k]); try { localStorage.setItem(KEY, JSON.stringify(D)); } catch (e) {} } }
-const tPrefs = () => { const t = D.prefs.timer = D.prefs.timer || {}, dp = devPush(); return { sec: t.sec ?? 90, auto: t.auto ?? true, vib: t.vib ?? true, snd: t.snd ?? true, warn: t.warn ?? true, push: dp.push ?? false, pushSub: dp.pushSub || null, pushId: dp.pushId || "", lockNote: t.lockNote ?? false }; };
+const tPrefs = () => { const t = D.prefs.timer = D.prefs.timer || {}, dp = devPush(); return { sec: t.sec ?? 90, auto: t.auto ?? true, vib: t.vib ?? true, snd: t.snd ?? true, warn: t.warn ?? true, push: dp.push ?? false, pushSub: dp.pushSub || null, pushId: dp.pushId || "", lockNote: t.lockNote ?? false, pad: t.pad ?? true }; };
 const setTPref = (k, v) => { if (PUSHF.includes(k)) return setDevPush({ [k]: v }); D.prefs.timer = D.prefs.timer || {}; D.prefs.timer[k] = v; save(); };
 const fmtSec = s => { s = Math.max(0, Math.ceil(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 function parseRest(r) {
@@ -1831,7 +1896,7 @@ function phaseKey() {
   const d = dayObj(); if (!d) return null; const s = current(), u = currentUnit(d, s, dayUnitsList(d, s)); return u && u.ex && !u.ex.nolog ? u.ex.key : null;
 }
 function drawPhase(run, paused, done) {
-  const ph = $("tPhase"); if (!ph || S.phaseEdit) return; const k = phaseKey(), ex = k ? dayObj().ex.find(e => e.key === k) : null, pl = ex ? fmtSec(restFor(ex)) : fmtSec(tPrefs().sec);
+  const ph = $("tPhase"); if (!ph || S.phaseEdit) return; ph.classList.toggle("keep", !!S.moveAt || !!S.between); /* col tastierino si vede solo "Finito / cambio esercizio" */ const k = phaseKey(), ex = k ? dayObj().ex.find(e => e.key === k) : null, pl = ex ? fmtSec(restFor(ex)) : fmtSec(tPrefs().sec);
   const edit = ex ? `<button type="button" class="tp-ed" id="tpEd">previsto ${pl} ✎</button>` : "";
   let h; const m = /^(.*) · poi serie (\d+)$/.exec(T.label || ""), lb = m ? `S${m[2] - 1} → S${m[2]} · ${m[1]}` : (T.label || "");
   if (run) h = `<span class="tp-k run">● Recupero</span><span class="tp-t">${esc(lb)}</span>${edit}`;
@@ -2062,6 +2127,7 @@ function renderTimerSet() {
     <div class="row tdur"><span>Recupero di base</span><button class="btn sm" data-d="-15">−15"</button><b>${fmtSec(p.sec)}</b><button class="btn sm" data-d="15">+15"</button></div>
     <p class="note">Vale per tutti gli esercizi, tranne quelli per cui la scheda indica un recupero diverso. Durante il recupero puoi aggiungere o togliere 15" dalla barra in basso.</p>
     ${tg("auto", "Parte da solo", "quando inserisci le ripetizioni di una serie")}
+    ${tg("pad", "Tastierino compatto dell'app", "per kg e ripetizioni, al posto della tastiera dell'iPhone: più basso, col timer attaccato")}
     ${tg("vib", "Vibrazione", canVib ? "" : "su iPhone le app web non possono vibrare: solo un leggero tocco, dove supportato")}
     ${tg("snd", "Suono", "con il telefono in silenzioso potrebbe non sentirsi")}
     ${tg("warn", "Avviso 5 secondi prima", "una vibrazione/bip breve")}
@@ -2083,7 +2149,7 @@ function renderTimerSet() {
         e => { i.checked = false; i.disabled = false; setTPref("push", false); toast(e.message || "Attivazione non riuscita"); });
       return;
     }
-    setTPref(i.dataset.k, i.checked);
+    setTPref(i.dataset.k, i.checked); if (i.dataset.k === "pad") renderLog();
   });
   if (p.push) {
     const msg = t => { $("puMsg").textContent = t; }, err = e => msg("Non riuscito: " + (e.message || e) + ". Riprova o riattiva l'interruttore.");
