@@ -1336,21 +1336,24 @@ let HAP = null, HAPLOCK = false;
 function padHaptic() {
   try {
     if (navigator.vibrate && !/iP(hone|ad|od)/.test(navigator.userAgent)) { navigator.vibrate(6); return; }
-    if (!HAP) { HAP = document.createElement("label"); const i = document.createElement("input"); i.type = "checkbox"; i.setAttribute("switch", ""); i.tabIndex = -1; HAP.appendChild(i); HAP.setAttribute("aria-hidden", "true"); HAP.style.cssText = "position:fixed;left:-200px;top:0;opacity:0;pointer-events:none"; document.body.appendChild(HAP); }
-    const a = document.activeElement; HAPLOCK = true; HAP.click(); if (a && document.activeElement !== a) a.focus({ preventScroll: true });
+    HAP = document.createElement("label"); const i = document.createElement("input"); i.type = "checkbox"; i.setAttribute("switch", ""); i.tabIndex = -1; HAP.appendChild(i); HAP.setAttribute("aria-hidden", "true"); HAP.style.display = "none"; document.head.appendChild(HAP);
+    const a = document.activeElement; HAPLOCK = true; HAP.click(); HAP.remove(); if (a && document.activeElement !== a) a.focus({ preventScroll: true });
   } catch (e) {} finally { HAPLOCK = false; }
 }
 (function buildPad() {
   const p = $("pad"); if (!p) return;
   const lab = { del: `<svg viewBox="0 0 24 24"><path d="M9 6h11v12H9l-6-6z"/><path d="M12.5 9.5l5 5M17.5 9.5l-5 5"/></svg>`, hide: `<svg viewBox="0 0 24 24"><path d="M6 10l6 6 6-6"/></svg>`, next: "→", minus: "−", plus: "+" };
   p.innerHTML = PADK.map(k => `<button type="button" class="pk k-${k === "," ? "comma" : k}" data-p="${k}" aria-label="${{ del: "Cancella", hide: "Chiudi il tastierino", next: "Avanti", minus: "Meno", plus: "Più", ",": "Virgola" }[k] || k}">${lab[k] || k}</button>`).join("");
-  let tk = null;
-  const fire = b => { b.classList.add("on"); setTimeout(() => b.classList.remove("on"), 110); padKey(b.dataset.p); padLabels(); };
-  p.addEventListener("touchstart", e => { const b = e.target.closest("[data-p]"); e.preventDefault(); if (b) tk = { b, x: e.touches[0].clientX, y: e.touches[0].clientY }; }, { passive: false });
-  p.addEventListener("touchmove", e => { if (tk && Math.hypot(e.touches[0].clientX - tk.x, e.touches[0].clientY - tk.y) > 14) tk = null; }, { passive: true });
-  p.addEventListener("touchend", e => { e.preventDefault(); if (tk) fire(tk.b); tk = null; }, { passive: false });
-  p.addEventListener("mousedown", e => e.preventDefault()); // col mouse: il campo resta attivo
-  p.addEventListener("click", e => { if (e.sourceCapabilities && e.sourceCapabilities.firesTouchEvents) return; const b = e.target.closest("[data-p]"); if (b && !tk) fire(b); });
+  // Tasti sul "click" (19/11/2026): il tocco aptico dell'iPhone (interruttore nativo) scatta solo dentro un click vero;
+  // prima rispondevano al touchend con preventDefault e il clic aptico non arrivava. Il campo resta attivo grazie al
+  // preventDefault sul mousedown (su iPhone arriva subito prima del click); se il cursore si perde lo rimettiamo.
+  const fire = b => { b.classList.add("on"); setTimeout(() => b.classList.remove("on"), 110);
+    if (!isPadField(document.activeElement) && S.padEl && document.contains(S.padEl)) { HAPLOCK = true; try { S.padEl.focus({ preventScroll: true }); } finally { HAPLOCK = false; } }
+    padKey(b.dataset.p); padLabels(); };
+  p.addEventListener("touchstart", () => {}, { passive: true }); // abilita lo stato :active dei tasti su iPhone
+  p.addEventListener("mousedown", e => e.preventDefault());
+  p.addEventListener("pointerdown", e => { if (e.pointerType !== "touch") e.preventDefault(); });
+  p.addEventListener("click", e => { const b = e.target.closest("[data-p]"); if (b) fire(b); });
 })();
 function padShow(on) {
   const p = $("pad"); if (!p) return; p.hidden = !on; document.body.classList.toggle("padon", on);
@@ -1358,7 +1361,7 @@ function padShow(on) {
   placeTimer();
 }
 document.addEventListener("focusin", e => {
-  if (!isPadField(e.target)) return; const el = e.target; el._repl = !!el.value; padShow(true);
+  if (!isPadField(e.target)) return; const el = e.target; S.padEl = el; el._repl = !!el.value; padShow(true);
   // la riga che stai scrivendo resta visibile sopra tastierino e timer
   setTimeout(() => { const row = el.closest(".set"); if (!row || document.activeElement !== el) return; const r = row.getBoundingClientRect(), tm = $("timer"),
     lim = innerHeight - ($("pad").offsetHeight || 0) - (tm && !tm.hidden ? tm.offsetHeight : 0) - 14, top = ($("console") ? $("console").getBoundingClientRect().bottom : 0) + 10;
