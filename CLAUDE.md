@@ -217,7 +217,7 @@ Muscoli disponibili per `m`: CHEST, FRONT_DELTOIDS, BACK_DELTOIDS, TRICEPS, BICE
   - Sparta: shoulder press 19, alzate laterali 7.
 
 ## In sospeso
-- **Nutrizione (in progettazione, 19/11/2026):** il PT ha mandato un piano alimentare; l'utente vuole una sezione dell'app che ne estragga i macronutrienti per pasto, li adatti al suo stile di vita e proponga ricette nuove, **senza diventare una guida ossessiva** che poi non segue. Prima di costruire: farsi mandare il piano del PT e capire routine, gusti e vincoli; base = numeri del PT (non reinventarli), pasti tipo + scambi equivalenti invece di contare ogni grammo, verifica settimanale invece di diario quotidiano.
+- **Nutrizione (in progettazione, 19/11/2026):** il PT ha mandato un piano alimentare; l'utente vuole una sezione dell'app che ne estragga i macronutrienti per pasto, li adatti al suo stile di vita e proponga ricette nuove, **senza diventare una guida ossessiva** che poi non segue. Prima di costruire: farsi mandare il piano del PT e capire routine, gusti e vincoli; base = numeri del PT (non reinventarli), pasti tipo + scambi equivalenti invece di contare ogni grammo, verifica settimanale invece di diario quotidiano. **Struttura completa nel documento del progetto `claude/NUTRIZIONE_STRUTTURA.md`** (ruoli e limiti, regole anti-ossessione, fasi 1-7, idea della sezione Nutrizione dell'app); il lavoro continua in una **chat dedicata** nel progetto.
 - **Ho mandato al PT il PDF di controllo** (`Scheda_novembre_2026_per_PT.pdf`) con 4 dubbi:
   1. 10-8-8 / 8-8-6 / 10-10-8-8 intesi come piramidali (sali di carico quando scendono le reps)?
   2. Addominali dei giorni 2 e 3 uguali al giorno 1?
