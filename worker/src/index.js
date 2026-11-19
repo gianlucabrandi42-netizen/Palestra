@@ -6,6 +6,9 @@
 //   POST /schedule {id, seq, sub, at, title, body}   programma (o sostituisce) la notifica
 //   POST /cancel   {id, seq}  annulla la notifica in sospeso
 //   POST /test     {sub, title?, body?}   invia subito una notifica di prova
+//   POST /vault/put {id, data, at}   backup automatico CIFRATO dal telefono (19/11/2026): il servizio non può leggerlo,
+//                                    la chiave nasce dal codice di recupero che ha solo l'utente; tiene l'ultimo e il precedente
+//   POST /vault/get {id, prev?}      → { data, at }
 //
 // Le chiavi VAPID si generano da sole al primo uso e restano salvate nel Durable Object "Keys".
 import { DurableObject } from "cloudflare:workers";
@@ -30,6 +33,27 @@ export class Keys extends DurableObject {
     let k = await this.ctx.storage.get("vapid");
     if (!k) { k = await newVapidKeys(); await this.ctx.storage.put("vapid", k); }
     return k;
+  }
+}
+
+// Backup cifrati: un Durable Object per codice di recupero (id = SHA-256 del codice). Due posti, "a" e "b": si scrive
+// sempre in quello libero e solo alla fine si sposta il segno, così un caricamento interrotto non rovina il backup buono.
+const CH = 500000, MAXLEN = 12 * 1024 * 1024;
+export class Vault extends DurableObject {
+  async put(data, at) {
+    const meta = (await this.ctx.storage.get("meta")) || null, slot = meta && meta.slot === "a" ? "b" : "a";
+    const n = Math.ceil(data.length / CH) || 1, chunks = {};
+    for (let i = 0; i < n; i++) chunks[`${slot}${i}`] = data.slice(i * CH, (i + 1) * CH);
+    const keys = Object.keys(chunks);
+    for (let i = 0; i < keys.length; i += 100) { const part = {}; keys.slice(i, i + 100).forEach(k => part[k] = chunks[k]); await this.ctx.storage.put(part); }
+    await this.ctx.storage.put("meta", { slot, n, at, size: data.length, prev: meta ? { slot: meta.slot, n: meta.n, at: meta.at } : null });
+    return { at, size: data.length };
+  }
+  async get(prev) {
+    const meta = await this.ctx.storage.get("meta"); if (!meta) return null;
+    const m = prev ? meta.prev : meta; if (!m) return null;
+    const keys = Array.from({ length: m.n }, (_, i) => `${m.slot}${i}`), got = await this.ctx.storage.get(keys);
+    return { data: keys.map(k => got.get(k) || "").join(""), at: m.at };
   }
 }
 
@@ -86,6 +110,13 @@ export default {
         if (!validId(b.id)) return json({ error: "bad request" }, 400);
         await env.TIMER.get(env.TIMER.idFromName(b.id)).cancel(Number(b.seq) || 0);
         return json({ ok: true });
+      }
+      if (url.pathname === "/vault/put" || url.pathname === "/vault/get") {
+        if (typeof b.id !== "string" || !/^[a-f0-9]{64}$/.test(b.id)) return json({ error: "bad request" }, 400);
+        const v = env.VAULT.get(env.VAULT.idFromName(b.id));
+        if (url.pathname === "/vault/get") { const r = await v.get(!!b.prev); return r ? json(r) : json({ error: "not found" }, 404); }
+        if (typeof b.data !== "string" || !b.data.length || b.data.length > MAXLEN || !/^[\x20-\x7e]+$/.test(b.data.slice(0, 200))) return json({ error: "bad data" }, 400);
+        return json({ ok: true, ...(await v.put(b.data, Number(b.at) || Date.now())) });
       }
       if (url.pathname === "/test") {
         if (!validSub(b.sub)) return json({ error: "bad request" }, 400);

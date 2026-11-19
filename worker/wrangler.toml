@@ -12,9 +12,17 @@ class_name = "Timer"
 name = "KEYS"
 class_name = "Keys"
 
+[[durable_objects.bindings]]
+name = "VAULT"
+class_name = "Vault"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Timer", "Keys"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Vault"]
 
 [observability]
 enabled = true

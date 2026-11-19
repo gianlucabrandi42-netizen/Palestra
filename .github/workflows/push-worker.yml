@@ -54,3 +54,8 @@ jobs:
           echo "CORS         → $(curl -s -o /dev/null -w '%{http_code}' -X OPTIONS -H 'Origin: https://gianlucabrandi42-netizen.github.io' -H 'Access-Control-Request-Method: POST' $U/schedule)"
           echo "richiesta errata → $(curl -s -o /dev/null -w '%{http_code}' -X POST -d '{}' $U/schedule) (atteso 400)"
           test "$(curl -s $U/vapid | jq -r '.key | length')" = "87"
+          # backup cifrato: scrive e rilegge un dato di prova con un id di test
+          VID=$(printf 'prova-workflow' | sha256sum | cut -c1-64)
+          echo "vault put   → $(curl -s -X POST -H 'Content-Type: application/json' -d "{\"id\":\"$VID\",\"data\":\"PROVA-$(date +%s)\",\"at\":1}" $U/vault/put)"
+          echo "vault get   → $(curl -s -X POST -H 'Content-Type: application/json' -d "{\"id\":\"$VID\"}" $U/vault/get | jq -c '{at, data}')"
+          curl -s -X POST -H 'Content-Type: application/json' -d "{\"id\":\"$VID\"}" $U/vault/get | jq -e '.data | startswith("PROVA-")' > /dev/null

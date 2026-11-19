@@ -1137,3 +1137,37 @@ body.padon .tb.x{width:52px;height:38px;font-size:20px}
 /* tasto ⌫ del tastierino: rosso e icona più grande come le altre ✕ (19/11/2026) */
 .pk.k-del{color:#FF5F57;background:rgba(255,95,87,.16);box-shadow:inset 0 0 0 1px rgba(255,95,87,.38)}
 .pk.k-del svg{width:34px;height:34px;stroke-width:2}
+/* ===== Corpo: peso e misure (19/11/2026) ===== */
+.bodyc{margin:14px 0}
+.bodyc .bh{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.bodyc h3{margin:0;font-size:17px}
+.bodyc .bh .btn{padding:8px 14px}
+.bform{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px}
+.bform label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+.bform input{width:100%;min-width:0;box-sizing:border-box;height:42px;border-radius:10px;border:1px solid var(--line);background:var(--raised);color:var(--ink);font-size:17px;padding:0 10px;text-align:center}
+.bform .bd,.bform .bn{grid-column:1/-1}
+.bform .bn input{text-align:left;font-size:15px}
+.bform .row,.bform .note{grid-column:1/-1}
+.bw{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 4px;text-align:center}
+.bw b{display:block;font-size:22px;font-variant-numeric:tabular-nums}
+.bw b small{font-size:12px;color:var(--muted);font-weight:600}
+.bw span{font-size:11.5px;color:var(--muted)}
+.bchart{width:100%;height:78px;margin-top:6px}
+.bchart .bl{fill:none;stroke:var(--accent);stroke-width:2;vector-effect:non-scaling-stroke}
+.bchart circle{fill:color-mix(in srgb,var(--ink) 55%,transparent)}
+.bleg{margin:0;text-align:center;font-size:11px}
+.bms{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;margin-top:10px}
+.bms>div{background:var(--raised);border-radius:10px;padding:8px;text-align:center;display:flex;flex-direction:column;gap:2px}
+.bms span{font-size:11.5px;color:var(--muted)} .bms b{font-size:17px} .bms b small{font-size:11px;color:var(--muted)} .bms i{font-style:normal;font-size:11px;color:var(--muted)}
+.bhist{margin-top:10px} .bhist summary{color:var(--muted);font-size:13px;cursor:pointer}
+.bhr{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px}
+.bhr b{flex:0 0 56px} .bhr span{flex:1;color:var(--muted)}
+.bhr .bx{flex:none;border:1px solid rgba(255,95,87,.38);background:rgba(255,95,87,.16);color:#FF5F57;border-radius:9px;height:32px;min-width:36px;font-size:15px;font-weight:700}
+.bhr .bx.sure{padding:0 8px;font-size:12px}
+/* backup online */
+.okc{color:var(--ok)} .warnc{color:var(--near)}
+.codebox{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;border-radius:12px;background:var(--raised);border:1px dashed var(--accent)}
+.codebox b{font:700 19px/1.2 ui-monospace,Menlo,monospace;letter-spacing:.06em}
+.cdrest summary{color:var(--muted);font-size:13px;cursor:pointer;margin-top:4px}
+.cdrest .row{margin-top:8px} .cdrest input{flex:1;min-width:0;height:42px;border-radius:10px;border:1px solid var(--line);background:var(--raised);color:var(--ink);font:600 16px ui-monospace,Menlo,monospace;padding:0 10px;text-transform:uppercase}
+.codebox b{font-size:16px;white-space:nowrap;letter-spacing:.03em}
