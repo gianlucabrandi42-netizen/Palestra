@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Prova tocco aptico</title>
+<style>
+body{margin:0;background:#141716;color:#eee;font:16px -apple-system,system-ui,sans-serif;padding:24px 18px 60px}
+h1{font-size:20px;margin:0 0 6px} p{color:#9aa;margin:0 0 18px;line-height:1.4}
+.t{display:flex;align-items:center;gap:14px;margin:14px 0;padding:14px;border-radius:14px;background:#1e2321}
+.t b{font-size:22px;color:#33A26F;width:28px}
+.k{position:relative;width:120px;height:56px;border-radius:12px;background:#2b302e;border:0;color:#fff;font-size:22px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.k input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0.011;-webkit-appearance:none;appearance:none}
+.v input{width:52px;height:32px}
+small{color:#9aa}
+</style></head><body>
+<h1>Prova tocco aptico</h1>
+<p>Tocca ogni tasto 3 o 4 volte e dimmi quali lettere fanno il "clic" (A, B, C, D).</p>
+<div class="t"><b>A</b><button class="k" id="a">7</button><small>come ora nell'app</small></div>
+<div class="t"><b>B</b><label class="k">7<input type="checkbox" switch id="b"></label><small>interruttore invisibile sotto il dito</small></div>
+<div class="t"><b>C</b><label class="k">7<input type="checkbox" switch id="c" style="opacity:1;-webkit-appearance:auto;appearance:auto;inset:auto;position:static;width:52px;height:32px"></label><small>interruttore visibile</small></div>
+<div class="t v"><b>D</b><input type="checkbox" switch id="d"><small>interruttore normale di iOS</small></div>
+<script>
+function hap(){const l=document.createElement("label");const i=document.createElement("input");i.type="checkbox";i.setAttribute("switch","");l.appendChild(i);l.style.display="none";document.head.appendChild(l);l.click();l.remove();}
+document.getElementById("a").addEventListener("click",hap);
+</script>
+</body></html>
