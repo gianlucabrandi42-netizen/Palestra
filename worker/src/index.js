@@ -19,7 +19,9 @@ const validId = id => typeof id === "string" && /^[a-z0-9-]{8,64}$/i.test(id);
 const clip = (s, n) => String(s || "").slice(0, n);
 
 async function getKeys(env) {
-  const stub = env.KEYS.get(env.KEYS.idFromName("vapid"));
+  // chiavi cambiate il 19/11/2026: tutti gli abbonamenti vecchi smettono di funzionare (un altro telefono riceveva le
+  // notifiche dell'utente); il telefono dell'utente si riabbona da solo all'avvio dell'app (pushVerify in app.js)
+  const stub = env.KEYS.get(env.KEYS.idFromName("vapid-2026-11-19"));
   return stub.keys();
 }
 

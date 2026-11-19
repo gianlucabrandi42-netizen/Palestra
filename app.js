@@ -1773,8 +1773,15 @@ function render() {
 // A fine recupero: vibrazione (Android), suono e tocco aptico (iPhone, dove possibile). Lo schermo resta acceso mentre conta.
 const TKEY = "palestra-timer";
 if (D.prefs && !D.prefs.rest90) { D.prefs.timer = { ...(D.prefs.timer || {}), sec: 90 }; D.prefs.rest90 = true; try { localStorage.setItem("palestra-v1", JSON.stringify(D)); } catch (e) {} } // 18/11/2026: predefinito 1:30 per tutti
-const tPrefs = () => { const t = D.prefs.timer = D.prefs.timer || {}; return { sec: t.sec ?? 90, auto: t.auto ?? true, vib: t.vib ?? true, snd: t.snd ?? true, warn: t.warn ?? true, push: t.push ?? false, pushSub: t.pushSub || null, pushId: t.pushId || "", lockNote: t.lockNote ?? false }; };
-const setTPref = (k, v) => { D.prefs.timer = D.prefs.timer || {}; D.prefs.timer[k] = v; save(); };
+// Notifiche push: legate a QUESTO telefono (19/11/2026). Stanno in un archivio separato ("palestra-push"), mai nel backup né
+// nei dati condivisi; l'id è nuovo per ogni telefono e l'abbonamento viene ricontrollato a ogni avvio con quello vero del telefono.
+// (Un amico riceveva le notifiche di fine recupero dell'utente.)
+const PUSHK = "palestra-push", PUSHF = ["push", "pushSub", "pushId"];
+const devPush = () => { try { return JSON.parse(localStorage.getItem(PUSHK)) || {}; } catch (e) { return {}; } };
+const setDevPush = o => { try { localStorage.setItem(PUSHK, JSON.stringify({ ...devPush(), ...o })); } catch (e) {} };
+{ const t = (D.prefs && D.prefs.timer) || {}; if (PUSHF.some(k => k in t)) { if (!localStorage.getItem(PUSHK)) setDevPush({ push: !!t.push, pushSub: null, pushId: "" }); PUSHF.forEach(k => delete t[k]); try { localStorage.setItem(KEY, JSON.stringify(D)); } catch (e) {} } }
+const tPrefs = () => { const t = D.prefs.timer = D.prefs.timer || {}, dp = devPush(); return { sec: t.sec ?? 90, auto: t.auto ?? true, vib: t.vib ?? true, snd: t.snd ?? true, warn: t.warn ?? true, push: dp.push ?? false, pushSub: dp.pushSub || null, pushId: dp.pushId || "", lockNote: t.lockNote ?? false }; };
+const setTPref = (k, v) => { if (PUSHF.includes(k)) return setDevPush({ [k]: v }); D.prefs.timer = D.prefs.timer || {}; D.prefs.timer[k] = v; save(); };
 const fmtSec = s => { s = Math.max(0, Math.ceil(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 function parseRest(r) {
   if (r == null || r === "") return null; if (typeof r === "number") return r;
@@ -2002,6 +2009,20 @@ async function pushEnable() {
   setTPref("pushSub", sub.toJSON()); if (!tPrefs().pushId) setTPref("pushId", newPushId());
   setTPref("push", true); setTPref("snd", false); // niente suono dall'app: la notifica vibra (iPhone in silenzioso)
 }
+// A ogni avvio: l'abbonamento salvato deve essere quello vero di questo telefono e con la chiave attuale del servizio.
+// Se manca o è vecchio (chiavi cambiate il 19/11/2026) si rifà da solo; se non si può, le notifiche si spengono con un avviso.
+async function pushVerify() {
+  const dp = devPush(); if (!dp.push || !pushReady() || !("serviceWorker" in navigator) || !("PushManager" in window)) return;
+  try {
+    const reg = await navigator.serviceWorker.ready, key = (await (await fetch(PUSH_URL + "/vapid", { cache: "no-store" })).json()).key;
+    let sub = await reg.pushManager.getSubscription();
+    if (sub && sub.options && sub.options.applicationServerKey && u8ToB64u(sub.options.applicationServerKey) !== key) { await sub.unsubscribe(); sub = null; }
+    if (!sub && window.Notification && Notification.permission === "granted") sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64uToU8(key) }).catch(() => null);
+    if (!sub) { setDevPush({ push: false, pushSub: null }); toast("Notifiche di fine recupero da riattivare: Impostazioni → Timer"); return; }
+    setDevPush({ pushSub: sub.toJSON(), pushId: dp.pushId || newPushId() });
+  } catch (e) {}
+}
+setTimeout(pushVerify, 1500);
 // Uscendo dall'app durante il recupero: notifica con l'ora in cui riprendere (sostituita da "VIA!" a fine recupero)
 document.addEventListener("visibilitychange", () => {
   if (!pushOn() || !tPrefs().lockNote || !("serviceWorker" in navigator) || !window.Notification || Notification.permission !== "granted") return;
