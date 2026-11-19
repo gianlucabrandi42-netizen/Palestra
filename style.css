@@ -1079,3 +1079,8 @@ body.kb .tphase{margin-bottom:3px;min-height:26px;padding:3px 8px}
 .dbres .alt small i{font-style:normal;color:var(--near)}
 .subml{color:var(--muted);font-weight:600}
 .dbres .altq,.xb.sub .altq{white-space:nowrap}
+/* recupero misurato: verde nei tempi, arancione sforato, rosso recupero lungo (19/11/2026) */
+.rgap.green span{color:#4CC38A} .rgap.orange span{color:#FF9F43} .rgap.red span{color:#F0605A}
+.rgap span b{font-weight:800}
+.rgap.green,.rgap.orange,.rgap.red{position:relative}
+.rgap.green span::before,.rgap.orange span::before,.rgap.red span::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:currentColor;margin-right:6px;vertical-align:1px}

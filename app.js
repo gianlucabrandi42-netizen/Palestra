@@ -1003,8 +1003,12 @@ function renderLog0() {
       const isDirty = () => dN(exSets(current(), ex.key)[i]);
       const upd = () => {
         if (row._gap) { const all = exSets(current(), ex.key), g = restGap(all[i - 1], all[i], ex, i), pl = restFor(ex);
-          row._gap.hidden = g == null; if (g != null) { const lg = lrOn(all[i]); row._gap.className = "rgap" + (lg ? " long" : g < pl * 0.8 ? " short" : "");
-            row._gap.innerHTML = `<span>⏱ recupero ${fmtSec(Math.round(g / 5) * 5)}</span><small>previsto ${fmtSec(pl)} · serie ~${setSec(ex, i, all[i])}"</small>`; } }
+          row._gap.hidden = g == null; if (g != null) {
+            // colore (19/11/2026, richiesta dell'utente): tempo tra le due serie confrontato con recupero previsto + durata stimata della serie.
+            // verde = nei tempi (tolleranza 15"); rosso = recupero lungo, stessa soglia del messaggio "Recupero lungo" (isLong); arancione = in mezzo
+            const ov = Math.round((g - pl) / 5) * 5, cl = isLong(g, pl, !!current().buddy) ? "red" : g > pl + 15 ? "orange" : "green";
+            row._gap.className = "rgap " + cl;
+            row._gap.innerHTML = `<span>recupero ${fmtSec(Math.round(g / 5) * 5)}${cl !== "green" ? ` <b>+${fmtSec(ov)}</b>` : ""}</span><small>previsto ${fmtSec(pl)} + serie ~${setSec(ex, i, all[i])}"</small>`; } }
         const cr = exSets(current(), ex.key)[i] || {}, fv = feelOf(cr);
         judge(kg, rp, fb, tn, rr, { ...jc, step: stp.v, last: i >= need(ex, current()) - 1 }, isDirty(), cr.eff, goal);
         { const pv = i > 0 ? exSets(current(), ex.key)[i - 1] : null, k = num(kg.value), rv = num(rp.value);
