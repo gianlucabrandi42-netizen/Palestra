@@ -284,6 +284,10 @@ function currentUnit(d, s, units) {
 }
 const unitOpen = (u, cur) => u === cur || u.keys.some(k => S.exOpen.has(k) || S.hold === k);
 const shortName = n => n.length > 14 ? n.slice(0, 13).trim() + "." : n;
+// Le miniature non si ricaricano a ogni serie scritta (19/11/2026: "le immagini diventano un attimo bianche"): prima di
+// ricostruire un contenitore teniamo da parte le <img> già caricate e le rimettiamo al posto di quelle nuove con lo stesso src.
+function keepImgs(el) { const m = new Map(); if (el) el.querySelectorAll("img").forEach(i => { const k = i.getAttribute("src"); if (k && !m.has(k)) m.set(k, i); }); return m; }
+function reuseImgs(el, m) { if (!el || !m.size) return; el.querySelectorAll("img").forEach(n => { const o = m.get(n.getAttribute("src")); if (o && o !== n && o.complete && o.naturalWidth) { [...o.attributes].forEach(t => { if (!n.hasAttribute(t.name)) o.removeAttribute(t.name); }); [...n.attributes].forEach(t => { if (t.name !== "src") o.setAttribute(t.name, t.value); }); n.replaceWith(o); m.delete(n.getAttribute("src")); } }); }
 function drawHeader(d, s, units, cur) {
   const tot = units.length, done = units.filter(x => x.done).length, left = tot - done, C = 2 * Math.PI * 18;
   $("ring").innerHTML = `<svg viewBox="0 0 44 44"><defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="s1"/><stop offset="1" class="s2"/></linearGradient></defs><circle cx="22" cy="22" r="18" class="rb"/><circle cx="22" cy="22" r="18" class="rf" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - (tot ? done / tot : 0))).toFixed(1)}"/></svg><b>${left ? left : "✓"}</b>`;
@@ -294,8 +298,8 @@ function drawHeader(d, s, units, cur) {
   const dt = durTxt(s, !left);
   $("dsub").innerHTML = `${dt ? `<span class="dlive">⏱ ${dt}</span> · ` : ""}${left ? (left === 1 ? "manca 1 esercizio" : `mancano ${left} esercizi`) : "completato"}${dt && when === "oggi" ? "" : " · " + when}${r !== "ok" ? " · " + READY[r].n : ""}${isBuddy(s) ? " · 👥 in 2" : ""}${isAway(current()) ? " · 📍 " + esc(current().site || "altra sede") : ""} ▾`;
   const strip = $("strip");
-  strip.innerHTML = units.map(u => { const f = (t => t ? { src: t } : null)(u.circ ? (execFrames(u.ex)[0] || {}).src : thumbOf(u.ex, s)), c = u === cur;
-    return `<button class="schip${u.done ? " d" : ""}${c ? " c" : ""}${u.started && !u.done ? " p" : ""}" data-k="${u.keys[0]}" aria-label="${esc(u.name)}${u.done ? ", fatto" : ""}">${f ? `<img src="${f.src}" alt="" loading="lazy">` : ""}<span>${u.done ? "✓ " : ""}${u.n}${c ? " " + esc(shortName(u.name)) : ""}</span></button>`; }).join("");
+  const oldImgs = keepImgs(strip); strip.innerHTML = units.map(u => { const f = (t => t ? { src: t } : null)(u.circ ? (execFrames(u.ex)[0] || {}).src : thumbOf(u.ex, s)), c = u === cur;
+    return `<button class="schip${u.done ? " d" : ""}${c ? " c" : ""}${u.started && !u.done ? " p" : ""}" data-k="${u.keys[0]}" aria-label="${esc(u.name)}${u.done ? ", fatto" : ""}">${f ? `<img src="${f.src}" alt="" loading="lazy">` : ""}<span>${u.done ? "✓ " : ""}${u.n}${c ? " " + esc(shortName(u.name)) : ""}</span></button>`; }).join(""); reuseImgs(strip, oldImgs);
   strip.querySelectorAll("[data-k]").forEach(b => b.onclick = () => openUnit(b.dataset.k));
   const c = strip.querySelector(".c"); if (c) strip.scrollLeft = Math.max(0, c.offsetLeft - strip.clientWidth / 2 + c.offsetWidth / 2);
 }
@@ -861,7 +865,7 @@ function renderLog0() {
   $("backupNag").innerHTML = nSess >= 1 && needBackup() ? `<div class="nag"><span>💾 ${ds == null ? "Non hai ancora un backup." : `Ultimo backup ${ds} ${ds === 1 ? "giorno" : "giorni"} fa`}${since ? ` · ${since} ${since === 1 ? "seduta nuova" : "sedute nuove"}` : ""}. I dati stanno solo su questo telefono: salvalo in File → iCloud Drive.</span><button class="btn sm" id="nagBk">Salva</button></div>` : "";
   if ($("nagBk")) $("nagBk").onclick = exportBackup;
 
-  const list = $("list"); list.textContent = "";
+  const list = $("list"), oldListImgs = keepImgs(list); list.textContent = ""; S.listImgs = oldListImgs;
   { const rc = recapCard(d, sess, dayUnitsList(d, sess)); if (rc) { list.appendChild(rc); const bk = rc.querySelector("[data-bk]"); if (bk) bk.onclick = exportBackup; } }
   const units = dayUnitsList(d, sess), curU = currentUnit(d, sess, units);
   S.sig = units.filter(u => unitOpen(u, curU)).map(u => u.keys[0]).join(",") + "|" + (curU ? curU.keys[0] : "");
@@ -1149,6 +1153,7 @@ function renderLog0() {
     };
     list.appendChild(card);
   });
+  reuseImgs(list, oldListImgs);
   markNext();
   $("note").value = sess.note || "";
   updateProgress();

@@ -1132,3 +1132,5 @@ body.padon .tb.x{width:52px;height:38px;font-size:20px}
 .misschip #missX{font-size:18px;padding:6px 12px;border-radius:999px;opacity:1}
 .exinfo .restsel [data-restx],.exinfo .stepsel [data-stepx]{font-size:17px;padding:0 14px;min-width:42px}
 .tphase [data-tv="x"]{font-size:17px;min-width:40px}
+/* riga delle fasi del timer: via (19/11/2026, richiesta dell'utente), resta solo "Finito · chiudo tra… / Cambio esercizio" */
+.tphase:not(.keep){display:none!important}
