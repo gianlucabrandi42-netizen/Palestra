@@ -1113,4 +1113,5 @@ body.padon .tb{height:36px;width:44px;border-radius:10px}
 body.padon .tmain{height:36px;border-radius:10px}
 body.padon .tmain b{font-size:22px}
 body.padon .feel{box-shadow:none;margin-bottom:6px}
-.set input.repl{color:color-mix(in srgb,var(--accent) 75%,#fff);background:color-mix(in srgb,var(--accent) 16%,transparent)}
+.set input.repl{color:#fff;background:color-mix(in srgb,var(--accent) 45%,transparent);box-shadow:inset 0 0 0 2px var(--accent)}
+.set input.repl::selection{background:transparent}

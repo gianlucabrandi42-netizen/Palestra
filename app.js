@@ -1319,13 +1319,26 @@ function padKey(k) {
   if (k === "next") { clearTimeout(el._t); if (isKg) { const r = $(el.id.replace(/^kg-/, "rp-")); if (r) r.focus(); } else toNextSet(el); return; }
   let v = el._repl ? "" : el.value, type = "insertText"; if (k !== "minus" && k !== "plus") el._repl = false;
   if (k === ",") { if (!isKg || /[.,]/.test(v)) return; v = (v || "0") + ","; }
-  else if (k === "del") { v = (el._repl ? el.value : v).slice(0, -1); el._repl = false; type = "deleteContentBackward"; }
+  else if (k === "del") { v = el._repl ? "" : v.slice(0, -1); el._repl = false; type = "deleteContentBackward"; } // numero selezionato: ⌫ lo cancella tutto
   else if (k === "minus" || k === "plus") { const st = isKg ? padStep(el) : 1, base = num(el.value) ?? num(el.placeholder) ?? 0;
     const n = Math.max(0, r2(base + (k === "plus" ? st : -st))); v = isKg ? fmt(n) : String(Math.round(n)); el._repl = false; type = "insertReplacementText"; }
   else { if (v.replace(/\D/g, "").length >= (isKg ? 5 : 3)) return; v += k; }
   el.value = v; el._padEd = true; if (!el._repl) el.classList.remove("repl");
   const ev = new InputEvent("input", { bubbles: true, inputType: type, data: k }); ev._pad = true; el.dispatchEvent(ev);
-  if (navigator.vibrate) try { navigator.vibrate(5); } catch (e) {}
+  padHaptic();
+}
+// tocco aptico a ogni tasto, come la tastiera dell'iPhone (19/11/2026): su iPhone le app web non vibrano, ma un interruttore
+// nativo nascosto (iOS 18+) dà il piccolo "clic"; altrove vibrazione breve
+let HAP = null, HAPLOCK = false;
+// se il clic sull'interruttore sposta il cursore (in alcuni browser), quel giro di blur/focus non deve far scattare nulla
+// (passaggio automatico, "change", selezione): lo fermiamo qui, prima di tutti gli altri ascoltatori
+["focus", "blur", "focusin", "focusout"].forEach(t => window.addEventListener(t, e => { if (HAPLOCK) e.stopImmediatePropagation(); }, true));
+function padHaptic() {
+  try {
+    if (navigator.vibrate && !/iP(hone|ad|od)/.test(navigator.userAgent)) { navigator.vibrate(6); return; }
+    if (!HAP) { HAP = document.createElement("label"); const i = document.createElement("input"); i.type = "checkbox"; i.setAttribute("switch", ""); i.tabIndex = -1; HAP.appendChild(i); HAP.setAttribute("aria-hidden", "true"); HAP.style.cssText = "position:fixed;left:-200px;top:0;opacity:0;pointer-events:none"; document.body.appendChild(HAP); }
+    const a = document.activeElement; HAPLOCK = true; HAP.click(); if (a && document.activeElement !== a) a.focus({ preventScroll: true });
+  } catch (e) {} finally { HAPLOCK = false; }
 }
 (function buildPad() {
   const p = $("pad"); if (!p) return;
@@ -1382,7 +1395,7 @@ addEventListener("scroll", () => { if (document.body.classList.contains("kb")) p
 document.addEventListener("focusin", e => {
   const el = e.target; if (!el.matches || !el.matches(".set input")) return;
   el._fix = false; if (!el.value) return;
-  if (isPadField(el)) { el.classList.add("repl"); return; } // tastierino: niente selezione (su iPhone aprirebbe il menu Copia/Incolla), il numero si evidenzia e il primo tasto lo sostituisce
+  if (isPadField(el)) el.classList.add("repl"); // tastierino: numero selezionato (evidenziato), il primo tasto lo sostituisce e ⌫ lo cancella tutto
   setTimeout(() => { if (document.activeElement === el) try { el.setSelectionRange(0, el.value.length); } catch (x) { el.select(); } }, 30);
 });
 document.addEventListener("focusout", e => { const el = e.target; if (el.matches && el.matches(".set input")) { clearTimeout(el._t); el._fix = false; el.classList.remove("repl"); } });
