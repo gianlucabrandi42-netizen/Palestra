@@ -1300,3 +1300,37 @@ html[data-theme="sparta"] .tile u,html[data-theme="sparta"] .tile em{color:#0B0E
 .ktimer span{white-space:nowrap;font-weight:800;font-size:16px;font-variant-numeric:tabular-nums;color:var(--accent)}
 .ktimer small{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw}
 .ktimer button{border:0;width:32px;height:32px;border-radius:50%;background:color-mix(in srgb,#FF5F57 15%,var(--surface));color:#FF5F57;font-size:14px}
+/* Cibo: turni e borsa per il lavoro (20/11/2026) */
+.seg4{display:grid;grid-template-columns:repeat(2,1fr);gap:3px;padding:3px;border-radius:12px;background:var(--bg);border:1px solid var(--line)}
+.seg4 button{border:0;background:none;border-radius:9px;min-height:32px;font-weight:700;font-size:12px;color:var(--muted)}
+.seg4 button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
+.mwhere{margin:-4px 14px 8px;font-size:12px;font-weight:700;color:var(--accent)}
+.tile.off{opacity:.45}
+.tile .tw{font-style:normal;font-size:9.5px;font-weight:700;color:var(--muted);margin-top:-3px}
+.mdet.porta{color:var(--ink);opacity:.85}
+.bag{margin-bottom:12px;display:grid;gap:6px}
+.bag h3{margin:0;font-size:15px}
+.bag ul{margin:0;padding-left:18px;display:grid;gap:7px;font-size:13.5px;line-height:1.35}
+.bag li small{color:var(--muted);font-size:11.5px}
+.bag .mut{color:var(--muted)}
+.bag .note{margin:0}
+.rgo{display:grid;gap:2px;margin:12px 0 0;padding:9px 12px;border-radius:12px;background:var(--raised);border:1px solid var(--line);font-weight:700;font-size:13.5px}
+.rgo small{font-weight:400;font-size:12.5px;color:var(--muted)}
+.rgo.p{border-color:color-mix(in srgb,var(--accent) 50%,var(--line))}
+/* Cibo: stima di kcal e nutrienti (20/11/2026) */
+.bal{display:grid;gap:8px;margin-bottom:12px}
+.bh{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.bh b{font-size:22px}
+.bh span{font-size:12px;color:var(--muted)}
+.bbar{display:block;height:8px;border-radius:5px;background:var(--bg);overflow:hidden}
+.bbar i{display:block;height:100%;border-radius:5px;background:var(--accent);transition:width .4s}
+.bbar.s{height:5px}
+.bmac{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.bmac div{display:grid;gap:3px}
+.bmac small{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.bmac b{font-size:15px}
+.bmac em{font-style:normal;font-size:11px;color:var(--muted)}
+.bal .note{margin:0}
+.mh .mk{font-style:normal;font-size:11.5px;color:var(--muted);margin-left:auto;flex:none}
+.xform textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 10px;font-size:14px;color:var(--ink);resize:vertical}
+.xok{color:var(--ok,#5BD18B)!important}
