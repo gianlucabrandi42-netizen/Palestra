@@ -26,7 +26,7 @@ const myDish = () => { const f = FOOD(); return (f.mydish = f.mydish || {}); };
 const dishOpts = mid => Object.entries(myDish()).filter(([, x]) => x.meal === mid && x.it && x.it.length).map(([id, x]) => ({ id: "d_" + id, t: x.t, d: "Il tuo piatto", p: drawOf(x.it), dish: 1 }));
 // nome del piatto dal testo: senza quantità né condimenti ("pasta al pomodoro 90 g, parmigiano, 2 giri d'olio" → "Pasta al pomodoro, parmigiano")
 function dishName(t) {
-  const parts = String(t || "").replace(/^Il mio piatto:\s*/i, "").split(/,|;|\+|\n/).map(x => x.replace(/\b\d+([.,]\d+)?\s*(kg|g|gr|grammi|ml|cl|l)?\b/gi, "").replace(/\b(un|una|uno|mezz[oa]|due|tre|quattro|cinque|giri?|cucchia(io|i|ino|ini)|pizzico)\b/gi, " ").replace(/\s+/g, " ").trim().replace(/^(di|d')\s*/i, ""))
+  const parts = String(t || "").replace(/^Il mio piatto:\s*/i, "").replace(/^\s*(oggi\s+)?(ho\s+)?(mangiato|preso|bevuto|fatto)\s+(solo\s+|anche\s+)?/i, "").replace(/^\s*solo\s+/i, "").split(/,|;|\+|\n/).map(x => x.replace(/\b\d+([.,]\d+)?\s*(kg|g|gr|grammi|ml|cl|l)?\b/gi, "").replace(/\b(un|una|uno|mezz[oa]|due|tre|quattro|cinque|giri?|cucchia(io|i|ino|ini)|pizzico)\b/gi, " ").replace(/\s+/g, " ").trim().replace(/^(di|d')\s*/i, ""))
     .filter(x => x && !/^(olio|sale|soia|salsa di soia|pepe|spruzzat\w*|aceto|olio extravergine)( .*)?$/i.test(x) && !/^(l')?olio$/i.test(x));
   let n = parts.join(", "); if (!n) n = String(t || "Il mio piatto").slice(0, 32);
   if (n.length > 42) n = n.slice(0, 42).replace(/,?\s*\S*$/, "") || n.slice(0, 42);
@@ -429,8 +429,10 @@ function xParse(f) {
   return `${f.it && f.it.length ? `<p class="plab">Ho capito · se è diverso tocca − / + o il numero</p><div class="xrows">${rowsHTML(f.it)}</div><p class="qtot"><b>~${fmt(t[0])} kcal</b><span>proteine ${t[1]} g · carboidrati ${t[2]} g · grassi ${t[3]} g</span></p>` : ""}${f.cl ? `<p class="note">Claude aveva stimato ~${f.cl.k} kcal in tutto.</p>` : ""}${miss.length ? `<p class="xpno">Non ho capito: «${esc(miss.join("», «"))}». Scrivilo più semplice (es. "80 g di pasta", "2 biscotti") o chiedi a Claude con 📷.</p>` : ""}${f.ed && (f.t || "").trim() ? `<button class="lnk" id="xReread">↺ Rileggi dal testo</button>` : ""}`;
 }
 function xForm() {
-  const f = CS.xform;
-  return `<div class="xform"><input id="xT" placeholder="Cosa hai mangiato? (es. 2 biscotti e una birra)" value="${esc(f.t || "")}" autocomplete="off">
+  const f = CS.xform, d = cDay(), sv = f.meal && f.meal !== "fuori" ? (fDay(d).m || {})[f.meal] : null, so = sv && sv !== "skip" ? optOf(mealDef(f.meal), sv, d) : null;
+  // 20/11/2026: scrivere in un pasto già segnato SOSTITUISCE la casella (prima la sommava: colazione contata due volte)
+  if (so && f.rep == null) f.rep = true;
+  return `<div class="xform">${so ? `<div class="seg2 xrep"><button data-xrep="1" aria-pressed="${!!f.rep}">Al posto di «${esc(so.t)}»</button><button data-xrep="0" aria-pressed="${!f.rep}">In più</button></div>` : ""}<input id="xT" placeholder="Cosa hai mangiato? (es. 2 biscotti e una birra)" value="${esc(f.t || "")}" autocomplete="off">
     <div class="seg3">${Object.entries(SIZES).map(([k, n]) => `<button data-xs="${k}" aria-pressed="${f.s === k}">${n}</button>`).join("")}</div>
     <div class="xparse">${xParse(f)}</div>
     <p class="note">Scrivi cosa e quanto ("mezza pizza", "4 noci", "80 g di pasta"). Se non sai quanto o com'era condito: 📷 foto a Claude, poi incolla qui sotto la risposta e le righe si riempiono da sole.</p>
@@ -476,6 +478,7 @@ function bindOggi(box, d) {
       if (r.items.length) { f.it = r.items; f.ed = true; f.cl = r.tot; f.cmiss = r.miss; xp(); toast(`Letto: ${r.items.length} alimenti, ~${valOfQ(f.it)[0]} kcal`); }
       else if (r.tot) { f.k = String(r.tot.k); f.p = r.tot.p; f.c = r.tot.c; f.f = r.tot.f; k.value = f.k; toast(`Letto: ${r.tot.k} kcal`); } };
     box.querySelectorAll("[data-xs]").forEach(b => b.onclick = () => { f.s = b.dataset.xs; box.querySelectorAll("[data-xs]").forEach(x => x.setAttribute("aria-pressed", x === b)); if (!f.ed) xp(); });
+    box.querySelectorAll("[data-xrep]").forEach(b => b.onclick = () => { f.rep = b.dataset.xrep === "1"; box.querySelectorAll("[data-xrep]").forEach(x => x.setAttribute("aria-pressed", x === b)); });
     $("xNo").onclick = () => { CS.xform = null; renderCibo(); };
     $("xSave").onclick = () => {
       const it = (f.it || []).filter(([, q]) => q), txt = (f.t || "").trim() || it.slice(0, 3).map(([x]) => FO(x).n.replace(/ \(.*\)$/, "")).join(", ");
@@ -483,6 +486,7 @@ function bindOggi(box, d) {
       const e = { id: "x" + Date.now().toString(36), meal: f.meal, t: txt.slice(0, 80), s: f.s, at: Date.now() };
       if (+f.k > 0) { e.k = Math.min(5000, +f.k); if (f.p != null) { e.p = f.p; e.c = f.c; e.f = f.f; } } else if (it.length) e.it = it.map(r => [...r]);
       CS.xform = null;
+      if (f.rep && f.meal !== "fuori") setFDay(d, x => { if (x.m) delete x.m[f.meal]; if (x.q) delete x.q[f.meal]; if (x.dn) delete x.dn[f.meal]; });
       if (e.it && f.meal !== "fuori" && !(fDay(d).m || {})[f.meal]) { const id = rememberDish(f.meal, txt, e.it); logMeal(d, f.meal, "d_" + id, false, e.it); toast(`✓ ${dishName(txt)} · ~${valOfQ(e.it)[0]} kcal · lo ritrovi tra le caselle`); renderCibo(); return; }
       setFDay(d, x => x.x = [...(x.x || []), e]); if (e.it) rememberDish(f.meal, txt, e.it);
       const v = xVal(e); toast(v ? `Aggiunto: ~${v[0]} kcal` : "Aggiunto, ma non ho capito le kcal: scrivilo diversamente o chiedi a Claude"); renderCibo(); };
