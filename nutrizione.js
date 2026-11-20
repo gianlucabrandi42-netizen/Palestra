@@ -367,7 +367,8 @@ Object.assign(window.CIBO, {
     pescec: { n: "Pesce cotto (griglia o forno)", u: "g", s: 25, v: [110, 22, 0, 2.5], k: "pesce alla griglia,pesce al forno,pesce cotto,pesce grigliato", d: 150 },
     merluzzo: { n: "Merluzzo o platessa", u: "g", s: 25, v: [80, 17, 0, 0.8], k: "merluzzo,platessa,nasello,pesce bianco,pesce,orata,branzino,spigola", d: 200 },
     manzo: { n: "Straccetti di manzo", u: "g", s: 25, v: [130, 21, 0, 5], k: "manzo,straccetti,vitello,fettina", d: 150 },
-    macinato: { n: "Macinato magro", u: "g", s: 25, v: [140, 20, 0, 6.5], k: "macinato,polpett,ragù,ragu", d: 150 },
+    macinato: { n: "Macinato magro", u: "g", s: 25, v: [140, 20, 0, 6.5], k: "macinato,polpett", d: 150 },
+    ragu: { n: "Ragù (sugo di carne)", u: "g", s: 10, v: [140, 9, 5, 9], k: "ragu,ragù,bolognese,sugo di carne", d: 80 },
     hamb: { n: "Hamburger di carne", u: "hamburger|hamburger", g: 120, s: 1, v: [220, 19, 0, 16], k: "hamburger", d: 1 },
     gamberi: { n: "Gamberi", u: "g", s: 25, v: [80, 18, 0, 1], k: "gamber,mazzancoll", d: 150 },
     salmone: { n: "Salmone", u: "g", s: 25, v: [185, 20, 0, 12], k: "salmon", d: 150 },
@@ -390,6 +391,9 @@ Object.assign(window.CIBO, {
     formaggio: { n: "Formaggio", u: "g", s: 10, v: [350, 24, 1, 28], k: "formagg,scamorza,provola,fontina,emmental,sottilett", d: 50, cg: { fetta: 20, fette: 20 } },
     // carboidrati (pesi da crudi, come nel piano)
     riso: { n: "Riso (crudo)", u: "g", s: 5, v: [350, 7, 80, 0.6], k: "riso,basmati", d: 80 },
+    risoc: { n: "Riso cotto", u: "g", s: 25, v: [130, 2.7, 28, 0.3], k: "riso cotto,riso bollito,riso lesso,riso in bianco,riso pilaf", d: 180 },
+    pastac: { n: "Pasta cotta", u: "g", s: 25, v: [158, 5.8, 31, 0.9], k: "pasta cotta,pasta lessa,pasta in bianco,pasta scondita", d: 220 },
+    patatec: { n: "Patate al forno", u: "g", s: 25, v: [130, 2.5, 21, 4.5], k: "patate al forno,patate arrosto", d: 200 },
     rprec: { n: "Riso precotto in busta", u: "g", s: 25, v: [150, 3.5, 32, 1.5], k: "riso precotto,riso in busta", d: 125 },
     risotto: { n: "Risotto (piatto)", u: "piatto|piatti", g: 300, s: 0.5, v: [130, 3, 22, 3.5], k: "risott", d: 1 },
     pasta: { n: "Pasta (cruda)", u: "g", s: 5, v: [355, 12.5, 72, 1.5], k: "pasta,spaghett,penne,fusill,maccheron,rigaton,tagliatell,linguin", d: 90 },
@@ -492,10 +496,36 @@ Object.assign(window.CIBO, {
     pastatonno: "tonno 150, pomodorini 7, sale 1", frittatapasta: "uovo 2, albumeg 150, pomodorini 7, insalata 50, olio 1, sale 1",
     frittata: "uovo 2, albumeg 150, verdure 150, insalata 50, olio 1, soia 1", farro: "mozz 1, polloc 100, pomodorini 5, rucola 20, olio 1, sale 1",
     frigo: "uovo 2, albume 1, insalata 150, olio 2, sale 1", altro: "pollo 200, verdure 200, olio 2, sale 1",
-    mensa: "msec 1, verdure 200, olio 1", rist: "polloc 150, verdure 200, olio 1",
+    mensa: "msec 1, verdure 200, olio 2", rist: "polloc 150, verdure 200, olio 2",
   },
   // carboidrato di altre caselle (le ricette usano cb)
   mcarb: { altro: "Riso", frigo: "Riso", rist: "Riso precotto in busta" },
+  // ✋ stimare a occhio, senza bilancia (mensa, ristorante, fuori casa)
+  occhio: [
+    ["Carne o pesce cotti", "il palmo della mano (senza dita), spesso un dito ≈ 100-120 g"],
+    ["Pasta o riso cotti", "un pugno chiuso ≈ 150 g cotti (≈ 60 g da crudi); un piatto fondo pieno ≈ 300 g cotti"],
+    ["Verdure", "due mani a coppa ≈ 150 g"],
+    ["Patate", "un pugno ≈ 150 g"],
+    ["Pane", "una fetta come il palmo ≈ 30 g; un panino ≈ 80 g"],
+    ["Formaggio", "un pezzo come due dita ≈ 30 g; un cucchiaio di grattugiato ≈ 5 g"],
+    ["Olio", "un giro ≈ 5 g (45 kcal); il piatto lucido e il fondo unto vogliono dire almeno 2-3 giri"],
+  ],
+  // quanto condiscono mensa e ristorante: si sceglie a occhio, cambia la riga dell'olio (in giri da 5 g)
+  unto: [["Asciutto", 1, "niente fondo, verdure lesse"], ["Normale", 2, "un po' lucido"], ["Condito", 4, "fondo d'olio o sugo grasso"], ["Molto unto", 6, "fritto, burro, fondo abbondante"]],
+  // marche facili da trovare (20/11/2026): cosa guardare sull'etichetta. I valori veri si prendono scansionando la confezione.
+  brands: [
+    ["Pane di segale", "Mestemacher, Pema", "100% segale integrale, fette da ~45-50 g"],
+    ["Piadina", "Loriana, Mulino Bianco, marca del supermercato", "con olio d'oliva (non strutto); 'leggera' o 'sottile' = meno kcal"],
+    ["Yogurt intero bianco", "Vipiteno, Müller, Yomo", "bianco naturale, senza zuccheri aggiunti"],
+    ["Fiocchi di latte", "Jocca, Granarolo", "vasetto da 150-175 g"],
+    ["Mozzarella light", "Santa Lucia Light, Granarolo", "~150-170 kcal/100 g"],
+    ["Bresaola", "Rigamonti, marca del supermercato", "punta d'anca; vaschette da 80-100 g"],
+    ["Tonno sott'olio", "Rio Mare, Mareblu", "sgocciolato bene: l'olio della scatola vale molte kcal"],
+    ["Riso precotto", "Riso Scotti, Ben's Original", "busta da 2 minuti; ~150 kcal/100 g"],
+    ["Gallette di riso", "Riso Scotti, Gallo", "~8 g l'una"],
+    ["Cornflakes", "Kellogg's, marca del supermercato", "i classici, non glassati"],
+    ["Proteine in polvere", "quella che usi già", "guarda le proteine per 100 g (almeno 70)"],
+  ],
   // 🧂 CONDIMENTI (20/11/2026, richiesta dell'utente: "suggerimenti se è meglio soia, sale, meno olio… bilanciare il gusto è molto importante")
   condRules: [
     "Soia oppure sale, non tutti e due: 2 cucchiaini di soia salano quanto un buon pizzico di sale e danno più sapore.",

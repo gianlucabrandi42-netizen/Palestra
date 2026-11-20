@@ -1410,3 +1410,50 @@ html[data-theme="sparta"] .tile u,html[data-theme="sparta"] .tile em{color:#0B0E
 .xpno{color:#F2C14E}
 .xrow small.xmiss{display:block;color:#F2C14E}
 .qctl b{min-width:0;width:84px;white-space:normal;line-height:1.15;font-size:13px}
+/* CIBO · prodotti, codice a barre, stime di mensa e ristorante (20/11/2026) */
+#scan{position:fixed;inset:0;z-index:80;background:var(--bg,#0e0f0f);overflow:auto;padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 24px);display:grid;align-content:start;gap:12px}
+#scan[hidden]{display:none}
+.sc-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.sc-top b{font-size:18px}
+#scv{width:100%;min-height:200px;border-radius:16px;overflow:hidden;background:#000}
+#scv:empty{display:none}
+#scv video{width:100%!important;border-radius:16px}
+.sc-msg{margin:0;text-align:center}
+.sc-alt{display:grid;gap:10px}
+.sc-alt input,.pform input,.pform select{width:100%;padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:var(--raised);color:var(--ink);font-size:16px}
+.sc-alt .row{display:flex;gap:8px}
+.pform{display:grid;gap:12px}
+.pform label{display:grid;gap:5px;font-size:13px;color:var(--muted)}
+.pgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.pgrid input{text-align:center;padding:11px 4px}
+.plab{margin:8px 0 4px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.myp{display:grid;gap:8px}
+.pitem{display:grid;gap:2px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:9px 11px;color:var(--ink)}
+.pitem b span{font-weight:400;color:var(--muted)}
+.pitem small{color:var(--muted);font-size:12px}
+.myp .row{display:flex;gap:8px;flex-wrap:wrap}
+.brands summary{list-style:none;display:grid;gap:2px;cursor:pointer}
+.brands summary::-webkit-details-marker{display:none}
+.brands summary span{font-size:12.5px;color:var(--muted)}
+.brow{display:grid;gap:1px;padding:8px 0;border-top:1px solid var(--line)}
+.brow span{font-size:13.5px}
+.brow small{font-size:12px;color:var(--muted)}
+i.mine{font-style:normal;font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:8px;background:color-mix(in srgb,var(--accent) 25%,transparent);color:var(--accent);vertical-align:1px}
+.chip.mine{border-color:var(--accent)}
+.chip.scanc{border-style:dashed}
+.qinw{display:inline-flex;align-items:center;gap:3px;width:84px;justify-content:center;font-size:13px;color:var(--muted)}
+.qin{width:56px;padding:6px 4px;border-radius:9px;border:1px solid var(--accent);background:var(--surface);color:var(--ink);font-size:16px;text-align:center}
+.est{margin-top:12px;background:var(--raised);border:1px solid var(--line);border-radius:14px;padding:10px 12px;display:grid;gap:8px}
+.est h3{margin:0!important;color:var(--ink)!important}
+.est .note{margin:0}
+.est textarea,.xform textarea{width:100%;padding:9px 11px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:16px;resize:vertical}
+.unto{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.unto button{display:grid;gap:2px;padding:8px 4px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);text-align:center}
+.unto button b{font-size:13px}
+.unto button small{font-size:10.5px;color:var(--muted);line-height:1.2}
+.unto button[aria-pressed="true"]{background:var(--grad,var(--accent));color:#06150e;border-color:transparent}
+.unto button[aria-pressed="true"] small{color:inherit;opacity:.8}
+.occhio summary{cursor:pointer;font-weight:700;font-size:13.5px;color:var(--accent)}
+.occhio ul{margin:8px 0 0;padding-left:18px;display:grid;gap:5px;font-size:13px;line-height:1.4}
+.xrows .qrow:first-child{border-top:0}
+.sc-alt .row input{flex:1;width:auto;min-width:0}
