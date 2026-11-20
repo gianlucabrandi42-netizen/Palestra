@@ -2327,4 +2327,16 @@ function toast(t) { const el = $("toast"); el.textContent = t; el.hidden = false
 if ("scrollRestoration" in history) history.scrollRestoration = "manual";
 render();
 resumeLast();
-if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
+// Aggiornamenti (20/11/2026: "non vedo l'app cambiata"): controlla sw.js a ogni apertura e ritorno nell'app; quando il service worker
+// nuovo prende il comando, ricarica la pagina una volta (subito se non stai scrivendo, altrimenti alla prossima uscita/rientro).
+if ("serviceWorker" in navigator && location.protocol === "https:") {
+  const hadCtl = !!navigator.serviceWorker.controller; let swReload = false, swDone = false;
+  const doReload = () => { if (swDone) return; const a = document.activeElement; if (a && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) { swReload = true; return; } swDone = true; location.reload(); };
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (hadCtl) doReload(); });
+  navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(reg => {
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState !== "visible") return; if (swReload) return doReload(); reg.update().catch(() => {}); });
+  }).catch(() => {});
+}
+// versione installata, per controllare che l'aggiornamento sia arrivato
+setTimeout(() => swVersion().then(v => { const e = $("appVer"); if (e) e.textContent = "Versione app: " + (v || "non installata (aperta dal browser?)"); }), 800);
+function swVersion() { return new Promise(ok => { const c = navigator.serviceWorker && navigator.serviceWorker.controller; if (!c) return ok(null); const ch = new MessageChannel(); ch.port1.onmessage = e => ok(e.data); c.postMessage("ver", [ch.port2]); setTimeout(() => ok(null), 1500); }); }
