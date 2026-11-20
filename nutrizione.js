@@ -59,6 +59,8 @@ window.CIBO = {
     { id: "rip", t: "Riposo", d: "a casa", where: { col: "casa", s1: "casa", pr: "casa", s2: "casa", ce: "casa", dc: "casa" } },
     { id: "not", t: "Notte", d: "", where: { col: "casa", s1: "casa", pr: "micro", s2: "micro", ce: "casa", dc: "casa" }, prep: "Porta il pasto e lo spuntino: al lavoro hai solo il microonde." },
   ],
+  // condimenti dell'utente (20/11/2026): olio a giri, un po' di salsa di soia e sale, anche sulle uova
+  cond: "Olio: 1 cucchiaio in tutto (circa 2 giri), compreso quello per cuocere. Salsa di soia: 1 cucchiaio (circa 10 kcal, ma è salata). Sale: un pizzico, quasi niente se metti la soia.",
   bagNote: "Yogurt, fiocchi di latte, mozzarella, bresaola e piatti cotti: borsa termica con un siberino se restano fuori dal frigo più di 2 ore.",
   // VALORI STIMATI (20/11/2026, tabelle CREA/USDA ed etichette tipiche, ±10%): [kcal, proteine, carboidrati, grassi] in g.
   // Colazioni e spuntini: per casella ("s2g" = spuntino 2 nei giorni di palestra).
@@ -86,7 +88,7 @@ window.CIBO = {
 
   recipes: [
     // ---------- PRANZO E CENA ----------
-    { id: "pollo", go: "m", porta: "Il pasto 2 nel contenitore di vetro: al lavoro 2-3 minuti al microonde, coperto.", s: "Pollo 2 gusti", name: "Pollo in friggitrice, due gusti", min: 20, lvl: 1, tools: "friggitrice + ciotola", main: true, p: ["pollo", "verdure", "riso"],
+    { id: "pollo", pp: "200 g di petto di pollo (peso crudo)", vv: "200 g di verdure grigliate surgelate", cb: { p1: "Riso", p2: "Patate" }, go: "m", porta: "Il pasto 2 nel contenitore di vetro: al lavoro 2-3 minuti al microonde, coperto.", s: "Pollo 2 gusti", name: "Pollo in friggitrice, due gusti", min: 20, lvl: 1, tools: "friggitrice + ciotola", main: true, p: ["pollo", "verdure", "riso"],
       ingr: ["400 g di petto di pollo (meglio già a bocconcini)", "400 g di verdure grigliate surgelate", "1 limone, origano, aglio in polvere", "Paprika affumicata, peperoncino, cipolla in polvere", "Sale, olio in spruzzino, carta forno"],
       steps: [
         { tool: "friggitrice", t: "Accendi la friggitrice a 200 °C, vuota, per 3 minuti: si scalda e il pollo viene più dorato.", min: 3 },
@@ -97,7 +99,7 @@ window.CIBO = {
         { tool: "contenitore", p: ["pollo", "verdure"], t: "Dividi nei 2 contenitori, un gusto per pasto. Quello per dopo va in frigo appena è tiepido (entro un'ora)." },
       ],
       p1: "Pollo al limone + riso del cuociriso", p2: "Pollo alla paprika + patate al microonde (cubetti coperti, 8-10 min)", olio: "1 cucchiaio a pasto in tutto" },
-    { id: "pollocrock", go: "m", porta: "Il pasto 2 nel contenitore: al microonde 2 minuti (perde un po' di croccantezza, resta buono).", s: "Pollo croccante", name: "Pollo croccante ai cornflakes", min: 20, lvl: 2, tools: "friggitrice + 2 piatti fondi", main: true, p: ["cotoletta", "insalata", "patate"],
+    { id: "pollocrock", pp: "200 g di petto di pollo + 30 g di cornflakes per la panatura", vv: "100 g di insalata", cb: { p1: "Patate", p2: "Patate", half: 1 }, go: "m", porta: "Il pasto 2 nel contenitore: al microonde 2 minuti (perde un po' di croccantezza, resta buono).", s: "Pollo croccante", name: "Pollo croccante ai cornflakes", min: 20, lvl: 2, tools: "friggitrice + 2 piatti fondi", main: true, p: ["cotoletta", "insalata", "patate"],
       ingr: ["400 g di petto di pollo a fettine", "2 albumi (o 1 uovo intero)", "60 g di cornflakes", "Paprika, sale, pepe, aglio in polvere", "Olio in spruzzino, carta forno"],
       steps: [
         { tool: "friggitrice", t: "Accendi la friggitrice a 200 °C per 3 minuti.", min: 3 },
@@ -107,7 +109,7 @@ window.CIBO = {
         { tool: "friggitrice", p: ["cotoletta"], t: "Fettine sulla carta forno senza sovrapporle, spruzza olio sopra. 200 °C per 12-14 minuti, girale a metà e spruzza ancora un po'.", min: 13, ok: "Fuori dorate e croccanti; tagliando la parte più spessa, dentro è bianca." },
       ],
       p1: "Con insalata. La panatura vale metà del carboidrato: nei giorni di palestra aggiungi 175 g di patate (o 40 g di riso), negli altri niente", p2: "A cena: con 150 g di patate al microonde e insalata", olio: "solo lo spruzzino" },
-    { id: "pesce", go: "m", porta: "Pasto 2: wrap già arrotolato nella carta forno, si mangia anche freddo; oppure pesce e cous cous nel contenitore, 2 minuti al microonde.", s: "Pesce bianco", name: "Pesce bianco mediterraneo e messicano", min: 20, lvl: 1, tools: "friggitrice + bollitore", main: true, p: ["pesce", "pomodorini", "cous"],
+    { id: "pesce", pp: "250 g di filetti di merluzzo o platessa", vv: "125 g di pomodorini + insalata", cb: { p1: "Cous cous", p2: "Piadina (niente olio)" }, go: "m", porta: "Pasto 2: wrap già arrotolato nella carta forno, si mangia anche freddo; oppure pesce e cous cous nel contenitore, 2 minuti al microonde.", s: "Pesce bianco", name: "Pesce bianco mediterraneo e messicano", min: 20, lvl: 1, tools: "friggitrice + bollitore", main: true, p: ["pesce", "pomodorini", "cous"],
       ingr: ["500 g di filetti di merluzzo o platessa surgelati", "250 g di pomodorini", "1 cucchiaio di capperi, origano, 1 limone", "Paprika, cumino, aglio in polvere, 1 lime", "Pasto 1: cous cous · Pasto 2: 1 piadina, insalata in busta, 2 cucchiai di yogurt"],
       steps: [
         { tool: "friggitrice", t: "Friggitrice a 190 °C per 3 minuti.", min: 3 },
@@ -117,7 +119,7 @@ window.CIBO = {
         { tool: "ciotola", p: ["yogurt"], t: "Pasto 2: salsa con 2 cucchiai di yogurt, succo di mezzo lime, sale e peperoncino. Scalda la piadina 1 minuto in padella, mettici insalata, pesce e salsa, e arrotolala." },
       ],
       p1: "Pesce alla mediterranea + cous cous", p2: "Wrap di pesce messicano con insalata e salsa allo yogurt", olio: "pasto 1: 1 cucchiaio · pasto 2: niente (la piadina basta)" },
-    { id: "manzo", go: "m", porta: "Fajitas col riso nel contenitore: 2 minuti al microonde. La tagliata è buona anche fredda.", s: "Straccetti di manzo", name: "Straccetti di manzo: tagliata e fajitas", min: 12, lvl: 2, tools: "una padella", main: true, p: ["manzo", "rucola", "pomodorini"],
+    { id: "manzo", pp: "200 g di straccetti di manzo", vv: "100 g di rucola e pomodorini, o 100 g di peperoni", cb: { p1: "Pane", p2: "Riso" }, go: "m", porta: "Fajitas col riso nel contenitore: 2 minuti al microonde. La tagliata è buona anche fredda.", s: "Straccetti di manzo", name: "Straccetti di manzo: tagliata e fajitas", min: 12, lvl: 2, tools: "una padella", main: true, p: ["manzo", "rucola", "pomodorini"],
       ingr: ["400 g di straccetti di manzo", "Rucola e pomodorini", "200 g di peperoni surgelati a strisce", "Paprika, cumino, peperoncino", "Aceto balsamico, sale, pepe"],
       steps: [
         { tool: "tagliere", p: ["manzo"], t: "Asciuga gli straccetti con carta da cucina, tamponando.", tip: "Se sono bagnati non si rosolano: bollono e diventano grigi e duri." },
@@ -127,7 +129,7 @@ window.CIBO = {
         { tool: "padella", p: ["verdure", "manzo"], t: "Stessa padella, fuoco medio: peperoni con paprika, cumino e peperoncino per 5 minuti mescolando. Poi l'altra metà degli straccetti per 2 minuti.", min: 7 },
       ],
       p1: "Tagliata su rucola e pomodorini + pane", p2: "Fajitas con peperoni + riso, o arrotolate nella piadina (senza olio)", olio: "1 cucchiaio a pasto in tutto" },
-    { id: "polpette", go: "m", porta: "Polpette al sugo nel contenitore: 2-3 minuti al microonde, coperte.", s: "Polpette", name: "Polpette in friggitrice, due sughi", min: 20, lvl: 1, tools: "ciotola + friggitrice", main: true, p: ["polpette", "insalata", "patate"],
+    { id: "polpette", pp: "200 g di macinato magro (5-6 polpette)", vv: "insalata a volontà (o 75 g di passata nel pasto 2)", cb: { p1: "Patate", p2: "Riso" }, go: "m", porta: "Polpette al sugo nel contenitore: 2-3 minuti al microonde, coperte.", s: "Polpette", name: "Polpette in friggitrice, due sughi", min: 20, lvl: 1, tools: "ciotola + friggitrice", main: true, p: ["polpette", "insalata", "patate"],
       ingr: ["400 g di macinato magro (5-7% di grassi)", "1 albume", "1 spicchio d'aglio o aglio in polvere, prezzemolo o origano, sale", "Facoltativo: 1 cucchiaio di pangrattato", "Pasto 2: 150 g di passata, origano, peperoncino"],
       steps: [
         { tool: "friggitrice", t: "Friggitrice a 190 °C per 3 minuti.", min: 3 },
@@ -137,7 +139,7 @@ window.CIBO = {
         { tool: "microonde", p: ["polpette", "sugo"], t: "Pasto 2: polpette nel contenitore di vetro con la passata, origano, sale e peperoncino. Coperte, 3 minuti al microonde.", min: 3 },
       ],
       p1: "Polpette con insalata e limone + patate o pane", p2: "Polpette al sugo piccante + riso o pasta", olio: "mezzo cucchiaio a crudo per pasto" },
-    { id: "gamberi", go: "m", porta: "Gamberi e cous cous nel contenitore: 1-2 minuti al microonde (di più diventano gommosi).", s: "Gamberi", name: "Gamberi: pasta e paprika", min: 15, lvl: 1, tools: "pentola + padella", main: true, p: ["pasta", "gamberi", "verdure"],
+    { id: "gamberi", pp: "250 g di gamberi sgusciati", vv: "100 g di zucchine", cb: { p1: "Pasta", p2: "Cous cous" }, go: "m", porta: "Gamberi e cous cous nel contenitore: 1-2 minuti al microonde (di più diventano gommosi).", s: "Gamberi", name: "Gamberi: pasta e paprika", min: 15, lvl: 1, tools: "pentola + padella", main: true, p: ["pasta", "gamberi", "verdure"],
       ingr: ["500 g di gamberi sgusciati surgelati", "1 zucchina (o 200 g di zucchine surgelate)", "Aglio, peperoncino, prezzemolo, paprika", "Pasta per il pasto 1"],
       steps: [
         { tool: "contenitore", p: ["gamberi"], t: "La sera prima metti i gamberi in frigo a scongelare. Se te lo dimentichi: in un colino sotto l'acqua fredda per 5 minuti." },
@@ -147,7 +149,7 @@ window.CIBO = {
         { tool: "piatto", p: ["pasta", "gamberi", "verdure"], t: "Scola la pasta e versala in padella col resto: mescola 30 secondi a fuoco acceso, prezzemolo sopra." },
       ],
       p1: "Pasta gamberi, zucchine e peperoncino", p2: "Gamberi alla paprika + cous cous o patate", olio: "1 cucchiaio a pasto in tutto" },
-    { id: "gnocchi", go: "c", porta: "Da mangiare appena fatti: riscaldati perdono la croccantezza.", s: "Gnocchi croccanti", name: "Gnocchi croccanti con gamberi", min: 18, lvl: 2, tools: "friggitrice", main: true, one: true, p: ["gnocchi", "gamberi", "verdure"],
+    { id: "gnocchi", pp: "250 g di gamberi sgusciati", vv: "1 zucchina (circa 150 g)", cb: { p1: "Gnocchi" }, go: "c", porta: "Da mangiare appena fatti: riscaldati perdono la croccantezza.", s: "Gnocchi croccanti", name: "Gnocchi croccanti con gamberi", min: 18, lvl: 2, tools: "friggitrice", main: true, one: true, p: ["gnocchi", "gamberi", "verdure"],
       ingr: ["Gnocchi di patate da frigo: 200 g nei giorni di palestra, 100 g negli altri, 150 g a cena", "250 g di gamberi sgusciati (scongelati)", "1 zucchina a rondelle", "1 cucchiaino d'olio, paprika, sale, prezzemolo"],
       steps: [
         { tool: "friggitrice", t: "Friggitrice a 200 °C per 3 minuti.", min: 3 },
@@ -156,7 +158,7 @@ window.CIBO = {
         { tool: "friggitrice", p: ["gnocchi", "gamberi", "verdure"], t: "Aggiungi gamberi asciugati e zucchine con paprika e sale, mescola, altri 6-7 minuti.", min: 7, ok: "Gnocchi dorati e gamberi rosa piegati a C." },
       ],
       p1: "Un pasto completo: gnocchi croccanti, gamberi e zucchine", olio: "solo il cucchiaino degli gnocchi" },
-    { id: "salmone", go: "m", porta: "Salmone e patate dolci nel contenitore: 2 minuti al microonde.", s: "Salmone", name: "Salmone e patate dolci", min: 22, lvl: 1, tools: "friggitrice", main: true, p: ["salmone", "pdolci", "insalata"],
+    { id: "salmone", pp: "1 trancio di salmone da 150 g", vv: "insalata a volontà", cb: { p1: "Patate dolci", p2: "Patate dolci" }, go: "m", porta: "Salmone e patate dolci nel contenitore: 2 minuti al microonde.", s: "Salmone", name: "Salmone e patate dolci", min: 22, lvl: 1, tools: "friggitrice", main: true, p: ["salmone", "pdolci", "insalata"],
       ingr: ["2 tranci di salmone da 150 g", "500-550 g di patate dolci", "1 limone, erbe (prezzemolo o erbe di Provenza)", "Paprika, aglio, cipolla in polvere, peperoncino (cajun)"],
       steps: [
         { tool: "tagliere", p: ["pdolci"], t: "Sbuccia le patate dolci col pelapatate e tagliale a cubetti di 2 cm, tutti uguali." },
@@ -164,7 +166,7 @@ window.CIBO = {
         { tool: "friggitrice", p: ["pdolci", "salmone"], t: "Aggiungi i tranci con la pelle in giù: uno con sale, limone ed erbe, l'altro con paprika, aglio, cipolla e peperoncino. Altri 10-12 minuti.", min: 11, ok: "Il salmone si stacca a scaglie e al centro è rosa chiaro, non più lucido; le patate si infilzano senza sforzo." },
       ],
       p1: "Salmone al limone + patate dolci + insalata", p2: "Salmone cajun + patate dolci + insalata", olio: "niente: il salmone ha già i suoi grassi" },
-    { id: "curry", go: "m", porta: "Nel contenitore di vetro: 2-3 minuti al microonde, mescola a metà.", s: "Curry ceci e pollo", name: "Curry di ceci e pollo", min: 15, lvl: 2, tools: "una padella", main: true, p: ["ceci", "pollo", "spinaci", "riso"],
+    { id: "curry", pp: "150 g di pollo + 150 g di ceci (giorni di palestra: 100 + 100)", vv: "75 g di spinaci + 100 g di passata", cb: { p1: "Riso", p2: "Pasta" }, go: "m", porta: "Nel contenitore di vetro: 2-3 minuti al microonde, mescola a metà.", s: "Curry ceci e pollo", name: "Curry di ceci e pollo", min: 15, lvl: 2, tools: "una padella", main: true, p: ["ceci", "pollo", "spinaci", "riso"],
       ingr: ["300 g di pollo a cubetti (200 g nei giorni di palestra)", "300 g di ceci sgocciolati (200 g nei giorni di palestra)", "200 g di passata", "150 g di spinaci surgelati", "1 cucchiaino di curry, mezzo di paprika, peperoncino, sale"],
       steps: [
         { tool: "padella", p: ["pollo"], t: "Padella a fuoco medio-alto con 1 cucchiaino d'olio. Pollo con un pizzico di sale per 5 minuti, mescolando ogni tanto.", min: 5, ok: "I cubetti sono bianchi fuori su tutti i lati." },
@@ -172,7 +174,7 @@ window.CIBO = {
         { tool: "contenitore", p: ["ceci", "pollo"], t: "Dividi in 2: il pasto 1 col riso; il pasto 2 con la pasta, diventa una pasta e ceci col pollo." },
       ],
       p1: "Curry + 40 g di riso (80 nei giorni di palestra)", p2: "Pasta e ceci col pollo (40 g di pasta) o con 50 g di pane", olio: "1 cucchiaio a pasto in tutto" },
-    { id: "risosaltato", go: "m", porta: "Nel contenitore: 2 minuti al microonde con un cucchiaio d'acqua sopra.", s: "Riso saltato", name: "Riso saltato con uova e verdure", min: 12, lvl: 2, tools: "una padella", main: true, one: true, p: ["riso", "strapazzate", "piselli"],
+    { id: "risosaltato", pp: "2 uova + 150 g di albume", vv: "150 g di verdure miste surgelate", cb: { p1: "Riso" }, go: "m", porta: "Nel contenitore: 2 minuti al microonde con un cucchiaio d'acqua sopra.", s: "Riso saltato", name: "Riso saltato con uova e verdure", min: 12, lvl: 2, tools: "una padella", main: true, one: true, p: ["riso", "strapazzate", "piselli"],
       ingr: ["1 porzione di riso già cotto e freddo (dal cuociriso: da 80 g o 40 g crudi)", "2 uova + 150 g di albume", "150 g di verdure surgelate miste (piselli, carote)", "1 cucchiaio di salsa di soia, 1 cucchiaino d'olio, pepe"],
       steps: [
         { tool: "padella", p: ["verdure"], t: "Padella a fuoco medio-alto con 1 cucchiaino d'olio: verdure surgelate per 4 minuti.", min: 4 },
@@ -180,7 +182,7 @@ window.CIBO = {
         { tool: "padella", p: ["riso", "strapazzate", "piselli"], t: "Aggiungi il riso freddo sgranato con le mani e la salsa di soia. Mescola tutto 3 minuti a fuoco alto.", min: 3, ok: "Il riso è caldo e qualche chicco è appena tostato.", tip: "Il riso del giorno prima è il segreto: quello appena cotto diventa una colla." },
       ],
       p1: "Un pasto completo, ottimo per finire il riso del cuociriso", olio: "il cucchiaino in padella; la soia non aggiunge grassi" },
-    { id: "pizzapiadina", go: "c", porta: "Da mangiare appena fatta: riscaldata diventa molle.", s: "Pizza di piadina", name: "Pizza di piadina in friggitrice", min: 8, lvl: 2, tools: "friggitrice", main: true, one: true, p: ["pizza"],
+    { id: "pizzapiadina", pp: "1 mozzarella light (125 g) + 100 g di bresaola", vv: "rucola + 3 cucchiai di passata", cb: { p1: "Piadina (niente olio)" }, go: "c", porta: "Da mangiare appena fatta: riscaldata diventa molle.", s: "Pizza di piadina", name: "Pizza di piadina in friggitrice", min: 8, lvl: 2, tools: "friggitrice", main: true, one: true, p: ["pizza"],
       ingr: ["1 piadina (a cena: ¾, togli una striscia)", "3 cucchiai di passata", "1 mozzarella light (125 g)", "100 g di bresaola (dopo la cottura) o di pollo avanzato", "Origano, rucola, sale"],
       steps: [
         { tool: "tagliere", p: ["mozzarella"], t: "Mozzarella a cubetti e lasciala su un foglio di carta da cucina 5 minuti: perde l'acqua.", tip: "Senza questo passaggio la piadina diventa molle." },
@@ -189,7 +191,7 @@ window.CIBO = {
         { tool: "piatto", p: ["pizza", "bresaola", "rucola"], t: "Fuori dalla friggitrice: bresaola e rucola sopra, a crudo." },
       ],
       p1: "Una pizza vera dentro il piano: piadina + mozzarella light + bresaola", olio: "niente: piadina e mozzarella hanno già i grassi" },
-    { id: "pastatonno", go: "p", porta: "Versione fredda: perfetta da portare, non serve niente.", s: "Pasta al tonno", name: "Pasta al tonno, calda o fredda", min: 12, lvl: 1, tools: "una pentola", main: true, p: ["pasta", "tonno", "pomodorini"],
+    { id: "pastatonno", pp: "150 g di tonno sott\'olio sgocciolato", vv: "100 g di pomodorini", cb: { p1: "Pasta", p2: "Pasta" }, go: "p", porta: "Versione fredda: perfetta da portare, non serve niente.", s: "Pasta al tonno", name: "Pasta al tonno, calda o fredda", min: 12, lvl: 1, tools: "una pentola", main: true, p: ["pasta", "tonno", "pomodorini"],
       ingr: ["Pasta: 75 g nei giorni di palestra, 40 negli altri, 65 a cena", "150 g di tonno sott'olio ben sgocciolato (circa 2 scatolette da 80 g)", "Pomodorini, 1 cucchiaio di capperi, peperoncino", "Versione fredda: rucola e origano"],
       steps: [
         { tool: "pentola", p: ["pasta"], t: "1 litro d'acqua ogni 100 g di pasta. Quando bolle forte, 1 cucchiaino di sale, poi la pasta. Mescola nel primo minuto così non si attacca.", ok: "Assaggia 1 minuto prima del tempo della confezione: morbida ma con un cuore ancora consistente." },
@@ -197,7 +199,7 @@ window.CIBO = {
         { tool: "piatto", p: ["pasta", "tonno", "pomodorini"], t: "Calda: scola e mescola subito col condimento. Fredda: scolala, passala 10 secondi sotto l'acqua fredda, poi aggiungi tonno, pomodorini, rucola e origano." },
       ],
       p1: "Pasta al tonno calda", p2: "Pasta al tonno fredda con rucola, da portare", olio: "niente: basta quello del tonno" },
-    { id: "frittatapasta", go: "p", porta: "Buona anche fredda: tagliata a spicchi nel contenitore.", s: "Frittata di pasta", name: "Frittata di pasta in friggitrice", min: 18, lvl: 2, tools: "ciotola + friggitrice", main: true, one: true, p: ["frittata", "pasta", "pomodorini"],
+    { id: "frittatapasta", pp: "2 uova + 150 g di albume", vv: "100 g di pomodorini + insalata", cb: { p1: "Pasta" }, go: "p", porta: "Buona anche fredda: tagliata a spicchi nel contenitore.", s: "Frittata di pasta", name: "Frittata di pasta in friggitrice", min: 18, lvl: 2, tools: "ciotola + friggitrice", main: true, one: true, p: ["frittata", "pasta", "pomodorini"],
       ingr: ["1 porzione di pasta già cotta (anche avanzata dal giorno prima)", "2 uova + 150 g di albume", "Pomodorini, origano o paprika, sale, pepe", "Uno stampo da forno piccolo o la carta forno a vaschetta"],
       steps: [
         { tool: "ciotola", p: ["uova"], t: "Sbatti uova e albume con sale, pepe e origano per 30 secondi." },
@@ -205,7 +207,7 @@ window.CIBO = {
         { tool: "friggitrice", p: ["frittata", "pomodorini"], t: "Versa nello stampo o nella carta forno piegata a vaschetta, pomodorini sopra. 180 °C per 14-16 minuti.", min: 15, ok: "Muovi lo stampo: il centro non trema più ed è dorato sopra.", tip: "Se sopra si colora troppo e dentro è ancora molle, copri con un pezzo di carta forno." },
       ],
       p1: "Buona calda e fredda: perfetta da portare al lavoro", olio: "1 cucchiaio a crudo con l'insalata" },
-    { id: "frittata", go: "p", porta: "Buona anche fredda: nel contenitore con il pane a parte.", s: "Frittata", name: "Frittata di verdure in friggitrice", min: 15, lvl: 1, tools: "ciotola + friggitrice", main: true, one: true, p: ["frittata", "pane", "insalata"],
+    { id: "frittata", pp: "2 uova + 150 g di albume", vv: "150 g di verdure + insalata", cb: { p1: "Pane" }, go: "p", porta: "Buona anche fredda: nel contenitore con il pane a parte.", s: "Frittata", name: "Frittata di verdure in friggitrice", min: 15, lvl: 1, tools: "ciotola + friggitrice", main: true, one: true, p: ["frittata", "pane", "insalata"],
       ingr: ["2 uova + 150 g di albume", "150 g di verdure surgelate (spinaci, zucchine o peperoni)", "Sale, pepe, origano o paprika"],
       steps: [
         { tool: "microonde", p: ["spinaci"], t: "Verdure surgelate nel contenitore, 3 minuti al microonde. Poi strizzale col cucchiaio e butta l'acqua.", min: 3, tip: "Se non le strizzi, la frittata viene acquosa." },
@@ -213,13 +215,13 @@ window.CIBO = {
         { tool: "friggitrice", p: ["frittata"], t: "Versa in uno stampino o nella carta forno a vaschetta. 180 °C per 10-12 minuti.", min: 11, ok: "Il centro non trema e i bordi sono dorati." },
       ],
       p1: "Frittata + pane o patate + insalata (anche fredda da portare)", olio: "1 cucchiaio" },
-    { id: "farro", go: "p", porta: "Pronta da mangiare fredda, in borsa termica.", s: "Farro freddo", name: "Insalata fredda di farro", min: 5, lvl: 1, tools: "un contenitore", main: true, one: true, p: ["farro", "mozzarella", "pomodorini", "rucola"],
+    { id: "farro", pp: "1 mozzarella light (125 g) + 100 g di pollo o bresaola", vv: "pomodorini e rucola", cb: { p1: "Farro o orzo precotti in busta" }, go: "p", porta: "Pronta da mangiare fredda, in borsa termica.", s: "Farro freddo", name: "Insalata fredda di farro", min: 5, lvl: 1, tools: "un contenitore", main: true, one: true, p: ["farro", "mozzarella", "pomodorini", "rucola"],
       ingr: ["170 g di farro o orzo precotto in busta (85 g nei giorni senza palestra)", "1 mozzarella light", "100 g di pollo avanzato o di bresaola", "Pomodorini, rucola, origano, sale"],
       steps: [
         { tool: "contenitore", p: ["farro", "mozzarella", "pomodorini", "rucola"], t: "Apri la busta e sgrana il farro con la forchetta nel contenitore. Aggiungi mozzarella a cubetti, pollo o bresaola a striscioline, pomodorini a metà, rucola, origano e un pizzico di sale. Mescola." },
       ],
       p1: "Vale un pranzo da 80. Si tiene in frigo fino al giorno dopo", olio: "niente o mezzo cucchiaio: la mozzarella ha già grassi" },
-    { id: "frigo", go: "p", porta: "Si compone nel contenitore la sera prima, in borsa termica.", s: "Frigo vuoto", name: "Piatto frigo vuoto", min: 5, lvl: 1, tools: "un contenitore", main: true, one: true, p: ["riso", "uova", "insalata"],
+    { id: "frigo", pp: "2 uova sode + 1 albume, oppure 100 g di bresaola + 1 vasetto di fiocchi", vv: "verdure in busta a volontà", cb: { p1: "Riso" }, go: "p", porta: "Si compone nel contenitore la sera prima, in borsa termica.", s: "Frigo vuoto", name: "Piatto frigo vuoto", min: 5, lvl: 1, tools: "un contenitore", main: true, one: true, p: ["riso", "uova", "insalata"],
       ingr: ["1 porzione di carboidrati già pronta (riso del cuociriso, busta precotta o pane)", "2 uova sode + 1 albume, oppure 100 g di bresaola + 1 vasetto di fiocchi di latte", "Verdure in busta"],
       steps: [
         { tool: "contenitore", p: ["riso", "uova", "insalata"], t: "Componi il piatto con quello che hai già pronto: carboidrato, proteina, verdure, 1 cucchiaio d'olio." },

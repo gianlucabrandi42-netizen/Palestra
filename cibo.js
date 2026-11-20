@@ -171,7 +171,7 @@ function renderOggi(box) {
     if (w !== "casa") order = [...(w === "mensa" ? order.filter(o => o.id === "mensa") : []), ...order.filter(o => fits(o, w) && !(w === "mensa" && o.id === "mensa")), ...order.filter(o => !fits(o, w))];
     const xs = (day.x || []).filter(x => x.meal === md.id);
     h += `<div class="meal${v ? " done" : ""}${v === "skip" ? " skipped" : ""}" style="--c:${md.color}"><div class="mh"><i></i><b>${esc(md.name)}</b><span>${v === "skip" ? "saltato" : sel ? esc(sel.t) : esc(mealSub(md, d))}</span>${sel && optVal(md.id, v, d) ? `<em class="mk">~${r50(optVal(md.id, v, d)[0])} kcal</em>` : ""}</div>${WHERE[w] ? `<p class="mwhere">${WHERE[w]}</p>` : ""}
-      <div class="tiles">${order.map(o => tile(md, o, v === o.id, md.id === "ce" && o.id === m.pr && !!recipeById(o.id), !fits(o, w))).join("")}${md.skip ? `<button class="tile skipt${v === "skip" ? " on" : ""}" data-m="${md.id}" data-o="skip"><span class="ti">⤼</span><b>Saltato</b></button>` : ""}<button class="tile addt" data-xadd="${md.id}"><span class="ti">✎</span><b>Scrivo io</b></button></div>
+      <div class="tiles">${order.map(o => tile(md, o, v === o.id, md.id === "ce" && o.id === m.pr && !!recipeById(o.id), !fits(o, w))).join("")}${md.skip ? `<button class="tile skipt${v === "skip" ? " on" : ""}" data-skip="${md.id}"><span class="ti">⤼</span><b>Saltato</b></button>` : ""}<button class="tile addt" data-xadd="${md.id}"><span class="ti">✎</span><b>Scrivo io</b></button></div>
       ${sel ? `<p class="mdet">${esc(detOf(md, sel, m))}${sel.r ? ` <button class="lnk" data-rec="${sel.r}">Ricetta ›</button>` : ""}</p>${w !== "casa" && w !== "mensa" && sel.porta ? `<p class="mdet porta">🎒 ${esc(sel.porta)}</p>` : ""}` : ""}
       ${xs.map(x => xRow(x)).join("")}
       ${CS.xform && CS.xform.meal === md.id ? xForm() : ""}</div>`;
@@ -180,7 +180,7 @@ function renderOggi(box) {
   h += `<div class="meal extra"><div class="mh"><i></i><b>Fuori pasto</b><span>quello che non è nelle caselle</span></div>${loose.map(x => xRow(x)).join("")}${CS.xform && CS.xform.meal === "fuori" ? xForm() : `<button class="cmore" data-xadd="fuori">+ Aggiungi un cibo</button>`}</div>`;
   h += weekCard(d);
   box.innerHTML = h;
-  box.querySelectorAll(".tiles").forEach(t => { const on = t.querySelector(".tile.on"); if (on && on.offsetLeft + on.offsetWidth > t.clientWidth) t.scrollLeft = on.offsetLeft - 14; });
+  box.querySelectorAll(".tiles").forEach(t => { const x = t.querySelector(".tile.on"), on = x && (x.closest(".tilew") || x); if (on && on.offsetLeft + on.offsetWidth > t.clientWidth) t.scrollLeft = on.offsetLeft - 14; });
   bindOggi(box, d);
 }
 function detOf(md, o, m) { // pranzo = pasto 1 della ricetta, cena con la stessa ricetta = pasto 2
@@ -252,7 +252,7 @@ function dayHint(d) {
 function tile(md, o, on, p2, off) {
   const pic = o.r && FOOD().pics[o.r];
   const img = o.free ? `<span class="ti">🍕</span>` : pic ? `<img src="${pic}" alt="">` : o.p ? dishSVG(o.p, o.box, o.id, "dish") : `<span class="ti">🍽</span>`;
-  return `<button class="tile${on ? " on" : ""}${o.free ? " free" : ""}${off && !on ? " off" : ""}" data-m="${md.id}" data-o="${o.id}">${img}<b>${esc(o.t)}</b>${p2 ? `<em>pasto 2</em>` : ""}${on ? `<u>✓</u>` : ""}${off ? `<i class="tw">${o.go === "m" ? "serve microonde" : "a casa"}</i>` : ""}</button>`;
+  return `<div class="tilew"><button class="tile${on ? " on" : ""}${o.free ? " free" : ""}${off && !on ? " off" : ""}" data-m="${md.id}" data-o="${o.id}">${img}<b>${esc(o.t)}</b>${p2 ? `<em>pasto 2</em>` : ""}${off ? `<i class="tw">${o.go === "m" ? "serve microonde" : "a casa"}</i>` : o.r ? `<i class="tw">ricetta</i>` : ""}</button><button class="qk${on ? " on" : ""}" data-qm="${md.id}" data-qo="${o.id}" aria-label="${on ? "Togli" : "Segna come mangiato"}">✓</button></div>`;
 }
 const SIZES = { p: "poco", n: "normale", t: "tanto" };
 const xRow = x => `<div class="xrow"><span>✎</span><div><b>${esc(x.t)}</b><small>${SIZES[x.s] || ""}${x.k ? ` · ~${x.k} kcal` : ""}${x.p != null ? ` · P ${x.p} · C ${x.c} · G ${x.f}` : ""}</small></div><button class="bx" data-xdel="${x.id}" aria-label="Elimina">✕</button></div>`;
@@ -281,13 +281,9 @@ function freeInWeek(d) { const mon = weekStart(d); let n = 0; for (let i = 0; i 
 function bindOggi(box, d) {
   box.querySelectorAll("[data-cd]").forEach(b => b.onclick = () => { CS.day = b.dataset.cd === todayISO() ? null : b.dataset.cd; CS.xform = null; renderCibo(); });
   box.querySelectorAll("[data-gym]").forEach(b => b.onclick = () => { const v = b.dataset.gym === "1"; setFDay(d, x => { x.gym = v === gymAuto(d) ? undefined : v; if (x.gym === undefined) delete x.gym; }); renderCibo(); });
-  box.querySelectorAll(".tile[data-m]").forEach(b => b.onclick = () => {
-    const mid = b.dataset.m, o = b.dataset.o, was = (fDay(d).m || {})[mid] === o, before = dayDone(d);
-    setFDay(d, x => { if (was) delete x.m[mid]; else x.m[mid] = o; });
-    if (!was) { b.classList.add("pop"); if (o !== "skip") { const c = CHEER[mid] || ["Fatto 👌"]; toast(c[Math.floor(Math.random() * c.length)]); }
-      if (!before && dayDone(d) && !fDay(d).cel) { setFDay(d, x => x.cel = 1); setTimeout(() => celebrate("🍽 Giornata completa", "Domani si ricomincia, senza recuperare niente"), 250); } }
-    setTimeout(renderCibo, was ? 0 : 160);
-  });
+  box.querySelectorAll(".tile[data-m]").forEach(b => b.onclick = () => openOpt(b.dataset.m, b.dataset.o));
+  box.querySelectorAll("[data-qm]").forEach(b => b.onclick = () => { const was = (fDay(d).m || {})[b.dataset.qm] === b.dataset.qo; b.closest(".tilew").querySelector(".tile").classList.add("pop"); logMeal(d, b.dataset.qm, b.dataset.qo, was); setTimeout(renderCibo, was ? 0 : 160); });
+  box.querySelectorAll("[data-skip]").forEach(b => b.onclick = () => { const mid = b.dataset.skip, was = (fDay(d).m || {})[mid] === "skip"; logMeal(d, mid, "skip", was); renderCibo(); });
   box.querySelectorAll("[data-dc]").forEach(b => b.onclick = () => { CS.showDc = true; renderCibo(); });
   box.querySelectorAll("[data-sh]").forEach(b => b.onclick = () => { const v = b.dataset.sh; setFDay(d, x => { if (x.turno === v) delete x.turno; else x.turno = v; }); renderCibo(); });
   box.querySelectorAll("[data-rec]").forEach(b => b.onclick = () => openRecipe(b.dataset.rec));
@@ -306,6 +302,45 @@ function bindOggi(box, d) {
     $("xPic").onchange = e => { const file = e.target.files[0]; if (file) askClaude(file, (CS.xform.t || "").trim(), SIZES[CS.xform.s]); e.target.value = ""; };
   }
 }
+// segna (o toglie) un pasto: frase incoraggiante e festa a giornata completa
+function logMeal(d, mid, oid, undo) {
+  const before = dayDone(d);
+  setFDay(d, x => { if (undo) delete x.m[mid]; else x.m[mid] = oid; });
+  if (undo) return;
+  if (oid !== "skip") { const c = CHEER[mid] || ["Fatto 👌"]; toast(c[Math.floor(Math.random() * c.length)]); }
+  if (!before && dayDone(d) && !fDay(d).cel) { setFDay(d, x => x.cel = 1); setTimeout(() => celebrate("🍽 Giornata completa", "Domani si ricomincia, senza recuperare niente"), 250); }
+}
+// tocco su una casella: apre l'idea (o la ricetta) con "✓ Fatto" in fondo (20/11/2026: "vedere cosa posso farmi, seguire la ricetta e poi confermarla")
+function openOpt(mid, oid) {
+  const d = cDay(), md = mealDef(mid), o = optOf(md, oid, d); if (!o) return;
+  if (o.r && recipeById(o.r)) return openRecipe(o.r, { mid, oid });
+  if (oid === "altro") { CS.xform = { meal: mid, s: "n" }; renderCibo(); setTimeout(() => { const i = $("xT"); if (i) { i.scrollIntoView({ block: "center" }); i.focus(); } }, 60); return; }
+  const sh = $("fsheet"), on = (fDay(d).m || {})[mid] === oid, val = optVal(mid, oid, d), w = whereOf(d, mid);
+  sh.querySelector(".is-h").innerHTML = `<b>${esc(o.t)}</b><span class="rmeta">${esc(md.name)}${val ? ` · ~${r50(val[0])} kcal` : ""}</span>`;
+  sh.querySelector(".is-c").innerHTML = `<div class="rhero">${o.free ? `<div class="bigemo">🍕</div>` : dishSVG(o.p || [], o.box, o.id, "dish big")}</div>
+    <p class="idea">${esc(o.d || "")}</p>
+    ${o.porta ? `<p class="rgo ${o.go}">${o.go === "p" ? "🎒 Si porta al lavoro, niente attrezzi" : o.go === "m" ? "🎒 Al lavoro col microonde" : "🏠 Solo a casa"}<small>${esc(o.porta)}</small></p>` : ""}
+    ${w !== "casa" && !fits(o, w) ? `<p class="note">Oggi questo pasto lo fai ${w === "zero" ? "al lavoro senza attrezzi" : w === "micro" ? "al lavoro col solo microonde" : "in mensa"}: questa idea va meglio a casa.</p>` : ""}
+    ${val ? `<p class="note">Circa ${val[0]} kcal · proteine ${val[1]} g · carboidrati ${val[2]} g · grassi ${val[3]} g.</p>` : ""}
+    <div class="rlog"><button class="btn ${on ? "" : "primary"}" id="ideaOk">${on ? "Togli: non l'ho mangiato" : `✓ Fatto: mangiato ${MEALN[mid] || ""}`}</button></div>`;
+  showSheet(sh);
+  $("ideaOk").onclick = () => { logMeal(d, mid, oid, on); closeRecipe(); renderCibo(); };
+}
+// 🍽 Il tuo piatto: grammi per UN pasto, col carboidrato giusto per quel pasto (scala 80/40/0 a pranzo, cena fissa)
+function carbG(name, mid, d, half) {
+  const row = CB.carbs.find(c => c[0] === name); if (!row) return null;
+  const L = mid === "ce" ? 3 : { 80: 1, 40: 2, 0: 0 }[lunchLvl(d)]; if (!L) return "niente carboidrato: doppia verdura";
+  let g = row[L]; if (half) { const n = parseFloat(g); if (n) g = `${Math.round(n / 2 / 5) * 5} g`; }
+  return `${g} di ${name.replace(" (niente olio)", "").toLowerCase()}${/piadina/i.test(name) ? " (e niente olio)" : ""}${half ? " (l'altra metà la fa la panatura)" : ""}`;
+}
+function plateBox(r, mid, d) {
+  if (!r.main || !r.pp) return "";
+  const rows = (mid ? [mid] : ["pr", "ce"]).map(m => { const nm = r.cb[m === "ce" && r.cb.p2 && !r.one ? "p2" : "p1"] || r.cb.p1;
+    const L = m === "pr" ? CB.lunch[lunchLvl(d)] : null;
+    return `<li><b>${m === "pr" ? `A pranzo${L ? ` (${L.t})` : ""}` : "A cena"}:</b> ${esc(carbG(nm, m, d, r.cb.half) || "")}</li>`; }).join("");
+  return `<div class="plate1"><h3>🍽 Il tuo piatto · 1 pasto</h3><ul><li><b>Proteina:</b> ${esc(r.pp)}</li><li><b>Verdure:</b> ${esc(r.vv)}</li>${rows}<li><b>Condimento:</b> ${esc(CB.cond)}${r.olio && !/1 cucchiaio a pasto/.test(r.olio) ? ` Qui: olio ${esc(r.olio)}.` : ""}</li></ul></div>`;
+}
+function showSheet(sh) { sh.hidden = false; document.documentElement.classList.add("noscroll"); sh.classList.remove("on"); void sh.offsetWidth; sh.classList.add("on"); sh.querySelector(".is-c").scrollTop = 0; }
 // Stima con Claude: la foto + la descrizione vanno a Claude col menu Condividi del telefono (l'app non ha un servizio di IA:
 // costerebbe e servirebbe una chiave segreta, impossibile in un sito pubblico).
 // Legge i numeri dalla risposta di Claude: "kcal 450 · proteine 30 g · carboidrati 40 g · grassi 18 g" (anche con altre parole intorno).
@@ -338,13 +373,16 @@ function renderRicette(box) {
   box.querySelectorAll("[data-rf]").forEach(b => b.onclick = () => { CS.rf = b.dataset.rf; renderCibo(); });
   box.querySelectorAll("[data-rec]").forEach(b => b.onclick = () => openRecipe(b.dataset.rec));
 }
-function openRecipe(id) {
-  const r = recipeById(id), sh = $("fsheet"); if (!r || !sh) return; CS.recipe = id;
-  const pic = FOOD().pics[id], d = cDay(), logs = r.main ? ["pr", "ce"] : Object.keys(r.for || {});
+function openRecipe(id, ctx) {
+  const r = recipeById(id), sh = $("fsheet"); if (!r || !sh) return; CS.recipe = id; CS.recCtx = ctx;
+  const pic = FOOD().pics[id], d = cDay(), logs = ctx ? [ctx.mid] : r.main ? ["pr", "ce"] : Object.keys(r.for || {});
+  const isOn = m => { const v = (fDay(d).m || {})[m]; return v && v === (ctx && ctx.mid === m ? ctx.oid : r.main ? id : (r.for || {})[m]); };
   sh.querySelector(".is-h").innerHTML = `<b>${esc(r.name)}</b><span class="rmeta">${r.min} min · ${esc(r.tools)}${r.main ? ` · ${r.one ? "1 pasto" : "2 pasti"}` : ""} · ${r.lvl === 2 ? "da imparare" : "facile"}</span>`;
   sh.querySelector(".is-c").innerHTML = `<div class="rhero">${pic ? `<img src="${pic}" alt="Il mio piatto">` : dishSVG(r.p, r.box, r.id, "dish big")}</div>
     <div class="rpic"><label class="btn sm" for="rPic">📷 ${pic ? "Cambia la foto" : "Foto del mio piatto"}</label><input type="file" id="rPic" accept="image/*" capture="environment" hidden>${pic ? `<button class="btn sm" id="rPicDel">Torna al disegno</button>` : ""}</div>
-    ${logs.length ? `<div class="rlog">${logs.map(m => `<button class="btn primary" data-rl="${m}">✓ Mangiato ${MEALN[m]}</button>`).join("")}</div><p class="note rlday">${d === todayISO() ? "Si segna su oggi" : "Si segna sul " + fmtDate(d)}</p>` : ""}
+    <div class="rlog"><button class="btn primary cookb" id="cookGo">▶ Cucina passo passo</button></div>
+    ${logs.length ? `<div class="rlog">${logs.map(m => isOn(m) ? `<button class="btn" data-rl="${m}" data-un="1">Togli: non l'ho mangiato ${MEALN[m]}</button>` : `<button class="btn${ctx ? " primary" : ""}" data-rl="${m}">✓ Fatto: mangiato ${MEALN[m]}</button>`).join("")}</div><p class="note rlday">${d === todayISO() ? "Si segna su oggi" : "Si segna sul " + fmtDate(d)}</p>` : ""}
+    ${plateBox(r, ctx && ctx.mid, d)}
     ${r.porta ? `<p class="rgo ${r.go}">${r.go === "p" ? "🎒 Si porta al lavoro, niente attrezzi" : r.go === "m" ? "🎒 Al lavoro col microonde" : "🏠 Solo a casa"}<small>${esc(r.porta)}</small></p>` : ""}
     <h3>Ingredienti${r.main && !r.one ? " (per 2 pasti)" : ""}</h3><ul class="ringr">${r.ingr.map(i => `<li>${esc(i)}</li>`).join("")}</ul>
     <h3>Passo passo</h3><ol class="rsteps">${r.steps.map((st, i) => `<li>${toolSVG(st.tool, st.p, r.id + i)}<div><small>${i + 1} · ${esc(TOOLN[st.tool] || st.tool)}</small><p>${esc(st.t)}</p>
@@ -353,14 +391,49 @@ function openRecipe(id) {
     ${r.p1 ? `<h3>${r.p2 ? "I due pasti" : "Come si mangia"}</h3><div class="rp"><p><b>${r.p2 ? "Pasto 1" : "✓"}</b> ${esc(r.p1)}</p>${r.p2 ? `<p><b>Pasto 2</b> ${esc(r.p2)}</p>` : ""}</div>` : ""}
     ${r.olio ? `<p class="note">Olio: ${esc(r.olio)}. Quello per cuocere è compreso.</p>` : ""}
     <p class="note">I disegni mostrano come dovrebbe venire. Con 📷 metti la foto del tuo piatto: diventa la copertina della ricetta.</p>`;
-  sh.hidden = false; document.documentElement.classList.add("noscroll"); sh.classList.remove("on"); void sh.offsetWidth; sh.classList.add("on");
-  sh.querySelector(".is-c").scrollTop = 0;
+  showSheet(sh);
+  $("cookGo").onclick = () => { closeRecipe(); cook(id, ctx); };
   $("rPic").onchange = e => { const f = e.target.files[0]; if (f) saveFoodPic(id, f); e.target.value = ""; };
   const del = $("rPicDel"); if (del) del.onclick = () => { delete FOOD().pics[id]; save(); openRecipe(id); renderCibo(); };
   sh.querySelectorAll("[data-kt]").forEach(b => b.onclick = () => kStart(+b.dataset.kt, b.dataset.kl));
-  sh.querySelectorAll("[data-rl]").forEach(b => b.onclick = () => { const mid = b.dataset.rl, oid = r.main ? id : r.for[mid]; setFDay(cDay(), x => x.m[mid] = oid);
-    const c = CHEER[mid] || ["Segnato 👌"]; toast(c[Math.floor(Math.random() * c.length)]); closeRecipe(); CS.tab = "oggi"; renderCibo(); });
+  sh.querySelectorAll("[data-rl]").forEach(b => b.onclick = () => { const mid = b.dataset.rl, oid = ctx && ctx.mid === mid ? ctx.oid : r.main ? id : r.for[mid];
+    logMeal(cDay(), mid, oid, !!b.dataset.un); closeRecipe(); CS.tab = "oggi"; renderCibo(); });
 }
+// ▶ CUCINA PASSO PASSO (20/11/2026): schermata intera, un passaggio alla volta (prima gli ingredienti), schermo sempre acceso,
+// alla fine "✓ L'ho mangiato" sul pasto da cui sei partito.
+let cookWake = null;
+async function cookAwake(on) { try { if (on && "wakeLock" in navigator && !cookWake) cookWake = await navigator.wakeLock.request("screen"); else if (!on && cookWake) { await cookWake.release(); cookWake = null; } } catch (e) { cookWake = null; } }
+function cook(id, ctx, i) {
+  const r = recipeById(id); if (!r) return; i = i || 0; const N = r.steps.length;
+  let el = $("cook"); if (!el) { el = document.createElement("div"); el.id = "cook"; el.className = "cook"; document.body.appendChild(el); }
+  document.documentElement.classList.add("noscroll"); cookAwake(true); CS.cook = { id, ctx, i };
+  const st = r.steps[i - 1], bar = `<div class="cbar">${[...Array(N + 2)].map((_, k) => `<i class="${k <= i ? "on" : ""}"></i>`).join("")}</div>`;
+  let body;
+  if (i === 0) { const got = CS.cookGot || {};
+    body = `<div class="cpic">${dishSVG(r.p, r.box, r.id, "dish")}</div><h2>${esc(r.name)}</h2><p class="cmeta">${r.min} min · ${esc(r.tools)}</p>
+      ${plateBox(r, ctx && ctx.mid, cDay())}<h3>Prima di iniziare, prepara${r.main && !r.one ? " (per 2 pasti)" : ""}</h3><div class="cing">${r.ingr.map((x, k) => `<button data-ci="${k}" class="${got[k] ? "on" : ""}"><i>${got[k] ? "✓" : ""}</i>${esc(x)}</button>`).join("")}</div>`; }
+  else if (i <= N) body = `<p class="cstep">Passo ${i} di ${N} · ${esc(TOOLN[st.tool] || st.tool)}</p><div class="cpic">${toolSVG(st.tool, st.p, r.id + (i - 1))}</div><p class="ctext">${esc(st.t)}</p>
+      ${st.ok ? `<p class="sok">✓ <b>Pronto quando:</b> ${esc(st.ok)}</p>` : ""}${st.tip ? `<p class="stip">💡 ${esc(st.tip)}</p>` : ""}
+      ${st.min ? `<button class="btn kt" data-kt="${st.min}">⏱ Avvia timer ${st.min} min</button>` : ""}`;
+  else { const pic = FOOD().pics[id], logs = ctx ? [ctx.mid] : r.main ? ["pr", "ce"] : Object.keys(r.for || {});
+    body = `<div class="cpic">${pic ? `<img src="${pic}" alt="">` : dishSVG(r.p, r.box, r.id, "dish")}</div><h2>Fatto! 👨‍🍳</h2>
+      ${r.p1 ? `<p class="ctext">${r.p2 ? `<b>Ora:</b> ${esc(r.p1)}<br><b>Per dopo:</b> ${esc(r.p2)}` : esc(r.p1)}</p>` : ""}${r.porta && r.p2 ? `<p class="stip">🎒 ${esc(r.porta)}</p>` : ""}
+      <div class="rlog">${logs.map(m => `<button class="btn primary" data-cl="${m}">✓ L'ho mangiato ${MEALN[m]}</button>`).join("")}</div>
+      <div class="rpic"><label class="btn sm" for="cPic">📷 Foto del mio piatto</label><input type="file" id="cPic" accept="image/*" capture="environment" hidden></div>`; }
+  el.innerHTML = `<div class="chead"><button class="cx" aria-label="Chiudi">✕</button><b>${esc(r.s || r.name)}</b></div>${bar}<div class="cbody">${body}</div>
+    <div class="cfoot">${i > 0 ? `<button class="btn" id="cPrev">‹ Indietro</button>` : `<span></span>`}${i <= N ? `<button class="btn primary" id="cNext">${i === 0 ? "Inizia ›" : i === N ? "Finito ›" : "Avanti ›"}</button>` : `<button class="btn" id="cEnd">Chiudi</button>`}</div>`;
+  el.querySelector(".cbody").scrollTop = 0;
+  const close = () => { el.remove(); CS.cook = null; CS.cookGot = null; document.documentElement.classList.remove("noscroll"); cookAwake(false); renderCibo(); };
+  el.querySelector(".cx").onclick = close; const e = $("cEnd"); if (e) e.onclick = close;
+  const nx = $("cNext"); if (nx) nx.onclick = () => cook(id, ctx, i + 1);
+  const pv = $("cPrev"); if (pv) pv.onclick = () => cook(id, ctx, i - 1);
+  el.querySelectorAll("[data-ci]").forEach(b => b.onclick = () => { CS.cookGot = CS.cookGot || {}; CS.cookGot[b.dataset.ci] = !CS.cookGot[b.dataset.ci]; cook(id, ctx, 0); });
+  el.querySelectorAll("[data-kt]").forEach(b => b.onclick = () => kStart(+b.dataset.kt, `${r.s || r.name} · passo ${i}`));
+  el.querySelectorAll("[data-cl]").forEach(b => b.onclick = () => { const mid = b.dataset.cl, oid = ctx && ctx.mid === mid ? ctx.oid : r.main ? id : r.for[mid];
+    logMeal(cDay(), mid, oid, false); close(); CS.tab = "oggi"; renderCibo(); });
+  const cp = $("cPic"); if (cp) cp.onchange = ev => { const f = ev.target.files[0]; if (f) saveFoodPic(id, f); ev.target.value = ""; };
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden && CS.cook) cookAwake(true); });
 // Timer di cucina (20/11/2026): l'utente è alle prime armi, ogni passaggio con un tempo ha il suo timer.
 // A fine tempo: bip (se l'audio è sbloccato), tocco aptico su iPhone, vibrazione su Android, festa a schermo.
 function kStart(min, label) {
@@ -391,7 +464,7 @@ function saveFoodPic(id, file) {
   const img = new Image(), url = URL.createObjectURL(file);
   img.onload = () => { const k = 560 / Math.max(img.width, img.height), c = document.createElement("canvas"); c.width = Math.round(img.width * Math.min(1, k)); c.height = Math.round(img.height * Math.min(1, k));
     c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
-    FOOD().pics[id] = c.toDataURL("image/jpeg", .7); try { save(); toast("Foto salvata 📷"); } catch (e) { toast("Spazio pieno: foto non salvata"); } openRecipe(id); renderCibo(); };
+    FOOD().pics[id] = c.toDataURL("image/jpeg", .7); try { save(); toast("Foto salvata 📷"); } catch (e) { toast("Spazio pieno: foto non salvata"); } if (CS.cook) cook(CS.cook.id, CS.cook.ctx, CS.cook.i); else openRecipe(id, CS.recCtx); renderCibo(); };
   img.src = url;
 }
 
