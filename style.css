@@ -1457,3 +1457,32 @@ i.mine{font-style:normal;font-size:10.5px;font-weight:700;padding:1px 6px;border
 .occhio ul{margin:8px 0 0;padding-left:18px;display:grid;gap:5px;font-size:13px;line-height:1.4}
 .xrows .qrow:first-child{border-top:0}
 .sc-alt .row input{flex:1;width:auto;min-width:0}
+/* CIBO · in casa, componi il piatto, ricette di Claude (20/11/2026) */
+.hvopen{display:grid;gap:4px;text-align:left;width:100%;color:var(--ink);border:1px dashed color-mix(in srgb,var(--accent) 60%,var(--line))}
+.hvopen span{font-size:13px;color:var(--muted);line-height:1.4}
+.hv{display:grid;gap:10px}
+.hvh{display:flex;justify-content:space-between;align-items:center}
+.hv textarea{width:100%;padding:9px 11px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:16px;resize:vertical}
+.hvr{display:grid;grid-template-columns:54px 1fr;gap:10px;align-items:center;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:6px 10px;color:var(--ink);width:100%;margin-top:6px}
+.hvr svg{width:54px;height:54px}
+.hvr small{display:block;font-size:12px;color:var(--muted)}
+.hvnew{border-top:1px solid var(--line);padding-top:10px;display:grid;gap:8px}
+.hvnew h3{margin:0!important}
+.hvnew .note{margin:0}
+.hvok{display:grid;gap:4px}
+.hvok small{color:var(--muted);font-size:12.5px}
+.psub{margin:8px 0 4px;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.ptiles{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.ptile{display:grid;justify-items:center;gap:2px;padding:6px 3px 7px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:11.5px;line-height:1.15;text-align:center;opacity:.72}
+.ptile svg.pico{width:40px;height:40px}
+.ptile .pnone{font-style:normal;font-size:22px;height:40px;display:grid;place-items:center}
+.ptile.on{opacity:1;color:var(--ink);border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,var(--surface));box-shadow:0 0 0 1px var(--accent) inset}
+.cpempty{padding:40px 10px;text-align:center;color:var(--muted);border:2px dashed var(--line);border-radius:50%;width:220px;height:220px;margin:0 auto;display:grid;place-items:center;font-size:14px}
+.hv,.hv>*{min-width:0}
+.hv textarea,.est textarea,.xform textarea{box-sizing:border-box;max-width:100%}
+.ptiles{grid-template-columns:repeat(4,minmax(0,1fr))}
+.hv .qfor{flex-wrap:wrap}
+.cpbar{position:sticky;bottom:0;margin:12px -4px 0;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;background:color-mix(in srgb,var(--raised) 94%,transparent);border:1px solid var(--accent);border-radius:14px;backdrop-filter:blur(6px)}
+.cpbar span{font-size:13.5px}
+.cpbar b{color:var(--accent)}
+.qfor{flex-wrap:wrap}

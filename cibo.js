@@ -18,7 +18,7 @@ const gymAuto = d => Object.values(D.sessions).some(s => s.date === d && hasData
 const isGym = d => { const g = fDay(d).gym; return g === true || g === false ? g : gymAuto(d); };
 // scala 80/40/0 del PT adattata: palestra oggi = 80, palestra ieri = 40, altrimenti 0
 const lunchLvl = d => isGym(d) ? 80 : isGym(addDays(d, -1)) ? 40 : 0;
-const optsFor = (m, d) => m.main ? [...frOpts(d), ...mainRecipes().map(r => ({ id: r.id, t: r.s || r.name, d: r.one ? r.p1 : `Pasto 1: ${r.p1} · Pasto 2: ${r.p2}`, p: r.p, r: r.id, box: r.box, go: r.go, porta: r.porta })), ...CB.mainExtra.filter(e => !e.only || e.only === m.id)] : (m.gym && isGym(d) ? m.gym : m.opts);
+const optsFor = (m, d) => m.main ? [...frOpts(d), ...mainRecipes().map(r => ({ id: r.id, t: r.s || r.name, d: r.one ? r.p1 : `Pasto 1: ${r.p1} · Pasto 2: ${r.p2}`, p: r.p, r: r.id, box: r.box, go: r.go, porta: r.porta })), ...CB.mainExtra.filter(e => !e.only || e.only === m.id)] : [...(m.gym && isGym(d) ? m.gym : m.opts), ...CB.recipes.filter(r => r.mine && r.for && r.for[m.id]).map(r => ({ id: r.id, t: r.s, d: "La tua ricetta", p: r.p, r: r.id, go: r.go, porta: r.porta }))];
 const shiftOf = d => CB.shifts.find(x => x.id === fDay(d).turno) || null;
 const whereOf = (d, mid) => { const sh = shiftOf(d); return sh ? sh.where[mid] || "casa" : "casa"; };
 const fits = (o, w) => w === "zero" ? !o.go || o.go === "p" : w === "micro" ? !o.go || o.go !== "c" : true;
@@ -57,6 +57,7 @@ function frOpts(d) { const out = frList().filter(x => x.d <= d && dDiff(x.d, d) 
 const frItem = (d, oid) => /^fr_/.test(oid || "") ? (fDay(d).fr || {})[oid] || frList().find(x => "fr_" + x.id === oid) || null : null;
 function baseQ(mid, oid, d) {
   if (!oid || oid === "skip" || oid === "libero" || oid === "x") return null;
+  const ur = recipeById(oid); if (ur && ur.mine) return applySubs(ur.q.map(r => [...r]));
   if (mid === "pr" || mid === "ce") {
     const fr = frItem(d, oid), key = fr ? "rist" : /^fr_/.test(oid) ? null : oid; if (!key) return null;
     const r = recipeById(key), spec = CB.mq[key]; if (!spec) return null;
@@ -93,7 +94,7 @@ function readFood(txt, size, oneEach) {
     // tutti gli alimenti del pezzo ("pasta al sugo" = pasta + sugo); la quantità scritta vale per il primo
     const hits = []; let rest = p;
     for (;;) { const k = kwList().find(([re]) => re.test(rest)); if (!k) break; const m = rest.match(k[0]), at = m.index + m[1].length;
-      hits.push([k[1], at]); const end = rest.slice(at).search(/[^a-z]|$/); rest = rest.slice(0, at) + " ".repeat(Math.max(k[2], end)) + rest.slice(at + Math.max(k[2], end)); }
+      if (!hits.some(h => h[0] === k[1])) hits.push([k[1], at]); const end = rest.slice(at).search(/[^a-z]|$/); rest = rest.slice(0, at) + " ".repeat(Math.max(k[2], end)) + rest.slice(at + Math.max(k[2], end)); }
     if (!hits.length) { const left = p.replace(/[^a-z ]/g, " ").split(/\s+/).filter(w => w.length > 2 && !FILL.has(w)); if (left.length) miss.push(p); continue; }
     hits.sort((a, b) => a[1] - b[1]); if (oneEach) hits.length = 1;
     hits.forEach(([hit], hi) => {
@@ -235,7 +236,7 @@ const nextMeal = d => { const day = fDay(d); const id = RING.find(k => !mealV(da
 
 // ---------- vista ----------
 function renderCibo() {
-  FOOD(); syncProds(); const box = $("cbody"); if (!box) return;
+  FOOD(); syncProds(); syncRecipes(); const box = $("cbody"); if (!box) return;
   document.querySelectorAll("#cseg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.ct === CS.tab));
   if (CS.tab === "oggi") renderOggi(box); else if (CS.tab === "ricette") renderRicette(box); else if (CS.tab === "scambi") renderScambi(box); else renderSpesa(box);
 }
@@ -665,17 +666,217 @@ function estBind(sh, mid, oid) {
     if (i >= 0) e.L[i][1] = g; else e.L.push(["olio", g]); qPersist(); openOpt(mid, oid, true); });
 }
 
+
+// ---------- 🧺 COSA HO IN CASA + ricette nuove di Claude (20/11/2026: "comporre ricette partendo da quali e quanti ingredienti ho, anche con una foto") ----------
+// 1) l'app confronta quello che hai con le ricette che conosce (cosa puoi fare subito, cosa manca);
+// 2) Claude inventa una ricetta nuova rispettando il piano e risponde in un formato fisso che l'app importa tra "Le mie" ricette
+//    (D.food.myrec[id] = { name, min, tools, pasti, meal, q [[alimento, quantità] per 1 pasto], steps [{t, min}], extra [righe non capite], at }).
+const myRec = () => { const f = FOOD(); return (f.myrec = f.myrec || {}); };
+const FDK = { pollo: "pollo", polloc: "pollo", carnec: "manzo", manzo: "manzo", hamb: "manzo", macinato: "polpette", ragu: "sugo", merluzzo: "pesce", pescec: "pesce", salmone: "salmone", gamberi: "gamberi", tonno: "tonno", uovo: "uova", albume: "uova", albumeg: "uova", mozz: "mozzarella", mozzn: "mozzarella", bresaola: "bresaola", fiocchi: "fiocchi", yogurt: "yogurt", riso: "riso", risoc: "riso", rprec: "riso", pasta: "pasta", pastac: "pasta", pastai: "pasta", cous: "cous", farro: "farro", farrop: "farro", quinoa: "farro", gnocchi: "gnocchi", patate: "patate", patatec: "patate", pdolci: "pdolci", pane: "pane", panino: "pane", segale: "pane", piadina: "piadina", cornflakes: "cornflakes", galletta: "gallette", vgrill: "verdure", vmiste: "verdure", verdure: "verdure", zucchine: "verdure", peperoni: "verdure", spinaci: "spinaci", insalata: "insalata", rucola: "rucola", pomodorini: "pomodorini", passata: "sugo", noce: "noci", ceci: "ceci", prot: "proteine", fritto: "cotoletta", pizza: "pizza" };
+const fdOf = f => { const o = FO(f); if (o && o.mine) { const p = prods()[f.slice(2)]; return p && p.sub ? FDK[p.sub] : null; } return FDK[f]; };
+const drawOf = L => [...new Set(L.filter(([, q]) => q).map(([f]) => fdOf(f)).filter(Boolean))].slice(0, 4);
+const STOOL = [[/friggitrice/i, "friggitrice"], [/microonde/i, "microonde"], [/cuociriso/i, "cuociriso"], [/padella/i, "padella"], [/pentola|bollent|bolle|lessa|scola/i, "pentola"], [/forno/i, "forno"], [/tagli|trita|affetta/i, "tagliere"], [/contenitor|frigo/i, "contenitore"], [/ciotola|mescola|sbatti|condisci/i, "ciotola"]];
+function syncRecipes() {
+  CB.recipes = CB.recipes.filter(r => !r.mine);
+  for (const [id, x] of Object.entries(myRec())) {
+    const main = x.meal === "pr" || x.meal === "ce", n = Math.max(1, x.pasti || 1);
+    CB.recipes.push({ id: "u_" + id, mine: 1, name: x.name, s: x.name.length > 22 ? x.name.slice(0, 21) + "…" : x.name, min: x.min || 20, lvl: 1, tools: x.tools || "", q: x.q,
+      main, one: n === 1, for: main ? undefined : { [x.meal]: "u_" + id }, cat: main ? undefined : x.meal === "col" ? "col" : "sp", cb: {}, go: "c", p: drawOf(x.q),
+      p1: n > 1 ? "metà subito" : "", p2: n > 1 ? "l'altra metà in un contenitore, in frigo" : "",
+      ingr: [...x.q.filter(([, q]) => q).map(([f, q]) => qText(f, Math.round(q * n * 100) / 100)), ...(x.extra || [])],
+      steps: x.steps.map(st => { const tl = (STOOL.find(([re]) => re.test(st.t)) || [0, "ciotola"])[1]; return { tool: tl, t: st.t, min: st.min || undefined, p: drawOf(readFood(st.t, "n").items.map(i => [i.f, 1])).slice(0, 3) }; }) });
+  }
+}
+// 🥫 IN CASA (20/11/2026: "anche senza scrivere: le caselle degli ingredienti che spesso ho in casa, così compongo il piatto")
+// D.food.pantry = { alimento: 1 } = ce l'ho; resta ricordato. Le caselle: quelle del piano + i tuoi prodotti + quello che scrivi.
+const PGRID = [["Proteine", ["pollo", "manzo", "macinato", "merluzzo", "salmone", "gamberi", "uovo", "albumeg", "tonno", "bresaola", "mozz", "fiocchi", "yogurt", "ceci", "prot"]],
+  ["Carboidrati", ["riso", "rprec", "pasta", "cous", "farro", "gnocchi", "patate", "pdolci", "pane", "segale", "piadina", "cornflakes", "galletta"]],
+  ["Verdure", ["vgrill", "vmiste", "zucchine", "peperoni", "spinaci", "insalata", "rucola", "pomodorini", "passata"]],
+  ["Altro", ["noce", "parmigiano", "latte", "mozzn"]]];
+const pantry = () => { const f = FOOD(); return (f.pantry = f.pantry || {}); };
+const pantryOn = () => Object.keys(pantry()).filter(f => FO(f));
+const shortN = f => FO(f).n.replace(/ \(.*\)$/, "").replace(/ · .*/, "");
+function pantryTiles(cls = "pt", sel) {
+  const P = pantry(), grid = new Set(PGRID.flatMap(([, L]) => L)), extra = [...Object.keys(CB.foods).filter(f => FO(f).mine), ...pantryOn()].filter((f, i, a) => !grid.has(f) && a.indexOf(f) === i);
+  const t = f => `<button class="ptile${(sel ? sel(f) : P[f]) ? " on" : ""}" data-${cls}="${f}">${fdOf(f) ? dishSVG([fdOf(f)], null, f, "pico") : `<i class="pnone">${FO(f).mine ? "🏷" : "•"}</i>`}<span>${esc(shortN(f))}</span></button>`;
+  return [...PGRID, ...(extra.length ? [["Tuoi e scritti da te", extra]] : [])].map(([n, L]) => `<p class="psub">${n}</p><div class="ptiles">${L.filter(f => FO(f)).map(t).join("")}</div>`).join("");
+}
+// 🍽 COMPONI IL TUO PIATTO: tocchi gli ingredienti, l'app mette i grammi del piano, tu correggi; poi lo segni o chiedi a Claude come cucinarlo
+const PROTG = { pollo: 200, manzo: 200, macinato: 200, merluzzo: 250, pescec: 200, salmone: 150, gamberi: 250, tonno: 150, uovo: 2, albumeg: 150, albume: 2, bresaola: 100, mozz: 1, mozzn: 125, fiocchi: 150, ceci: 150, polloc: 150, carnec: 150, hamb: 1 };
+function compGrams(f, meal, d, L) {
+  const o = FO(f), main = meal === "pr" || meal === "ce"; let base = f;
+  if (o.mine) { const p = prods()[f.slice(2)]; if (p && p.sub) base = p.sub; }
+  const conv = g => o.mine || isW(o) ? Math.round(g) : g;   // i prodotti sono in grammi
+  const toG = (bf, q) => isW(FO(bf)) ? q : q * FO(bf).g;
+  if (!main) return o.mine ? (prods()[f.slice(2)] || {}).d || o.d : o.d;
+  if (PROTG[base] != null) return o.mine ? Math.round(toG(base, PROTG[base])) : PROTG[base];
+  const cn = Object.keys(CB.carbFood).find(k => CB.carbFood[k] === base);
+  if (cn) { let c = carbQ(cn, meal, d); if (!c || !c[1]) { const row = CB.carbs.find(r => r[0] === cn); const m = row && row[2].match(/(\d+)/); c = [base, m ? +m[1] : FO(base).d]; if (row && /½|¾/.test(row[2])) c[1] = /½/.test(row[2]) ? .5 : .75; } return o.mine ? Math.round(toG(base, c[1])) : c[1]; }
+  if (VEG.has(base)) return L.some(([x]) => VEG.has(x)) ? 150 : 200;
+  return conv(o.d);
+}
+function openCompose(keep) {
+  const sh = $("fsheet"), d = cDay(), C = CS.cp = (keep && CS.cp) || { meal: (CS.hv && CS.hv.meal) || "pr", L: [] }, y = keep && !sh.hidden ? sh.querySelector(".is-c").scrollTop : 0;
+  const inPlate = f => C.L.some(([x]) => x === f), t = valOfQ(C.L), L0 = C.meal === "pr" ? lunchLvl(d) : null;
+  sh.querySelector(".is-h").innerHTML = `<b>🍽 Componi il tuo piatto</b><span class="rmeta">tocca gli ingredienti, poi correggi i grammi</span>`;
+  sh.querySelector(".is-c").innerHTML = `<div class="qfor"><span>Per</span>${[...HVM, ["s2", "Spuntino 2"]].map(([k, n]) => `<button class="chip" data-cm="${k}" aria-pressed="${C.meal === k}">${n}</button>`).join("")}</div>
+    ${L0 === 0 ? `<p class="note">Oggi a pranzo, secondo la scala 80/40/0, niente carboidrato. Se lo metti, l'app propone la porzione piccola.</p>` : ""}
+    <div class="rhero">${C.L.length ? dishSVG(drawOf(C.L), null, "cp" + C.L.length, "dish big") : `<div class="cpempty">Il piatto è vuoto:<br>tocca qui sotto quello che ci metti</div>`}</div>
+    ${C.L.length ? `<div class="qbox cpbox">${rowsHTML(C.L)}<p class="qtot"><b>~${fmt(t[0])} kcal</b><span>proteine ${t[1]} g · carboidrati ${t[2]} g · grassi ${t[3]} g</span></p></div>
+      <div class="rlog"><button class="btn primary" id="cpLog">✓ Mangiato ${MEALN[C.meal] || "a " + (mealDef(C.meal) || { name: "" }).name.toLowerCase()}</button><button class="btn" id="cpAsk">📷 Come lo cucino? Chiedi a Claude</button></div>` : ""}
+    <p class="plab">Nel piatto · tocca per mettere o togliere</p><div class="pgridt">${pantryTiles("cp", inPlate)}</div>
+    <div class="qadd"><input id="cpI" placeholder="Altro? Cerca (es. parmigiano)" autocomplete="off"><div class="qhits" id="cpH"></div></div>
+    ${condBox("altro")}
+    ${C.L.length ? `<div class="cpbar"><span>🍽 ${C.L.filter(([f, q]) => q && !CONDF.includes(f)).length} ingredienti · <b>~${fmt(t[0])} kcal</b></span><button class="btn sm" id="cpTop">Vedi il piatto ↑</button></div>` : ""}`;
+  const tp = () => { const b = $("cpTop"); if (b) b.onclick = () => sh.querySelector(".is-c").scrollTo({ top: 0, behavior: "smooth" }); };
+  if (sh.hidden || !keep) showSheet(sh); else sh.querySelector(".is-c").scrollTop = y;
+  const toggle = f => { const i = C.L.findIndex(([x]) => x === f); if (i >= 0) C.L.splice(i, 1); else { C.L.push([f, compGrams(f, C.meal, d, C.L)]); if ((C.meal === "pr" || C.meal === "ce") && !C.L.some(([x]) => x === "olio")) C.L.push(["olio", 2]); } try { iosTap(); } catch (_) {} openCompose(true); };
+  sh.querySelectorAll("[data-cp]").forEach(b => b.onclick = () => toggle(b.dataset.cp));
+  sh.querySelectorAll("[data-cm]").forEach(b => b.onclick = () => { C.meal = b.dataset.cm; C.L = C.L.map(([f, q]) => [f, f === "olio" ? q : compGrams(f, C.meal, d, [])]); openCompose(true); });
+  tp(); const box = sh.querySelector(".cpbox"); if (box) bindRows(box, C.L, () => openCompose(true));
+  const ci = $("cpI"), ch = $("cpH"); ci.oninput = () => { ch.innerHTML = ci.value.trim() ? foodHits(ci.value).map(f => `<button class="chip" data-cpa="${f}">${esc(FO(f).n)}</button>`).join("") : ""; ch.querySelectorAll("[data-cpa]").forEach(b => b.onclick = () => { pantry()[b.dataset.cpa] = 1; save(); toggle(b.dataset.cpa); }); };
+  const lg = $("cpLog"); if (lg) lg.onclick = () => { const it = C.L.filter(([, q]) => q);
+    const e = { id: "x" + Date.now().toString(36), meal: C.meal, t: ("Il mio piatto: " + it.filter(([f]) => !CONDF.includes(f)).map(([f]) => shortN(f).toLowerCase()).join(", ")).slice(0, 80), s: "n", it: it.map(r => [...r]), at: Date.now() };
+    setFDay(d, x => x.x = [...(x.x || []), e]); CS.cp = null; closeRecipe(); CS.tab = "oggi"; renderCibo(); toast(`Segnato: ~${valOfQ(e.it)[0]} kcal`); };
+  const ak = $("cpAsk"); if (ak) ak.onclick = async () => { const H = CS.hv = CS.hv || { open: false, meal: C.meal, r: "" }; H.meal = C.meal; H.t = C.L.filter(([, q]) => q).map(([f, q]) => qText(f, q)).join(", ");
+    const txt = hvPrompt().replace("con quello che ho in casa", "con esattamente questi ingredienti e queste quantità");
+    try { if (navigator.share) { await navigator.share({ text: txt }); } else throw 0; } catch (e) { if (e && e.name === "AbortError") return; try { await navigator.clipboard.writeText(txt); toast("Richiesta copiata: apri Claude e incollala"); } catch (_) {} }
+    toast("Quando Claude risponde: Ricette → 🧺 → incolla la ricetta per salvarla"); };
+}
+// quello che ti serve per una ricetta, a gruppi (una verdura vale l'altra; il carboidrato si può cambiare, tranne dove è il piatto)
+const VEG = new Set(["vgrill", "vmiste", "verdure", "zucchine", "peperoni", "spinaci", "insalata", "rucola", "pomodorini"]);
+const CARBS = new Set(["riso", "risoc", "rprec", "pasta", "pastac", "pastai", "cous", "farro", "farrop", "quinoa", "gnocchi", "patate", "patatec", "pdolci", "pane", "panino", "piadina"]);
+const PANTRY = new Set([...CONDF, "cacao", "passata"]);
+const EQ = { polloc: "pollo", pastac: "pasta", pastai: "pasta", risoc: "riso", rprec: "riso", farrop: "farro", albume: "albumeg", mozzn: "mozz", pescec: "merluzzo", patatec: "patate" };
+const STRICT = new Set(["pastatonno", "frittatapasta", "pizzapiadina", "gnocchi", "risosaltato", "farro"]);
+function grpOf(f, flexCarb) { if (FO(f) && FO(f).mine) { const p = prods()[f.slice(2)]; f = p && p.sub || f; } if (VEG.has(f)) return "veg"; if (flexCarb && CARBS.has(f)) return "carb"; return EQ[f] || f; }
+function needOf(r, meal, d) {
+  const mid = r.main ? (meal === "ce" ? "ce" : "pr") : Object.keys(r.for || {})[0], oid = r.main ? r.id : (r.for || {})[mid];
+  const L = mid && oid ? baseQ(mid, oid, d) : null; if (!L) return null;
+  const flex = r.main && !STRICT.has(r.id); const need = new Map();
+  for (const [f, q] of L) { if (!q || PANTRY.has(f)) continue; const g = grpOf(f, flex); if (!need.has(g)) need.set(g, { f, g: gramsOf(f, q) }); }
+  return need;
+}
+function hvMatch(text, meal, d) {
+  const items = readFood(text || "", "n").items; for (const f of pantryOn()) if (!items.some(i => i.f === f) && FO(f)) items.push({ f, q: FO(f).d, t: "" });
+  if (!items.length) return { items, list: [] };
+  const have = new Map(); for (const i of items) { const exp = /\d/.test(i.t); for (const flex of [true, false]) { const g = grpOf(i.f, flex); const h = have.get(g) || { g: 0, exp: true }; have.set(g, { g: h.g + gramsOf(i.f, i.q), exp: h.exp && exp }); } }
+  const want = meal === "pr" || meal === "ce" ? r => r.main : meal === "col" ? r => r.cat === "col" || (r.for && r.for.col) : r => r.cat === "sp" || (r.for && (r.for.s1 || r.for.s2));
+  const list = [];
+  for (const r of CB.recipes.filter(want)) { const need = needOf(r, meal, d); if (!need || !need.size) continue;
+    const miss = [], low = []; let ok = 0;
+    for (const [g, n] of need) { const h = have.get(g); if (!h) miss.push(g === "veg" ? "verdure" : g === "carb" ? "un carboidrato" : FO(n.f).n.replace(/ \(.*\)$/, "").toLowerCase()); else { ok++; if (h.exp && h.g < n.g * .6) low.push(FO(n.f).n.replace(/ \(.*\)$/, "").toLowerCase()); } }
+    if (ok / need.size >= .5) list.push({ r, miss, low, sc: miss.length * 10 - ok });
+  }
+  return { items, list: list.sort((a, b) => a.sc - b.sc).slice(0, 6) };
+}
+const HVM = [["pr", "Pranzo"], ["ce", "Cena"], ["col", "Colazione"], ["s1", "Spuntino"]];
+function hvCard() {
+  const H = CS.hv = CS.hv || { open: false, t: "", meal: "pr", r: "" };
+  if (!H.open) return `<button class="card hvopen" id="hvOpen"><b>🧺 Cosa cucino con quello che ho?</b><span>Scrivi o fotografa cosa hai: ti dico cosa puoi fare subito, oppure Claude inventa una ricetta nuova per il tuo piano.</span></button>`;
+  return `<div class="card hv"><div class="hvh"><b>🧺 Cosa hai in casa?</b><button class="btn sm" id="hvX">Chiudi</button></div>
+    <p class="plab">In casa · tocca quello che hai (l'app se lo ricorda)</p>
+    <div class="pgridt">${pantryTiles()}</div>
+    <textarea id="hvT" rows="2" placeholder="Altro? Scrivilo: es. pollo 300 g, 4 uova, mozzarella" autocomplete="off">${esc(H.t)}</textarea>
+    <button class="btn primary cookb" id="cpOpen">🍽 Componi il tuo piatto</button>
+    <div class="qfor"><span>Per</span>${HVM.map(([k, n]) => `<button class="chip" data-hm="${k}" aria-pressed="${H.meal === k}">${n}</button>`).join("")}</div>
+    <div class="hvres">${hvRes()}</div>
+    <div class="hvnew"><h3>✨ Una ricetta nuova</h3><p class="note">Claude la inventa con questi ingredienti, rispettando il piano: grammi di oggi, gusti, attrezzi, massimo 20-25 minuti e spiegata passo passo. Se vuoi aggiungi una foto di frigo o dispensa.</p>
+      <div class="row"><label class="btn sm" for="hvPic">📷 ${H.pic ? "Foto pronta ✓" : "Foto (facoltativa)"}</label><input type="file" id="hvPic" accept="image/*" capture="environment" hidden><button class="btn primary sm" id="hvAsk">Chiedi a Claude</button></div>
+      <textarea id="hvR" rows="3" placeholder="Incolla qui la ricetta di Claude">${esc(H.r)}</textarea><div class="hvprev">${hvPrev()}</div></div></div>`;
+}
+function hvRes() {
+  const H = CS.hv; if (!(H.t || "").trim() && !pantryOn().length) return `<p class="note">Tocca le caselle di quello che hai, o scrivilo (con le quantità se le sai): l'app cerca tra le ricette.</p>`;
+  const m = hvMatch(H.t, H.meal, cDay());
+  if (!m.items.length) return `<p class="xpno">Non ho riconosciuto gli ingredienti: scrivili separati da virgole (es. "pollo, zucchine, riso").</p>`;
+  return `<p class="plab">Hai: ${m.items.map(i => esc(FO(i.f).n.replace(/ \(.*\)$/, "").toLowerCase())).join(" · ")}</p>
+    ${m.list.length ? m.list.map(({ r, miss, low }) => `<button class="hvr" data-rec="${r.id}">${dishSVG(r.p, r.box, r.id, "dish")}<div><b>${esc(r.s || r.name)}</b><small>${miss.length ? `ti manca: ${esc(miss.join(", "))}` : "✓ hai tutto"}${low.length ? ` · poco ${esc(low.join(", "))}` : ""} · ${r.min} min</small></div></button>`).join("")
+      : `<p class="note">Con questi ingredienti nessuna ricetta del piano torna: chiedi a Claude una ricetta nuova qui sotto.</p>`}`;
+}
+function hvGrams(meal, d) {
+  if (meal === "col") return "una colazione da ~400 kcal con almeno 25 g di proteine";
+  if (meal === "s1") return "uno spuntino da 150-250 kcal con un po' di proteine";
+  const c = carbQ("Riso", meal, d), L = lunchLvl(d);
+  return `1 pasto = proteina ~200 g da cruda (pollo, pesce, manzo magro) oppure 2 uova + 150 g di albume, verdure ~200 g, ${c && c[1] ? `carboidrato ${c[1]} g da crudo (riso o pasta; patate 3-4 volte tanto)` : "niente carboidrato oggi (doppia verdura)"}, condimento 1 cucchiaio d'olio in tutto${meal === "pr" && L === 0 ? "" : ""}`;
+}
+function hvPrompt() {
+  const H = CS.hv, d = cDay(), mn = { pr: "pranzo", ce: "cena", col: "colazione", s1: "uno spuntino" }[H.meal], w = whereOf(d, H.meal === "s1" ? "s1" : H.meal);
+  return `Inventami una ricetta per ${mn} con quello che ho in casa: ${(H.t || "").trim() || "guarda la foto"}.${H.pic ? " Nella foto vedi frigo o dispensa." : ""}
+Vincoli:
+- So cucinare solo cose base ma voglio imparare: passaggi semplici e spiegati (fuoco, temperatura, tempi, come capire quando è pronto), massimo 20-25 minuti, sporcare poco.
+- Attrezzi: padella antiaderente, pentola, friggitrice ad aria, forno, microonde, cuociriso.${w === "zero" ? " Lo porto al lavoro e lì non ho attrezzi: deve essere buono freddo." : w === "micro" ? " Lo porto al lavoro e lì ho solo il microonde." : ""}
+- Quantità: ${hvGrams(H.meal, d)}.
+- Non mangio frutta; frutta secca solo noci; niente yogurt greco, crema di riso o burro d'arachidi; il tonno solo sott'olio e solo nella pasta.
+- Condisco con olio a giri (1 giro = 5 g), un po' di salsa di soia e sale: dimmi quale usare e quanto. Il gusto deve essere buono e bilanciato.
+Rispondi ESATTAMENTE in questo formato (l'app lo legge):
+RICETTA: nome
+TEMPO: 15 min
+ATTREZZI: padella
+PASTI: 1
+INGREDIENTI (per 1 pasto):
+pollo 200 g
+riso 80 g
+zucchine 150 g
+olio 10 g
+salsa di soia 5 g
+PASSI:
+1. cosa fare (5 min)
+2. cosa fare`;
+}
+function parseRecipe(txt) {
+  const T = (txt || "").replace(/\*\*/g, ""), g = re => { const m = T.match(re); return m ? m[1].trim() : ""; };
+  const name = g(/ricetta\s*:\s*(.+)/i); if (!name) return null;
+  const lines = T.split(/\n/).map(l => l.trim()), iI = lines.findIndex(l => /^ingredienti/i.test(l)), iP = lines.findIndex(l => /^(passi|procedimento|preparazione)/i.test(l));
+  if (iI < 0 || iP < 0) return null;
+  const ing = lines.slice(iI + 1, iP).filter(Boolean).map(l => l.replace(/^[-•*·]\s*/, ""));
+  const q = [], extra = [];
+  for (const l of ing) { const r = readFood(l, "n", true); if (r.items.length && /\d/.test(l)) q.push([r.items[0].f, r.items[0].q]); else extra.push(l); }
+  const steps = lines.slice(iP + 1).filter(l => /^\d+[.)]/.test(l)).map(l => { const t = l.replace(/^\d+[.)]\s*/, ""), m = t.match(/(\d+)\s*(?:-\s*\d+\s*)?(?:min|minuti|′)/i); return { t, min: m ? +m[1] : undefined }; });
+  if (!q.length || !steps.length) return null;
+  return { name: name.slice(0, 60), min: +(g(/tempo\s*:\s*(\d+)/i)) || 20, tools: g(/attrezzi\s*:\s*(.+)/i).slice(0, 40), pasti: Math.min(4, +(g(/pasti\s*:\s*(\d)/i)) || 1), q, steps, extra };
+}
+function hvPrev() {
+  const H = CS.hv; if (!(H.r || "").trim()) return "";
+  const x = parseRecipe(H.r); if (!x) return `<p class="xpno">Non riesco a leggerla: deve avere "RICETTA:", "INGREDIENTI" e "PASSI" come nel formato chiesto. Chiedi a Claude di riscriverla in quel formato.</p>`;
+  const v = valOfQ(x.q);
+  return `<div class="hvok"><b>✓ ${esc(x.name)}</b><small>${x.min} min · ${x.steps.length} passi · ~${v[0]} kcal a pasto · P ${v[1]} · C ${v[2]} · G ${v[3]}</small>${x.extra.length ? `<small class="xmiss">Non contati: ${esc(x.extra.join(", "))}</small>` : ""}<button class="btn primary" id="hvSave">Salva tra le mie ricette</button></div>`;
+}
+function hvBind(box) {
+  const H = CS.hv; const o = $("hvOpen"); if (o) o.onclick = () => { H.open = true; renderCibo(); setTimeout(() => { const t = $("hvT"); if (t) t.focus(); }, 60); };
+  if (!H.open || !$("hvT")) return;
+  const res = () => { const z = box.querySelector(".hvres"); z.innerHTML = hvRes(); z.querySelectorAll("[data-rec]").forEach(b => b.onclick = () => openRecipe(b.dataset.rec)); };
+  res();
+  $("hvX").onclick = () => { H.open = false; renderCibo(); };
+  $("hvT").oninput = e => { H.t = e.target.value; res(); };
+  // quello che scrivi diventa una casella "in casa"
+  $("hvT").onchange = e => { const it = readFood(e.target.value, "n").items; if (!it.length) return; const P = pantry(); let n = 0; for (const i of it) if (!P[i.f]) { P[i.f] = 1; n++; } if (n) { save(); const g = box.querySelector(".pgridt"); g.innerHTML = pantryTiles(); bindPT(); res(); } };
+  const bindPT = () => box.querySelectorAll("[data-pt]").forEach(b => b.onclick = () => { const P = pantry(), f = b.dataset.pt; if (P[f]) delete P[f]; else P[f] = 1; save(); b.classList.toggle("on", !!P[f]); try { iosTap(); } catch (_) {} res(); });
+  bindPT();
+  $("cpOpen").onclick = () => openCompose();
+  box.querySelectorAll("[data-hm]").forEach(b => b.onclick = () => { H.meal = b.dataset.hm; box.querySelectorAll("[data-hm]").forEach(x => x.setAttribute("aria-pressed", x === b)); res(); });
+  $("hvPic").onchange = e => { H.pic = e.target.files[0] || null; e.target.value = ""; renderCibo(); };
+  $("hvAsk").onclick = async () => { if (!(H.t || "").trim() && !H.pic) return toast("Scrivi cosa hai o fai una foto");
+    const txt = hvPrompt();
+    try { if (H.pic) { const f = new File([H.pic], "ingredienti.jpg", { type: H.pic.type || "image/jpeg" }); if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], text: txt }); return; } }
+      else if (navigator.share) { await navigator.share({ text: txt }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
+    try { await navigator.clipboard.writeText(txt); toast("Richiesta copiata: apri Claude e incollala" + (H.pic ? " con la foto" : "")); } catch (_) { toast("Apri Claude e scrivigli cosa hai"); } };
+  const prev = () => { const z = box.querySelector(".hvprev"); z.innerHTML = hvPrev(); const sv = $("hvSave"); if (sv) sv.onclick = () => { const x = parseRecipe(H.r); if (!x) return;
+    const id = Date.now().toString(36); myRec()[id] = { ...x, meal: H.meal, at: Date.now() }; save(); syncRecipes(); H.r = ""; H.open = false; CS.rf = "mine"; renderCibo(); openRecipe("u_" + id); toast("📗 Salvata tra le tue ricette"); }; };
+  prev();
+  $("hvR").oninput = e => { H.r = e.target.value; prev(); };
+}
 // ---------- ricette ----------
 const CATN = { col: "Colazione", sp: "Spuntino", base: "Le basi" };
 const MEALN = { col: "a colazione", s1: "allo spuntino 1", s2: "allo spuntino 2", pr: "a pranzo", ce: "a cena" };
 function renderRicette(box) {
-  const F = [["all", "Tutte"], ["main", "Pranzo e cena"], ["col", "Colazione"], ["sp", "Spuntini"], ["new", "Da imparare"], ["fast", "Veloci (≤ 12′)"], ["base", "Le basi"]];
-  const ok = r => CS.rf === "all" || (CS.rf === "main" && r.main) || (CS.rf === r.cat) || (CS.rf === "new" && r.lvl === 2) || (CS.rf === "fast" && r.min <= 12);
+  const F = [["all", "Tutte"], ...(CB.recipes.some(r => r.mine) ? [["mine", "Le mie"]] : []), ["main", "Pranzo e cena"], ["col", "Colazione"], ["sp", "Spuntini"], ["new", "Da imparare"], ["fast", "Veloci (≤ 12′)"], ["base", "Le basi"]];
+  const ok = r => CS.rf === "all" || (CS.rf === "mine" && r.mine) || (CS.rf === "main" && r.main) || (CS.rf === r.cat) || (CS.rf === "new" && r.lvl === 2) || (CS.rf === "fast" && r.min <= 12);
   const L = CB.recipes.filter(ok);
-  box.innerHTML = `<div class="rfil">${F.map(([k, n]) => `<button class="chip" data-rf="${k}" aria-pressed="${CS.rf === k}">${n}</button>`).join("")}</div>
+  box.innerHTML = `${hvCard()}<div class="rfil">${F.map(([k, n]) => `<button class="chip" data-rf="${k}" aria-pressed="${CS.rf === k}">${n}</button>`).join("")}</div>
     ${CS.rf === "all" ? `<p class="note rtip">Nuovo in cucina? Parti da <button class="lnk" data-rf="base">Le basi</button>: friggitrice, padella e pasta spiegate passo passo.</p>` : ""}
-    <div class="rgrid">${L.map(r => { const pic = FOOD().pics[r.id]; return `<button class="rcard" data-rec="${r.id}">${pic ? `<img src="${pic}" alt="">` : dishSVG(r.p, r.box, r.id, "dish")}<b>${esc(r.name)}</b><small>${r.min} min · ${esc(r.tools)}</small><em>${r.main ? (r.one ? "1 pasto" : "2 pasti") : esc(CATN[r.cat] || "")}</em>${r.lvl === 2 ? `<i class="rnew">da imparare</i>` : ""}</button>`; }).join("")}</div>`;
+    <div class="rgrid">${L.map(r => { const pic = FOOD().pics[r.id]; return `<button class="rcard" data-rec="${r.id}">${pic ? `<img src="${pic}" alt="">` : dishSVG(r.p, r.box, r.id, "dish")}<b>${esc(r.name)}</b><small>${r.min} min · ${esc(r.tools)}</small><em>${r.mine ? "la tua · " : ""}${r.main ? (r.one ? "1 pasto" : "2 pasti") : esc(CATN[r.cat] || "")}</em>${r.lvl === 2 ? `<i class="rnew">da imparare</i>` : ""}</button>`; }).join("")}</div>`;
   box.querySelectorAll("[data-rf]").forEach(b => b.onclick = () => { CS.rf = b.dataset.rf; renderCibo(); });
+  hvBind(box);
   box.querySelectorAll("[data-rec]").forEach(b => b.onclick = () => openRecipe(b.dataset.rec));
 }
 function openRecipe(id, ctx, keep) {
@@ -699,7 +900,9 @@ function openRecipe(id, ctx, keep) {
       ${st.min ? `<button class="btn sm kt" data-kt="${st.min}" data-kl="${esc(r.s || r.name)} · passo ${i + 1}">⏱ Timer ${st.min} min</button>` : ""}</div></li>`).join("")}</ol>
     ${r.p1 ? `<h3>${r.p2 ? "I due pasti" : "Come si mangia"}</h3><div class="rp"><p><b>${r.p2 ? "Pasto 1" : "✓"}</b> ${esc(r.p1)}</p>${r.p2 ? `<p><b>Pasto 2</b> ${esc(r.p2)}</p>` : ""}</div>` : ""}
     ${r.olio ? `<p class="note">Olio: ${esc(r.olio)}. Quello per cuocere è compreso.</p>` : ""}
-    <p class="note">I disegni mostrano come dovrebbe venire. Con 📷 metti la foto del tuo piatto: diventa la copertina della ricetta.</p>`;
+    <p class="note">I disegni mostrano come dovrebbe venire. Con 📷 metti la foto del tuo piatto: diventa la copertina della ricetta.</p>
+    ${r.mine ? `<div class="rlog"><button class="btn" id="myDel">🗑 Elimina questa ricetta</button></div>` : ""}`;
+  const md = $("myDel"); if (md) md.onclick = () => { if (!md.dataset.sure) { md.dataset.sure = 1; md.textContent = "Tocca di nuovo per eliminarla"; return; } delete myRec()[id.slice(2)]; save(); syncRecipes(); closeRecipe(); renderCibo(); toast("Ricetta eliminata"); };
   if (sh.hidden || !keep) showSheet(sh); else sh.querySelector(".is-c").scrollTop = y;
   qBind(sh); sh.querySelectorAll("[data-qf]").forEach(b => b.onclick = () => { CS.recMid = b.dataset.qf; openRecipe(id, ctx, true); });
   $("cookGo").onclick = () => { closeRecipe(); cook(id, ctx); };
@@ -814,6 +1017,7 @@ function mergeFood(inc) {
   if (!inc || !inc.food) return; const f = FOOD(), g = inc.food;
   for (const [d, x] of Object.entries(g.days || {})) { const l = f.days[d]; if (!l || (x.at || 0) > (l.at || 0)) f.days[d] = x; }
   f.pics = { ...(g.pics || {}), ...f.pics }; f.shop = { ...(g.shop || {}), ...f.shop };
+  if (g.myrec) { const R = myRec(); for (const [id, x] of Object.entries(g.myrec)) if (!R[id] || (x.at || 0) > (R[id].at || 0)) R[id] = x; syncRecipes(); }
   if (g.prods) { const P = prods(); for (const [id, x] of Object.entries(g.prods)) if (!P[id] || (x.at || 0) > (P[id].at || 0)) P[id] = x; syncProds(); }
   if (g.fridge) { const have = new Set(frList().map(x => x.id)); for (const x of g.fridge) if (!have.has(x.id)) f.fridge.push(x); }
   for (const [w, x] of Object.entries(g.week || {})) { const l = f.week[w]; if (!l || (x.at || 0) > (l.at || 0)) f.week[w] = x; }
