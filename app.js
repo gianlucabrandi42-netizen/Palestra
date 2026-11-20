@@ -572,6 +572,7 @@ function ptReport() {
     if (bs.length) L.push("", "Corpo", ...bs.map(x => `• ${x.n}: ${fmt(Math.round(x.a * 10) / 10)} → ${fmt(Math.round(x.b * 10) / 10)} ${x.u}${x.k === "w" ? " (medie di 2 settimane)" : ""}`)); }
   if (extra.length) L.push("", "Note", ...extra.map(x => "• " + x));
   L.push("", "Legenda: kg×reps della serie migliore pulita, prima → ultima seduta; % = forza stimata. ⏸ = nessun miglioramento nelle ultime 3 sedute.");
+  if (typeof foodReport === "function") L.push(...foodReport(p.from || (all[0] || {}).date || todayISO())); // sezione Cibo (20/11/2026)
   return L.join("\n");
 }
 function openReport() {
@@ -1882,6 +1883,7 @@ function mergeData(inc) {
   D.rest = { ...(inc.rest || {}), ...(D.rest || {}) }; D.setDur = { ...(inc.setDur || {}), ...(D.setDur || {}) }; D.resets = { ...(inc.resets || {}), ...(D.resets || {}) };
   for (const g of Object.keys(inc.machines || {})) { D.machines = D.machines || {}; D.machines[g] = { ...(inc.machines[g] || {}), ...(D.machines[g] || {}) }; }
   if (Array.isArray(inc.body)) { const have = new Set((D.body || []).map(b => b.id)); D.body = [...(D.body || []), ...inc.body.filter(b => b && !have.has(b.id))]; }
+  if (typeof mergeFood === "function") mergeFood(inc); // sezione Cibo (20/11/2026)
   return added;
 }
 // ---------- Backup automatico online, cifrato (19/11/2026) ----------
@@ -1986,9 +1988,10 @@ function render() {
   if (S.view !== "log" || (FE && !dayObj().ex.some(e => e.key === FE.key))) closeFeel();
   document.querySelectorAll(".tabbar button").forEach(b => b.toggleAttribute("aria-current", b.dataset.view === S.view));
   document.querySelectorAll(".tabbar button[aria-current]").forEach(b => b.setAttribute("aria-current", "page"));
-  for (const v of ["log", "prog", "plan", "more"]) $("v-" + v).hidden = S.view !== v;
+  for (const v of ["log", "prog", "plan", "more", "cibo"]) $("v-" + v).hidden = S.view !== v;
   $("console").hidden = S.view !== "log"; if (S.view !== "log") togglePanel(false);
-  if (S.view === "log") renderLog(); else if (S.view === "prog") renderProg(); else if (S.view === "plan") renderPlans(); else renderMore();
+  if (S.view !== "cibo" && typeof closeRecipe === "function") closeRecipe();
+  if (S.view === "log") renderLog(); else if (S.view === "prog") renderProg(); else if (S.view === "plan") renderPlans(); else if (S.view === "cibo") { if (typeof renderCibo === "function") renderCibo(); } else renderMore();
   drawTimer(); drawMissing();
 }
 

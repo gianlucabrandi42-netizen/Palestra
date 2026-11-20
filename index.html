@@ -71,6 +71,13 @@
     <div id="plans" class="plist"></div>
   </section>
 
+  <!-- CIBO (20/11/2026): piano alimentare, caselle di cosa hai mangiato, ricette, scambi, spesa -->
+  <section id="v-cibo" class="view" hidden>
+    <section class="hero"><div class="k">Piano alimentare</div><h1>Cibo</h1></section>
+    <div class="cseg" id="cseg" role="group" aria-label="Sezioni del cibo"><button data-ct="oggi">Oggi</button><button data-ct="ricette">Ricette</button><button data-ct="scambi">Scambi</button><button data-ct="spesa">Spesa</button></div>
+    <div id="cbody"></div>
+  </section>
+
   <!-- ALTRO -->
   <section id="v-more" class="view" hidden>
     <section class="hero"><div class="k">Dati e impostazioni</div><h1>Impostazioni</h1>
@@ -88,7 +95,7 @@
     <div class="card stack" id="timerSet"></div>
     <h2>Palestre</h2>
     <div class="card stack" id="gymEdit"></div>
-    <p class="credits">Foto: Free Exercise DB (pubblico dominio). Illustrazioni: Everkinetic (CC BY-SA 4.0). Mappa muscoli: react-body-highlighter (MIT).</p>
+    <p class="credits">Foto: Free Exercise DB (pubblico dominio). Illustrazioni: Everkinetic (CC BY-SA 4.0). Mappa muscoli: react-body-highlighter (MIT). Disegni dei piatti: originali dell'app.</p>
   </section>
 </div>
 
@@ -100,6 +107,11 @@
 <div class="isheet" id="isheet" hidden role="dialog" aria-modal="true" aria-label="Info ed esecuzione">
   <div class="is-bg"></div>
   <div class="is-box"><div class="is-top"><span class="is-grab"></span><div class="is-h"></div><button type="button" class="is-x" aria-label="Chiudi">✕</button></div><div class="is-c"></div><div class="is-foot"><button type="button" class="is-close">Chiudi</button></div></div>
+</div>
+<!-- ricetta: riquadro dal basso (sezione Cibo) -->
+<div class="isheet" id="fsheet" hidden role="dialog" aria-modal="true" aria-label="Ricetta">
+  <div class="is-bg"></div>
+  <div class="is-box"><div class="is-top"><span class="is-grab"></span><div class="is-h"></div><button type="button" class="is-x" aria-label="Chiudi">✕</button></div><div class="is-c fc"></div><div class="is-foot"><button type="button" class="is-close">Chiudi</button></div></div>
 </div>
 <div class="pad" id="pad" hidden aria-label="Tastierino"></div>
 <div class="timer" id="timer" hidden>
@@ -118,6 +130,7 @@
   <button data-view="log" aria-current="page"><svg viewBox="0 0 24 24"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/></svg>Allenamento</button>
   <button data-view="prog"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>Progressi</button>
   <button data-view="plan"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>Schede</button>
+  <button data-view="cibo"><svg viewBox="0 0 24 24"><path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10"/><path d="M17 21V3c-2.2 1.2-3.5 3.6-3.5 7v3H17"/></svg>Cibo</button>
   <button data-view="more"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>Impostazioni</button>
 </nav>
 
@@ -141,6 +154,8 @@
 <script src="macchine.js"></script>
 <script src="macchine-db.js"></script>
 <script src="macchine-schede.js"></script>
+<script src="nutrizione.js"></script>
 <script src="app.js"></script>
+<script src="cibo.js"></script>
 </body>
 </html>
