@@ -75,9 +75,9 @@ const qText = (f, q) => { const o = FO(f), n = o.n.replace(/ \(.*\)$/, "").toLow
 const sameQ = (a, b) => JSON.stringify(a || null) === JSON.stringify(b || null);
 const CONDF = ["olio", "spruzz", "sale", "soia", "balsamico"];
 // carboidrato del momento: scala 80/40/0 a pranzo, porzione fissa a cena (dalle tabelle degli scambi)
-function carbQ(name, mid, d, half) {
+function carbQ(name, mid, d, half, col) {
   const row = CB.carbs.find(c => c[0] === name), f = CB.carbFood[name]; if (!row || !f) return null;
-  const L = mid === "ce" ? 3 : { 80: 1, 40: 2, 0: 0 }[lunchLvl(d)]; if (!L) return [f, 0];
+  const L = col || (mid === "ce" ? 3 : { 80: 1, 40: 2, 0: 0 }[lunchLvl(d)]); if (!L) return [f, 0];
   const s = row[L], o = FO(f); let n;
   if (/½/.test(s)) n = .5; else if (/¾/.test(s)) n = .75; else { const m = s.match(/(\d+)(?:-(\d+))?/); n = m ? (m[2] ? (+m[1] + +m[2]) / 2 : +m[1]) : 0; }
   if (/ g/.test(s) && !isW(o)) n = Math.round(n / o.g * 2) / 2;
@@ -99,11 +99,13 @@ function baseQ(mid, oid, d) {
     const fr = frItem(d, oid), key = fr ? "rist" : /^fr_/.test(oid) ? null : oid; if (!key) return null;
     const r = recipeById(key), spec = CB.mq[key]; if (!spec) return null;
     const p2 = mid === "ce" && r && !r.one;
-    const L = parseQ(typeof spec === "string" ? spec : (isGym(d) && spec.gym) || (p2 && spec.p2) || spec.q);
+    // legumi (curry): scala del PT 80 = 80 + 100 legumi + 100 pollo · 40 = 40 + 150 + 150 · 0 = 200 + 200; a cena la versione da 40
+    const lv = mid === "pr" ? lunchLvl(d) : 40;
+    const L = parseQ(typeof spec === "string" ? spec : spec.leg ? (lv === 80 ? spec.gym : lv === 0 ? spec.l0 : spec.q) : (isGym(d) && spec.gym) || (p2 && spec.p2) || spec.q);
     if (fr) L[0] = [fr.f, fr.g];
     let c = null;
-    if (key === "mensa") c = ["mpri", { 80: 1, 40: .5, 0: 0 }[lunchLvl(d)]];
-    else { const cn = r ? r.cb[p2 && r.cb.p2 ? "p2" : "p1"] || r.cb.p1 : CB.mcarb[key]; c = cn && carbQ(cn, mid, d, r && r.cb.half); }
+    if (key === "mensa") c = ["mpri", { 80: .8, 40: .4, 0: 0 }[lunchLvl(d)]]; // primo della mensa: 0,8 porzione ≈ 200 g cotti ≈ 80 g crudi + condimento
+    else { const cn = r ? r.cb[p2 && r.cb.p2 ? "p2" : "p1"] || r.cb.p1 : CB.mcarb[key]; c = cn && carbQ(cn, mid, d, r && r.cb.half, spec.leg && mid === "ce" ? 2 : 0); }
     if (c) { const i = L.findIndex(([f]) => CONDF.includes(f)); L.splice(i < 0 ? L.length : i, 0, c); }
     return applySubs(L);
   }

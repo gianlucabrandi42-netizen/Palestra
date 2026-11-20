@@ -16,12 +16,12 @@ window.CIBO = {
   // pasti della giornata, in ordine. skip = si può saltare. extra = facoltativo. r = ricetta collegata.
   meals: [
     { id: "col", name: "Colazione", color: "#F2C14E", opts: [
-      { id: "paneuovo", t: "Pane all'uovo", d: "3 uova + 1 fetta di pane di segale, croccante in friggitrice · 3 noci a parte", p: ["toast", "noci"], r: "paneuovo", go: "c", porta: "Va mangiato appena fatto: è la colazione dei giorni a casa." },
+      { id: "paneuovo", t: "Pane all'uovo", d: "3 uova + 1 fetta di pane di segale, croccante in friggitrice · 2 noci a parte", p: ["toast", "noci"], r: "paneuovo", go: "c", porta: "Va mangiato appena fatto: è la colazione dei giorni a casa." },
       { id: "pancake", t: "Pancake proteici", d: "50 g di crema di riso + 30 g di proteine + 1 albume · con 3 gallette o 1 cucchiaio di yogurt", p: ["pancake"], r: "pancake", go: "p", porta: "Falli la sera prima: freddi sono buoni. Yogurt in un vasetto a parte." },
       { id: "A", t: "Torta in tazza", d: "50 g di crema di riso + 30 g di proteine + 1 albume al microonde · 3 gallette", p: ["torta", "gallette"], box: "tazza", r: "torta", go: "m", porta: "Serve il microonde. Prepara la tazza a casa con gli ingredienti secchi; al lavoro aggiungi albume e latte e 90 secondi." },
       { id: "C", t: "Yogurt crunch", d: "Yogurt intero 150 g + 60-70 g di cornflakes + cacao amaro e cannella", p: ["yogurt", "cornflakes"], box: "ciotola", r: "yogurtcrunch", go: "p", porta: "Yogurt col cacao in un barattolo, cornflakes in un sacchetto a parte: li unisci al momento." },
       { id: "A2", t: "Shaker e cornflakes", d: "Shaker con 30 g di proteine · 65 g di cornflakes (o 8 gallette, o 120 g di pane)", p: ["shaker", "cornflakes"], box: "ciotola", go: "p", porta: "Polvere già nello shaker, acqua o latte al momento. Cornflakes in un barattolo." },
-      { id: "B", t: "Uova sode e segale", d: "3 uova sode · 1 fetta di pane di segale · 3 noci", p: ["uova", "pane", "noci"], r: "uova", go: "p", porta: "Uova sode sgusciate la sera prima nel contenitore, pane in un sacchetto, noci in tasca." },
+      { id: "B", t: "Uova sode e segale", d: "3 uova sode · 1 fetta di pane di segale · 2 noci", p: ["uova", "pane", "noci"], r: "uova", go: "p", porta: "Uova sode sgusciate la sera prima nel contenitore, pane in un sacchetto, noci in tasca." },
     ] },
     { id: "s1", name: "Spuntino 1", color: "#8CC152", skip: true, opts: [
       // 20/11/2026: al lavoro servono spuntini da 2 ingredienti, pronti (easy: 1) — vanno per primi quando sei al lavoro
@@ -177,7 +177,7 @@ window.CIBO = {
         { tool: "friggitrice", p: ["pdolci", "salmone"], t: "Aggiungi i tranci con la pelle in giù: uno con sale, limone ed erbe, l'altro con paprika, aglio, cipolla e peperoncino. Altri 10-12 minuti.", min: 11, ok: "Il salmone si stacca a scaglie e al centro è rosa chiaro, non più lucido; le patate si infilzano senza sforzo." },
       ],
       p1: "Salmone al limone + patate dolci + insalata", p2: "Salmone cajun + patate dolci + insalata", olio: "niente: il salmone ha già i suoi grassi" },
-    { id: "curry", pp: "150 g di pollo + 150 g di ceci (giorni di palestra: 100 + 100)", vv: "75 g di spinaci + 100 g di passata", cb: { p1: "Riso", p2: "Pasta" }, go: "m", porta: "Nel contenitore di vetro: 2-3 minuti al microonde, mescola a metà.", s: "Curry ceci e pollo", name: "Curry di ceci e pollo", min: 15, lvl: 2, tools: "una padella", main: true, p: ["ceci", "pollo", "spinaci", "riso"],
+    { id: "curry", pp: "150 g di pollo + 150 g di ceci (giorni di palestra: 100 + 100; giorni senza carboidrato: 200 + 200)", vv: "75 g di spinaci + 100 g di passata", cb: { p1: "Riso", p2: "Pasta" }, go: "m", porta: "Nel contenitore di vetro: 2-3 minuti al microonde, mescola a metà.", s: "Curry ceci e pollo", name: "Curry di ceci e pollo", min: 15, lvl: 2, tools: "una padella", main: true, p: ["ceci", "pollo", "spinaci", "riso"],
       ingr: ["300 g di pollo a cubetti (200 g nei giorni di palestra)", "300 g di ceci sgocciolati (200 g nei giorni di palestra)", "200 g di passata", "150 g di spinaci surgelati", "1 cucchiaino di curry, mezzo di paprika, peperoncino, sale"],
       steps: [
         { tool: "padella", p: ["pollo"], t: "Padella a fuoco medio-alto con 1 cucchiaino d'olio. Pollo con un pizzico di sale per 5 minuti, mescolando ogni tanto.", min: 5, ok: "I cubetti sono bianchi fuori su tutti i lati." },
@@ -232,8 +232,8 @@ window.CIBO = {
         { tool: "contenitore", p: ["farro", "mozzarella", "pomodorini", "rucola"], t: "Apri la busta e sgrana il farro con la forchetta nel contenitore. Aggiungi mozzarella a cubetti, pollo o bresaola a striscioline, pomodorini a metà, rucola, origano e un pizzico di sale. Mescola." },
       ],
       p1: "Vale un pranzo da 80. Si tiene in frigo fino al giorno dopo", olio: "niente o mezzo cucchiaio: la mozzarella ha già grassi" },
-    { id: "frigo", pp: "2 uova sode + 1 albume, oppure 100 g di bresaola + 1 vasetto di fiocchi", vv: "verdure in busta a volontà", cb: { p1: "Riso" }, go: "p", porta: "Si compone nel contenitore la sera prima, in borsa termica.", s: "Frigo vuoto", name: "Piatto frigo vuoto", min: 5, lvl: 1, tools: "un contenitore", main: true, one: true, p: ["riso", "uova", "insalata"],
-      ingr: ["1 porzione di carboidrati già pronta (riso del cuociriso, busta precotta o pane)", "2 uova sode + 1 albume, oppure 100 g di bresaola + 1 vasetto di fiocchi di latte", "Verdure in busta"],
+    { id: "frigo", pp: "2 uova sode + 60 g di bresaola, oppure 100 g di bresaola + 1 vasetto di fiocchi", vv: "verdure in busta a volontà", cb: { p1: "Riso" }, go: "p", porta: "Si compone nel contenitore la sera prima, in borsa termica.", s: "Frigo vuoto", name: "Piatto frigo vuoto", min: 5, lvl: 1, tools: "un contenitore", main: true, one: true, p: ["riso", "uova", "insalata"],
+      ingr: ["1 porzione di carboidrati già pronta (riso del cuociriso, busta precotta o pane)", "2 uova sode + 60 g di bresaola, oppure 100 g di bresaola + 1 vasetto di fiocchi di latte", "Verdure in busta"],
       steps: [
         { tool: "contenitore", p: ["riso", "uova", "insalata"], t: "Componi il piatto con quello che hai già pronto: carboidrato, proteina, verdure, 1 cucchiaio d'olio." },
       ],
@@ -241,14 +241,14 @@ window.CIBO = {
 
     // ---------- COLAZIONE ----------
     { id: "paneuovo", go: "c", porta: "Va mangiato appena fatto: è la colazione dei giorni a casa.", s: "Pane all'uovo", name: "Pane di segale all'uovo croccante", min: 12, lvl: 1, tools: "piatto fondo + friggitrice", for: { col: "paneuovo" }, cat: "col", p: ["toast", "noci"],
-      ingr: ["3 uova", "1 fetta di pane di segale", "Sale, pepe, paprika o origano", "Olio in spruzzino, carta forno", "3 noci a parte"],
+      ingr: ["3 uova", "1 fetta di pane di segale", "Sale, pepe, paprika o origano", "Olio in spruzzino, carta forno", "2 noci a parte"],
       steps: [
         { tool: "friggitrice", t: "Friggitrice a 180 °C per 3 minuti.", min: 3 },
         { tool: "ciotola", p: ["uova"], t: "In un piatto fondo sbatti le 3 uova con un pizzico di sale e pepe per 20 secondi." },
         { tool: "ciotola", p: ["toast", "uova"], t: "Taglia la fetta in 2-3 strisce e appoggiale nell'uovo: 30 secondi per lato, finché il pane ha assorbito.", tip: "Il pane di segale è compatto: lascialo un po' di più, deve diventare morbido." },
         { tool: "friggitrice", p: ["toast"], t: "Piega la carta forno a vaschetta (bordi alzati), metti il pane e versaci sopra l'uovo rimasto. Paprika sopra, 2 spruzzate d'olio. 180 °C per 8-10 minuti, girando dopo 5.", min: 9, ok: "Crosticina dorata e l'uovo non è più lucido." },
       ],
-      p1: "Ricetta tua: colazione B in versione croccante. Con 3 noci a parte" },
+      p1: "Ricetta tua: colazione B in versione croccante. Con 2 noci a parte (al posto del cucchiaino di burro di arachidi del PT)" },
     { id: "pancake", go: "p", porta: "Falli la sera prima: freddi sono buoni. Yogurt in un vasetto a parte.", s: "Pancake", name: "Pancake proteici in padella", min: 10, lvl: 2, tools: "ciotola + padella", for: { col: "pancake", s2: "pancake" }, cat: "col", p: ["pancake"],
       ingr: ["50 g di crema di riso", "30 g di proteine in polvere", "1 albume (30 g)", "Mezzo cucchiaino di lievito per dolci", "60-80 ml di latte o acqua, cannella", "Sopra: 1 cucchiaio di yogurt e un pizzico di cacao amaro"],
       steps: [
@@ -348,10 +348,10 @@ window.CIBO = {
   ],
 
   // scambi: [alimento, giorno di palestra, giorno senza palestra, cena]
-  carbs: [["Riso", "80 g", "40 g", "50-70 g"], ["Pasta", "75 g", "40 g", "65 g"], ["Pasta integrale", "80 g", "40 g", "70 g"], ["Cous cous", "70 g", "35 g", "60 g"], ["Farro o orzo", "80 g", "40 g", "70 g"], ["Quinoa", "70 g", "35 g", "60 g"], ["Riso precotto in busta", "180 g", "90 g", "150 g"], ["Farro o orzo precotti in busta", "170 g", "85 g", "150 g"], ["Gnocchi", "200 g", "100 g", "150 g"], ["Patate", "350 g", "175 g", "300 g"], ["Patate dolci", "300 g", "150 g", "270 g"], ["Pane", "100 g", "50 g", "85-100 g"], ["Pane di segale", "115 g", "60 g", "100 g"], ["Piadina (niente olio)", "1", "½", "¾"], ["Cornflakes o gallette", "70 g", "35 g", "60 g"]],
+  carbs: [["Riso", "80 g", "40 g", "50 g"], ["Pasta", "75 g", "40 g", "65 g"], ["Pasta integrale", "80 g", "40 g", "70 g"], ["Cous cous", "70 g", "35 g", "60 g"], ["Farro o orzo", "80 g", "40 g", "70 g"], ["Quinoa", "70 g", "35 g", "60 g"], ["Riso precotto in busta", "180 g", "90 g", "150 g"], ["Farro o orzo precotti in busta", "170 g", "85 g", "150 g"], ["Gnocchi", "200 g", "100 g", "150 g"], ["Patate", "350 g", "175 g", "300 g"], ["Patate dolci", "300 g", "150 g", "270 g"], ["Pane", "100 g", "50 g", "85-100 g"], ["Pane di segale", "115 g", "60 g", "100 g"], ["Piadina (niente olio)", "1", "½", "¾"], ["Cornflakes o gallette", "70 g", "35 g", "60 g"]],
   // [alimento, quantità, olio nel pasto]
   prots: [["Petto di pollo", "200 g", "1 cucchiaio"], ["Manzo magro", "200 g", "1 cucchiaio"], ["Macinato magro", "200 g", "mezzo"], ["Merluzzo, nasello, platessa", "250 g", "1 cucchiaio"], ["Orata o branzino", "200 g", "mezzo"], ["Gamberi", "250 g", "1 cucchiaio"], ["Salmone", "150 g", "niente"], ["Tonno sott'olio sgocciolato (nella pasta)", "150 g", "niente"], ["Uova", "2 uova + 150 g di albume", "1 cucchiaio"], ["Mozzarella light + pollo o bresaola", "1 + 100 g", "niente"], ["Legumi + pollo", "palestra 100+100 g · senza 150+150 g", "1 cucchiaio"]],
-  fats: "3 noci = 1 cucchiaino di burro di arachidi = 50 g di avocado = 2 cucchiaini d'olio. Olio: 1 cucchiaio a pranzo e 1 a cena, compreso quello per cuocere.",
+  fats: "3 noci (~100 kcal) = 10 mandorle = 15 g di arachidi = 2 cucchiaini di burro di arachidi = 1 cucchiaio d'olio. 1 cucchiaino di burro di arachidi ≈ 2 noci. Olio: 1 cucchiaio a pranzo e 1 a cena, compreso quello per cuocere.",
 
   shop: [
     { cat: "Proteine", items: ["Petto di pollo", "Pesce bianco surgelato", "Straccetti di manzo", "Macinato magro", "Gamberi surgelati", "Salmone", "Uova (12)", "Albume in brick", "Tonno sott'olio", "Ceci", "Bresaola"] },
@@ -382,7 +382,7 @@ Object.assign(window.CIBO, {
     hamb: { n: "Hamburger di carne", u: "hamburger|hamburger", g: 120, s: 1, v: [220, 19, 0, 16], k: "hamburger", d: 1 },
     gamberi: { n: "Gamberi", u: "g", s: 25, v: [80, 18, 0, 1], k: "gamber,mazzancoll", d: 150 },
     salmone: { n: "Salmone", u: "g", s: 25, v: [185, 20, 0, 12], k: "salmon", d: 150 },
-    tonno: { n: "Tonno sott'olio sgocciolato", u: "g", s: 10, v: [190, 25, 0, 10], k: "tonno", d: 60, cg: { scatoletta: 60, scatolette: 60 } },
+    tonno: { n: "Tonno sott'olio sgocciolato", u: "g", s: 10, v: [190, 25, 0, 10], k: "tonno", d: 60, cg: { scatoletta: 52, scatolette: 52 } },
     uovo: { n: "Uova", u: "uovo|uova", g: 55, s: 1, v: [143, 12.6, 0.7, 9.5], k: "uov,frittat,omelette,strapazzat", d: 2 },
     albume: { n: "Albume", u: "albume|albumi", g: 33, s: 0.5, v: [48, 10.5, 0.7, 0.2], k: "albume,albumi", d: 1 },
     albumeg: { n: "Albume in brick", u: "g", s: 25, v: [48, 10.5, 0.7, 0.2], k: "albume in brick,albume liquido", d: 150 },
@@ -418,7 +418,7 @@ Object.assign(window.CIBO, {
     pdolci: { n: "Patate dolci", u: "g", s: 25, v: [86, 1.6, 20, 0.1], k: "patate dolci,patata dolce,patate americane", d: 250 },
     pane: { n: "Pane", u: "g", s: 10, v: [270, 8.5, 55, 1], k: "pane,pagnott,rosetta,baguette,pancarr", d: 50, cg: { fetta: 30, fette: 30 } },
     panino: { n: "Panino (solo pane)", u: "panino|panini", g: 80, s: 0.5, v: [270, 8.5, 55, 1], k: "panin", d: 1 },
-    segale: { n: "Pane di segale", u: "fetta|fette", g: 45, s: 0.5, v: [220, 7, 42, 1.5], k: "segale,pane di segale", d: 1 },
+    segale: { n: "Pane di segale", u: "fetta|fette", g: 40, s: 0.5, v: [220, 7, 42, 1.5], k: "segale,pane di segale", d: 1 },
     piadina: { n: "Piadina", u: "piadina|piadine", g: 100, s: 0.25, v: [310, 8, 50, 8], k: "piadin,wrap,tortilla", d: 1 },
     cornflakes: { n: "Cornflakes", u: "g", s: 5, v: [378, 7, 84, 0.9], k: "cornflakes,corn flakes,cereali,muesli", d: 40, cg: { tazza: 30, tazze: 30, ciotola: 40, manciata: 15, manciate: 15, cucchiaio: 4, cucchiai: 4 } },
     galletta: { n: "Gallette di riso", u: "galletta|gallette", g: 8, s: 1, v: [380, 8, 81, 2.8], k: "gallett", d: 2 },
@@ -486,8 +486,8 @@ Object.assign(window.CIBO, {
   carbFood: { "Riso": "riso", "Pasta": "pasta", "Pasta integrale": "pastai", "Cous cous": "cous", "Farro o orzo": "farro", "Quinoa": "quinoa", "Riso precotto in busta": "rprec", "Farro o orzo precotti in busta": "farrop", "Gnocchi": "gnocchi", "Patate": "patate", "Patate dolci": "pdolci", "Pane": "pane", "Pane di segale": "segale", "Piadina (niente olio)": "piadina", "Cornflakes o gallette": "cornflakes" },
   // composizione delle caselle di colazione e spuntini ("s2g" = spuntino 2 nei giorni di palestra)
   comp: {
-    "col.paneuovo": "uovo 3, segale 1, noce 3, spruzz 5, soia 1", "col.pancake": "crema 50, prot 30, albume 1, latte 70, galletta 3", "col.A": "crema 50, prot 30, albume 1, latte 50, cacao 1, galletta 3",
-    "col.C": "yogurt 150, cornflakes 65, cacao 1", "col.A2": "prot 30, cornflakes 65", "col.B": "uovo 3, segale 1, noce 3, sale 1",
+    "col.paneuovo": "uovo 3, segale 1, noce 2, spruzz 5, soia 1", "col.pancake": "crema 50, prot 30, albume 1, latte 70, galletta 3", "col.A": "crema 50, prot 30, albume 1, latte 50, cacao 1, galletta 3",
+    "col.C": "yogurt 150, cornflakes 65, cacao 1", "col.A2": "prot 30, cornflakes 65", "col.B": "uovo 3, segale 1, noce 2, sale 1",
     "s1.pizzette": "galletta 2, passata 30, mozz 0.5", "s1.involtini": "bresaola 60, fiocchi 30, rucola 20, galletta 1", "s1.uovaripiene": "uovo 2, yogurt 15",
     "s1.yog": "yogurt 150, noce 3", "s1.bre": "bresaola 60, galletta 2", "s1.fio": "fiocchi 150", "s1.uov": "uovo 2, sale 1", "s1.moz": "mozz 0.5, galletta 2", "s1.shn": "prot 30, noce 3", "s1.yogc": "yogurt 150, cornflakes 30", "s1.fiog": "fiocchi 150, galletta 2",
     "s2g.shg": "prot 30, galletta 8, noce 3", "s2.bre": "bresaola 60, galletta 3", "s2.shn": "prot 30, noce 3", "s2.fiog": "fiocchi 150, galletta 2", "dc.shn": "prot 30, noce 3",
@@ -503,12 +503,12 @@ Object.assign(window.CIBO, {
     manzo: { q: "manzo 200, rucola 30, pomodorini 5, olio 2, balsamico 1, sale 1", p2: "manzo 200, peperoni 100, olio 2, soia 2" },
     polpette: { q: "macinato 200, albume 0.5, insalata 100, olio 1, sale 1", p2: "macinato 200, albume 0.5, passata 75, olio 1, sale 1" },
     gamberi: "gamberi 250, zucchine 100, olio 2, sale 1", gnocchi: "gamberi 250, zucchine 150, olio 1, sale 1", salmone: "salmone 150, insalata 100, soia 2",
-    curry: { q: "pollo 150, ceci 150, spinaci 75, passata 100, olio 1, sale 1", gym: "pollo 100, ceci 100, spinaci 75, passata 100, olio 1, sale 1" },
+    curry: { leg: 1, q: "pollo 150, ceci 150, spinaci 75, passata 100, olio 1, sale 1", gym: "pollo 100, ceci 100, spinaci 75, passata 100, olio 1, sale 1", l0: "pollo 200, ceci 200, spinaci 75, passata 100, olio 1, sale 1" },
     risosaltato: "uovo 2, albumeg 150, vmiste 150, olio 1, soia 3", pizzapiadina: "mozz 1, bresaola 100, passata 45, rucola 20, sale 1",
     pastatonno: "tonno 150, pomodorini 7, sale 1", frittatapasta: "uovo 2, albumeg 150, pomodorini 7, insalata 50, olio 1, sale 1",
     frittata: "uovo 2, albumeg 150, verdure 150, insalata 50, olio 1, soia 1", farro: "mozz 1, polloc 100, pomodorini 5, rucola 20, olio 1, sale 1",
-    frigo: "uovo 2, albume 1, insalata 150, olio 2, sale 1", altro: "pollo 200, verdure 200, olio 2, sale 1",
-    mensa: "msec 1, verdure 200, olio 2", sala: "pastac 280, verdure 120, parmigiano 5, olio 3", rist: "polloc 150, verdure 200, olio 2",
+    frigo: "uovo 2, bresaola 60, insalata 150, olio 2, sale 1", altro: "pollo 200, verdure 200, olio 2, sale 1",
+    mensa: "msec 1, verdure 200, olio 2", sala: "pastac 250, verdure 120, parmigiano 5, olio 3", rist: "polloc 150, verdure 200, olio 2",
   },
   // carboidrato di altre caselle (le ricette usano cb)
   mcarb: { altro: "Riso", frigo: "Riso", rist: "Riso precotto in busta" },
@@ -523,10 +523,10 @@ Object.assign(window.CIBO, {
     ["Olio", "un giro ≈ 5 g (45 kcal); il piatto lucido e il fondo unto vogliono dire almeno 2-3 giri"],
   ],
   // 🍳 SALA COLAZIONE (20/11/2026): il sabato col turno di mattina cucinano loro, piatti non controllabili → varianti stimate
-  // (un piatto di pasta ≈ 100 g da crudo = 280 g cotti; condimento da cucina per tanti: 2-3 giri d'olio). [nome, composizione, nota]
+  // (un piatto di pasta ≈ 110 g da crudo = 250 g cotti; condimento da cucina per tanti: 2-3 giri d'olio). [nome, composizione, nota]
   sala: [
-    ["Pasta e verdure", "pastac 280, verdure 120, parmigiano 5, olio 3", "piatto pieno di pasta, verdure saltate"],
-    ["Pasta e prosciutto", "pastac 280, pcotto 50, parmigiano 5, olio 3", "se era con la panna: tocca «Molto unto»"],
+    ["Pasta e verdure", "pastac 250, verdure 120, parmigiano 5, olio 3", "piatto pieno di pasta, verdure saltate"],
+    ["Pasta e prosciutto", "pastac 250, pcotto 50, parmigiano 5, olio 3", "se era con la panna: tocca «Molto unto»"],
     ["Frittata", "uovo 3, formaggio 20, olio 2, pane 50", "di solito 3 uova, con formaggio e un po' di pane"],
     ["Piadina", "piadina 1, pcotto 50, formaggio 40", "piadina farcita con prosciutto e formaggio"],
   ],
@@ -540,7 +540,7 @@ Object.assign(window.CIBO, {
     ["🍲 Mestolo", "circa 100 g di sugo, legumi o riso cotto"],
     ["🍝 Pasta cotta", "una pinzata ≈ 50 g · una forchettata ≈ 30 g · piatto fondo pieno ≈ 300 g"],
     ["✋ Mani", "carne o pesce cotti = il palmo, spesso un dito ≈ 100-120 g · pasta o riso cotti = un pugno ≈ 150 g · verdure = due mani a coppa ≈ 150 g · formaggio = due dita ≈ 30 g"],
-    ["🔢 A pezzi", "1 noce 5 g · 1 galletta 8 g · 1 fetta di bresaola 10 g · 1 uovo 55 g · 1 fetta di pane di segale 45 g · 1 pomodorino 15 g"],
+    ["🔢 A pezzi", "1 noce 5 g · 1 galletta 8 g · 1 fetta di bresaola 10 g · 1 uovo 55 g · 1 fetta di pane di segale 40 g · 1 pomodorino 15 g"],
     ["📦 Confezioni (il peso è scritto sopra)", "vasetto di yogurt 125-150 g · fiocchi di latte 150-175 g · mozzarella 125 g · bresaola 80-100 g · scatoletta di tonno 80 g (≈ 52 sgocciolato)"],
   ],
   // ☕ caffè e cappuccino fatti a casa o al lavoro (20/11/2026): cappuccino la mattina, caffè macchiato dopo pranzo o prima della palestra
