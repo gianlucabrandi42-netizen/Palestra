@@ -297,7 +297,7 @@ function renderOggi(box) {
     <div class="pgym"><span>Turno</span><div class="seg4">${CB.shifts.map(x => `<button data-sh="${x.id}" aria-pressed="${day.turno === x.id}">${esc(x.t)}</button>`).join("")}</div></div>
     <p class="phint">${esc(dayHint(d))}</p></div></div>`;
   h += balanceCard(d) + bagCard(d);
-  h += barCard(day);
+  h += barCard(day) + frzCard(d);
   // 20/11/2026 ("ci sono tanti piatti da scegliere, migliora il layout"): per ogni pasto le 3 idee più adatte (già segnata, frigo,
   // pasto 2 della ricetta del pranzo, compatibili col turno, quelle che usi di più, i tuoi piatti) + "Altre idee" con ricerca;
   // un pasto già segnato si chiude in una riga (tocco = dettagli, "Cambia" = di nuovo le idee).
@@ -328,7 +328,7 @@ function renderOggi(box) {
   h += weekCard(d);
   box.innerHTML = h;
   box.querySelectorAll(".tiles").forEach(t => { const x = t.querySelector(".tile.on"), on = x && (x.closest(".tilew") || x); if (on && on.offsetLeft + on.offsetWidth > t.clientWidth) t.scrollLeft = on.offsetLeft - 14; });
-  bindOggi(box, d);
+  bindOggi(box, d); frzBind(box);
 }
 // quante volte hai scelto ogni casella di quel pasto nelle ultime 4 settimane
 function useCounts(mid, d) { const c = {}; for (let i = 1; i <= 28; i++) { const v = (fDay(addDays(d, -i)).m || {})[mid]; if (v) c[v] = (c[v] || 0) + 1; } return c; }
@@ -519,12 +519,14 @@ function bindOggi(box, d) {
 // segna (o toglie) un pasto: frase incoraggiante e festa a giornata completa
 function logMeal(d, mid, oid, undo, L) {
   const before = dayDone(d), fr = !undo && frItem(d, oid); if (CS.mexp) delete CS.mexp[mid]; if (CS.qdraft) delete CS.qdraft[`${d}|${mid}|${oid}`];
+  if (undo || (fDay(d).m || {})[mid]) frUse(d, mid, null, true);
   setFDay(d, x => { if (x.q) delete x.q[mid]; if (undo) { delete x.m[mid]; return; } x.m[mid] = oid; if (fr) x.fr = { ...(x.fr || {}), [oid]: { ...fr } }; });
   if (!undo && /^d_/.test(oid)) { const L2 = L || baseQ(mid, oid, d), x0 = myDish()[oid.slice(2)]; if (L2) setFDay(d, x => { x.q = { ...(x.q || {}), [mid]: L2.map(r => [...r]) }; x.dn = { ...(x.dn || {}), [mid]: x0 ? x0.t : "Il mio piatto" }; }); if (x0) { x0.n = (x0.n || 0) + 1; x0.last = d; save(); } }
   else if (!undo && L && !sameQ(L, baseQ(mid, oid, d))) setFDay(d, x => x.q = { ...(x.q || {}), [mid]: L.map(r => [...r]) });
   if (fr && !CS.frKeep) { const f = FOOD(); f.fridge = frList().filter(x => "fr_" + x.id !== oid); save(); }
   CS.frKeep = false;
   if (undo) return;
+  try { frUse(d, mid, curQ(d, mid, oid) || L || baseQ(mid, oid, d)); } catch (_) {}
   if (oid !== "skip") { const c = CHEER[mid] || ["Fatto 👌"]; toast(c[Math.floor(Math.random() * c.length)]); }
   if (!before && dayDone(d) && !fDay(d).cel) { setFDay(d, x => x.cel = 1); setTimeout(() => celebrate("🍽 Giornata completa", "Domani si ricomincia, senza recuperare niente"), 250); }
 }
@@ -1225,10 +1227,166 @@ function planCard() {
     ${list.length ? `<p class="plab">Da comprare</p><div class="shop">${buy.map(x => row(x)).join("") || `<p class="note">Hai già tutto in casa 👌</p>`}${have.map(x => row(x, true)).join("")}</div>
       <div class="row"><button class="btn" id="wpNew">Nuova settimana</button></div>` : ""}</div>`;
 }
+
+// ---------- 🧊 CONGELATORE (20/11/2026, richiesta dell'utente: "segna quanta roba ho nel congelatore, quando scongelare e cosa;
+// con le foto scansiona gli ingredienti e crea la loro scheda"). D.food.frz = [{ id, f alimento, q quantità (unità dell'alimento),
+// d congelato il, th tirato fuori il (ISO con ora) | null, pic 1 = foto in IndexedDB "frz:<id>", at }].
+// L'app non riconosce le foto da sola (servirebbe un servizio di IA a pagamento): la foto si salva nella scheda e,
+// per tante cose insieme, va a Claude che risponde "alimento grammi" per riga; la risposta incollata diventa l'elenco.
+const frz = () => { const f = FOOD(); return (f.frz = f.frz || []); };
+const FRCAT = { pollo: "carne", manzo: "carne", hamb: "macinato", macinato: "macinato", merluzzo: "pesce", pescec: "pesce", salmone: "pescegr", gamberi: "gamberi",
+  pane: "pane", segale: "pane", piadina: "pane", panino: "pane", focaccia: "pane", pizza: "cotto", verdure: "verdure", vgrill: "verdure", vmiste: "verdure", spinaci: "verdure", zucchine: "verdure", peperoni: "verdure",
+  risoc: "cotto", pastac: "cotto", ragu: "cotto", polloc: "cotto", carnec: "cotto", gnocchi: "verdure", lasagna: "cotto", fritto: "cotto", patatec: "cotto" };
+// tempi indicativi (linee guida USDA/EFSA): mesi in congelatore per la qualità, ore per scongelare in frigo, giorni entro cui consumarlo dopo
+const FRULE = {
+  carne: { m: 9, h: 20, dd: 2, how: "In frigo dalla sera prima, in un piatto (mai sul lavello a temperatura ambiente). Fettine o straccetti: bastano 8-10 ore." },
+  macinato: { m: 3, h: 20, dd: 1, how: "In frigo dalla sera prima. Una volta scongelato, cuocilo entro il giorno dopo." },
+  pesce: { m: 6, h: 10, dd: 1, how: "In frigo 8-12 ore. Se hai fretta: busta ben chiusa in una ciotola di acqua fredda, 30-60 minuti." },
+  pescegr: { m: 3, h: 10, dd: 1, how: "In frigo 8-12 ore, poi cuocilo entro il giorno dopo." },
+  gamberi: { m: 6, h: 0.5, dd: 1, how: "In un colino sotto l'acqua fredda per 10-15 minuti, oppure qualche ora in frigo." },
+  pane: { m: 3, h: 1, dd: 2, how: "Fuori dal congelatore 30-60 minuti, oppure direttamente da congelato nel tostapane o in friggitrice (3-4 minuti)." },
+  verdure: { m: 9, h: 0, dd: 0, how: "Non serve scongelarle: cuocile ancora surgelate in padella, al microonde o in friggitrice." },
+  cotto: { m: 3, h: 12, dd: 1, how: "In frigo dalla sera prima, oppure al microonde in modalità scongelamento; poi scaldalo bene fino al centro." },
+  altro: { m: 6, h: 12, dd: 1, how: "In frigo dalla sera prima." } };
+const frCat = f => { const o = FO(f) || {}; return FRCAT[o.of || f] || "altro"; };
+const frRule = f => FRULE[frCat(f)];
+const PROTF = new Set(["carne", "macinato", "pesce", "pescegr", "gamberi"]);
+const frName = x => FO(x.f) ? FO(x.f).n.replace(/ \(.*\)$/, "") : x.f;
+const frPic = x => x.pic ? picOf("frz:" + x.id) : "";
+const dIt = iso => new Date(iso.length > 10 ? iso : iso + "T12:00").toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" }).replace(".", "");
+const hIt = t => new Date(t).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+const addMonths = (iso, n) => { const t = new Date(iso + "T12:00"); t.setMonth(t.getMonth() + n); return t.toISOString().slice(0, 10); };
+function frState(x, now = Date.now()) { // in congelatore / si scongela / pronto / scongelato da troppo
+  const R = frRule(x.f), exp = addMonths(x.d, R.m);
+  if (!x.th) return { s: "frz", exp, soon: exp <= addDays(todayISO(), 30) };
+  const t0 = new Date(x.th).getTime(), ready = t0 + R.h * 36e5, by = ready + Math.max(1, R.dd) * 864e5;
+  return { s: now < ready ? "thaw" : now < by ? "ready" : "late", ready, by };
+}
+const frIdeas = f => { const k = FO(f).of || f; return mainRecipes().filter(r => { const m = CB.mq[r.id]; return m && parseQ(typeof m === "string" ? m : m.q).some(([x]) => x === k); }).slice(0, 4); };
+const frIco = (x, cls) => { const p = frPic(x), dr = drawOf([[x.f, 1]]); return p ? `<img class="${cls}" src="${p}" alt="">` : dishSVG(dr.length ? dr : ["pollo"], "", x.id, cls); };
+function frTake(id, q) { // tira fuori una parte: diventa un pezzo "in scongelamento"
+  const L = frz(), x = L.find(y => y.id === id); if (!x) return; q = Math.min(q || x.q, x.q);
+  const nx = { ...x, id: Date.now().toString(36), q, th: new Date().toISOString(), at: Date.now() };
+  if (x.pic && PICM.has("frz:" + x.id)) picPut("frz:" + nx.id, PICM.get("frz:" + x.id)).catch(() => {}); else delete nx.pic;
+  x.q = Math.round((x.q - q) * 100) / 100; x.at = Date.now(); if (x.q <= 0) { L.splice(L.indexOf(x), 1); if (x.pic) picDel("frz:" + x.id); }
+  L.push(nx); save(); const R = frRule(nx.f);
+  toast(R.h ? `🧊 ${frName(nx)} in frigo: pronto ${R.h >= 6 ? "tra " + R.h + " ore circa" : "tra " + (R.h < 1 ? Math.round(R.h * 60) + " minuti" : R.h + " ore")}` : `🧊 ${frName(nx)}: cuocilo da surgelato`);
+}
+function frPortions(x) { // 1 pasto, 2 pasti (pranzo e cena), tutto
+  const k = FO(x.f).of || x.f, p1 = PROTG[k] ? convQ(k, PROTG[k], x.f) : (isW(FO(x.f)) ? FO(x.f).d : 1) || x.q;
+  return [[p1, "1 pasto"], [Math.round(p1 * 200) / 100, "2 pasti"], [x.q, "tutto"]].filter(([q], i, a) => q > 0 && q <= x.q && a.findIndex(([q2]) => q2 === q) === i);
+}
+// usato in un pasto: scala dal pezzo tirato fuori (pollo del pranzo → −200 g); torna indietro se il pasto si toglie
+function frUse(d, mid, L, undo) {
+  if (undo) { const U = ((fDay(d).frzU || {})[mid]) || []; if (!U.length) return;
+    for (const [id, q, snap] of U) { const x = frz().find(y => y.id === id); if (x) x.q = Math.round((x.q + q) * 100) / 100; else if (snap) frz().push({ ...snap, q }); }
+    setFDay(d, x => { delete x.frzU[mid]; }); save(); return; }
+  const U = []; for (const [f, q] of L || []) { if (!q || !FO(f)) continue; const k = FO(f).of || f;
+    const x = frz().filter(y => y.th && y.q > 0 && (y.f === f || (FO(y.f).of || y.f) === k)).sort((a, b) => a.th < b.th ? -1 : 1)[0]; if (!x) continue;
+    const use = Math.min(x.q, convQ(f, q, x.f)); x.q = Math.round((x.q - use) * 100) / 100; U.push([x.id, use, x.q <= 0 ? { ...x } : null]); if (x.q <= 0) frz().splice(frz().indexOf(x), 1); }
+  if (U.length) { setFDay(d, x => x.frzU = { ...(x.frzU || {}), [mid]: U }); save(); const t = U.map(([, q, sn], i) => qText((sn || frz().find(y => y.id === U[i][0]) || {}).f || L[0][0], q)).join(", "); setTimeout(() => toast(`🧊 Scalato dal frigo: ${t}`), 1100); }
+}
+// in Oggi: cosa si scongela, cosa è pronto, cosa tirare fuori stasera per domani, cosa usare presto
+function frzCard(d) {
+  if (d !== todayISO()) return ""; const L = frz().filter(x => x.q > 0); if (!L.length) return "";
+  const out = L.filter(x => x.th).map(x => [x, frState(x)]).sort((a, b) => a[1].ready - b[1].ready);
+  const hr = new Date().getHours(), proteins = L.filter(x => !x.th && PROTF.has(frCat(x.f)) && frRule(x.f).h >= 6).sort((a, b) => a.d < b.d ? -1 : 1);
+  const tomorrowOk = out.some(([x, st]) => PROTF.has(frCat(x.f)) && st.s !== "late");
+  const soon = L.filter(x => !x.th && frState(x).soon);
+  const today = new Date().toDateString();
+  let rows = out.map(([x, st]) => `<div class="fzrow ${st.s}">${frIco(x, "fzi")}<div><b>${esc(qText(x.f, x.q))}</b><small>${st.s === "thaw" ? `⏳ si scongela · pronto ${new Date(st.ready).toDateString() === today ? "oggi" : dIt(new Date(st.ready).toISOString())} verso le ${hIt(st.ready)}` : st.s === "ready" ? `✓ pronto in frigo · usalo entro ${dIt(new Date(st.by).toISOString())}` : `⚠️ scongelato da troppo: se ha un odore strano, buttalo`}</small>
+      ${st.s !== "thaw" && frIdeas(x.f).length ? `<span class="fzid">${frIdeas(x.f).map(r => `<button class="chip" data-fzr="${r.id}">${esc(r.s || r.name)}</button>`).join("")}</span>` : ""}</div><button class="lnk" data-fzo="${x.id}">›</button></div>`).join("");
+  if (hr >= 16 && !tomorrowOk && proteins.length) rows += `<div class="fzask"><b>🌙 Stasera tira fuori per domani?</b>${proteins.slice(0, 3).map(x => `<div class="fzrow">${frIco(x, "fzi")}<div><b>${esc(frName(x))}</b><small>ne hai ${esc(qLabel(x.f, x.q))}</small></div><span class="fzp">${frPortions(x).slice(0, 2).map(([q, n]) => `<button class="chip" data-fzt="${x.id}" data-q="${q}">${esc(qLabel(x.f, q))}<small>${n}</small></button>`).join("")}</span></div>`).join("")}<small class="note">Mettilo in frigo in un piatto: domani a pranzo è pronto.</small></div>`;
+  if (soon.length) rows += `<p class="fzsoon">⏰ Da usare presto: ${soon.map(x => `${esc(frName(x))} (entro ${dIt(frState(x).exp)})`).join(", ")}</p>`;
+  if (!rows) return "";
+  return `<div class="card fzc"><div class="fzh"><b>🧊 Congelatore</b><button class="lnk" data-fzall="1">tutto il congelatore ›</button></div>${rows}</div>`;
+}
+function frzBind(box) {
+  box.querySelectorAll("[data-fzt]").forEach(b => b.onclick = () => { frTake(b.dataset.fzt, +b.dataset.q); renderCibo(); });
+  box.querySelectorAll("[data-fzr]").forEach(b => b.onclick = () => openRecipe(b.dataset.fzr));
+  box.querySelectorAll("[data-fzo],[data-fze]").forEach(b => b.onclick = () => openFrz(b.dataset.fzo || b.dataset.fze));
+  box.querySelectorAll("[data-fzall]").forEach(b => b.onclick = () => { CS.tab = "spesa"; renderCibo(); setTimeout(() => { const c = $("fzList"); if (c) c.scrollIntoView({ block: "start" }); }, 50); });
+  const a = $("fzAdd"); if (a) a.onclick = () => openFrzAdd();
+}
+function frzSection() { // in Spesa: l'inventario
+  const L = frz().filter(x => x.q > 0).sort((a, b) => (!!b.th - !!a.th) || (a.d < b.d ? -1 : 1));
+  return `<h2 id="fzList">🧊 Congelatore</h2><div class="card fzinv">
+    ${L.length ? L.map(x => { const st = frState(x); return `<button class="fzrow" data-fze="${x.id}">${frIco(x, "fzi")}<div><b>${esc(frName(x))} · ${esc(qLabel(x.f, x.q))}</b><small>${x.th ? (st.s === "thaw" ? "⏳ si scongela in frigo" : st.s === "ready" ? "✓ scongelato, in frigo" : "⚠️ scongelato da troppo") : `congelato il ${dIt(x.d)} · meglio entro ${dIt(st.exp)}${st.soon ? " ⏰" : ""}`}</small></div><i>›</i></button>`; }).join("")
+      : `<p class="note">Vuoto. Aggiungi quello che metti in congelatore: l'app ti dice quando tirarlo fuori e quanto ci mette a scongelarsi, e lo scala quando lo mangi.</p>`}
+    <div class="row"><button class="btn primary" id="fzAdd">+ Aggiungi al congelatore</button></div></div>`;
+}
+function openFrz(id) { // scheda di un pezzo
+  const x = frz().find(y => y.id === id); if (!x) return renderCibo(); const sh = $("fsheet"), st = frState(x), R = frRule(x.f), o = FO(x.f), v = o.v || [0, 0, 0, 0], ideas = frIdeas(x.f);
+  sh.querySelector(".is-h").innerHTML = `<b>${esc(frName(x))}</b><span class="rmeta">🧊 ${x.th ? "tirato fuori " + dIt(x.th) + " alle " + hIt(x.th) : "in congelatore dal " + dIt(x.d)}</span>`;
+  sh.querySelector(".is-c").innerHTML = `<div class="rhero">${frPic(x) ? `<img class="fzbig" src="${frPic(x)}" alt="">` : dishSVG(drawOf([[x.f, 1]]), "", x.id, "dish big")}</div>
+    <div class="qbox"><h3>Quanto ne hai</h3>${rowsHTML([[x.f, x.q]])}</div>
+    <div class="fzinfo"><p><b>${x.th ? (st.s === "thaw" ? "⏳ Pronto " + dIt(new Date(st.ready).toISOString()) + " verso le " + hIt(st.ready) : st.s === "ready" ? "✓ Pronto: usalo entro " + dIt(new Date(st.by).toISOString()) : "⚠️ Scongelato da troppo tempo") : `Qualità migliore entro ${dIt(st.exp)}`}</b></p>
+      <p><b>Come scongelarlo</b><br>${esc(R.how)}</p><p class="note">Scongelato da crudo non si ricongela; una volta cotto sì (in un contenitore, entro 2 giorni).</p>
+      <p class="note">${fmt(v[0])} kcal · proteine ${fmt(v[1])} g · carboidrati ${fmt(v[2])} g · grassi ${fmt(v[3])} g per 100 g${o.mine && o.b ? ` · ${esc(o.b)}` : ""}</p></div>
+    ${ideas.length ? `<p class="plab">Cosa ci fai</p><div class="fzid">${ideas.map(r => `<button class="chip" data-fzr="${r.id}">${esc(r.s || r.name)}</button>`).join("")}</div>` : ""}
+    ${!x.th ? `<p class="plab">Tira fuori</p><div class="fzp">${frPortions(x).map(([q, n]) => `<button class="chip" data-fzt="${x.id}" data-q="${q}">${esc(qLabel(x.f, q))}<small>${n}</small></button>`).join("")}</div>` : `<div class="row"><button class="btn" id="fzBack">↶ Non l'ho tirato fuori</button></div>`}
+    <div class="row"><label class="btn" for="fzPic1">📷 ${x.pic ? "Cambia foto" : "Foto"}</label><input type="file" id="fzPic1" accept="image/*" capture="environment" hidden><button class="btn" id="fzDel">🗑 Finito / togli</button></div>`;
+  if (sh.hidden) showSheet(sh);
+  const box = sh.querySelector(".qbox"), L = [[x.f, x.q]];
+  bindRows(box, L, () => { const [f, q] = L[0]; x.f = f; x.q = q; x.at = Date.now(); if (q <= 0) { frz().splice(frz().indexOf(x), 1); save(); closeRecipe(); renderCibo(); return; } save(); openFrz(id); renderCibo(); });
+  sh.querySelectorAll("[data-fzt]").forEach(b => b.onclick = () => { frTake(b.dataset.fzt, +b.dataset.q); closeRecipe(); renderCibo(); });
+  sh.querySelectorAll("[data-fzr]").forEach(b => b.onclick = () => openRecipe(b.dataset.fzr));
+  const bk = $("fzBack"); if (bk) bk.onclick = () => { delete x.th; x.at = Date.now(); save(); openFrz(id); renderCibo(); };
+  $("fzPic1").onchange = e => { const f = e.target.files[0]; if (f) frzPhoto(f, [x], () => openFrz(id)); };
+  const dl = $("fzDel"); dl.onclick = () => { if (!dl.dataset.sure) { dl.dataset.sure = 1; dl.textContent = "Tocca di nuovo per togliere"; return; } frz().splice(frz().indexOf(x), 1); if (x.pic) picDel("frz:" + x.id); save(); closeRecipe(); renderCibo(); };
+}
+function frzPhoto(file, items, done) {
+  const img = new Image(), url = URL.createObjectURL(file);
+  img.onload = () => { const k = 480 / Math.max(img.width, img.height), c = document.createElement("canvas"); c.width = Math.round(img.width * Math.min(1, k)); c.height = Math.round(img.height * Math.min(1, k));
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); const data = c.toDataURL("image/jpeg", .7);
+    Promise.all(items.map(x => picPut("frz:" + x.id, data).then(() => { x.pic = 1; }))).then(() => { save(); toast("Foto salvata 📷"); if (done) done(data); renderCibo(); }).catch(() => toast("Foto non salvata: memoria piena?")); };
+  img.src = url;
+}
+const FZQUICK = ["pollo", "macinato", "manzo", "merluzzo", "salmone", "gamberi", "hamb", "vmiste", "spinaci", "segale", "piadina", "pane", "risoc", "ragu"];
+const frzPrompt = () => `Guarda la foto del mio congelatore (o della spesa da congelare) ed elenca cosa vedi.
+Rispondi SOLO con una riga per alimento, peso in grammi (o numero di pezzi), nomi semplici, così:
+petto di pollo 800 g
+merluzzo 400 g
+verdure miste 450 g
+pane di segale 6 fette
+Se non sei sicuro del peso, usa quello scritto sulla confezione o una stima.`;
+function openFrzAdd(keep) {
+  const A = CS.fza = keep && CS.fza ? CS.fza : { L: [], d: todayISO(), t: "", pic: null }, sh = $("fsheet");
+  // "4 petti di pollo 800 g": se ci sono pezzi e grammi, contano i grammi
+  const r = A.t.trim() ? estRead(A.t.replace(/(^|[,;\n])\s*\d+\s+([^,;\n\d]+?)\s+(\d+(?:[.,]\d+)?\s*(?:kg|g|gr|grammi)\b)/gi, "$1 $2 $3")) : { items: [], miss: [] };
+  sh.querySelector(".is-h").innerHTML = `<b>🧊 Aggiungi al congelatore</b><span class="rmeta">l'app lo scala quando lo mangi</span>`;
+  sh.querySelector(".is-c").innerHTML = `<div class="fzadd">
+    <p class="plab">Tocca cosa metti</p><div class="fzq">${FZQUICK.map(f => `<button class="chip" data-fq="${f}">${esc(FO(f).n.replace(/ \(.*\)$/, ""))}</button>`).join("")}<button class="chip scanc" id="fzScan">🏷 Codice a barre</button></div>
+    <p class="plab">…oppure scrivilo</p><textarea id="fzT" rows="2" placeholder="es. 4 petti di pollo 800 g, 2 filetti di merluzzo, 6 fette di pane di segale">${esc(A.t)}</textarea>
+    <div class="oprev">${r.items.length ? `<p class="xpok">Ho capito: ${r.items.map(([f, q]) => `<b>${esc(qText(f, q))}</b>`).join(" · ")}</p><button class="btn sm primary" id="fzUse">+ Metti in elenco</button>` : ""}${r.miss.length ? `<p class="xpno">Non ho capito: «${esc(r.miss.join("», «"))}»</p>` : ""}</div>
+    <div class="row"><label class="btn sm" for="fzPic">📷 ${A.pic ? "✓ Foto fatta" : "Foto (va nella scheda)"}</label><input type="file" id="fzPic" accept="image/*" capture="environment" hidden>
+      <label class="btn sm" for="fzCl">✨ Tante cose? Foto a Claude</label><input type="file" id="fzCl" accept="image/*" capture="environment" hidden></div>
+    <p class="note">Claude risponde con un elenco "alimento grammi": copialo e incollalo nel campo qui sopra.</p>
+    ${A.L.length ? `<div class="qbox"><h3>Da mettere in congelatore</h3>${rowsHTML(A.L)}</div>` : ""}
+    <label class="plab fzdl">Congelato il <input type="date" id="fzD" value="${A.d}" max="${todayISO()}"></label>
+    <div class="rlog"><button class="btn primary" id="fzOk"${A.L.length ? "" : " disabled"}>✓ Salva${A.L.length ? ` (${A.L.length})` : ""}</button></div></div>`;
+  if (sh.hidden) showSheet(sh);
+  const add = (f, q) => { const i = A.L.findIndex(([x]) => x === f); if (i >= 0) A.L[i][1] = Math.round((A.L[i][1] + q) * 100) / 100; else A.L.push([f, q]); };
+  const redraw = () => { const y = sh.querySelector(".is-c").scrollTop; openFrzAdd(true); sh.querySelector(".is-c").scrollTop = y; };
+  sh.querySelectorAll("[data-fq]").forEach(b => b.onclick = () => { const f = b.dataset.fq, o = FO(f); add(f, PROTG[f] ? PROTG[f] * 2 : isW(o) ? o.d * 2 : 4); redraw(); });
+  const q = sh.querySelector(".fzadd .qbox"); if (q) bindRows(q, A.L, () => { A.L = A.L.filter(([, n]) => n > 0); redraw(); });
+  let tmo; $("fzT").oninput = e => { A.t = e.target.value; clearTimeout(tmo); tmo = setTimeout(() => { redraw(); const t = $("fzT"); t.focus(); t.setSelectionRange(t.value.length, t.value.length); }, 800); };
+  const u = $("fzUse"); if (u) u.onclick = () => { for (const [f, n] of r.items) add(f, n); A.t = ""; redraw(); };
+  $("fzD").onchange = e => { A.d = e.target.value || todayISO(); };
+  $("fzPic").onchange = e => { A.pic = e.target.files[0] || null; redraw(); };
+  $("fzCl").onchange = async e => { const f = e.target.files[0]; if (!f) return; A.pic = A.pic || f; e.target.value = "";
+    try { const fl = new File([f], "congelatore.jpg", { type: f.type || "image/jpeg" }); if (navigator.canShare && navigator.canShare({ files: [fl] })) { await navigator.share({ files: [fl], text: frzPrompt() }); return; } } catch (err) { if (err && err.name === "AbortError") return; }
+    try { await navigator.clipboard.writeText(frzPrompt()); toast("Testo copiato: apri Claude, incolla e allega la foto"); } catch (_) { toast("Apri Claude e mandagli la foto"); } };
+  $("fzScan").onclick = () => scanOpen(f => { const o = FO(f); add(f, o.d || 400); redraw(); });
+  $("fzOk").onclick = () => { if (!A.L.length) return; const now = Date.now(), items = A.L.map(([f, n], i) => ({ id: (now + i).toString(36), f, q: n, d: A.d, at: now }));
+    frz().push(...items); save(); const pic = A.pic; CS.fza = null; closeRecipe(); renderCibo(); toast(`🧊 In congelatore: ${items.length === 1 ? qText(items[0].f, items[0].q) : items.length + " cose"}`);
+    if (pic) frzPhoto(pic, items); };
+}
+
 function renderSpesa(box) {
   const S0 = FOOD().shop, n = Object.keys(S0).length;
   const P = Object.entries(prods()).sort((a, b) => (b[1].at || 0) - (a[1].at || 0));
-  box.innerHTML = `<h2>🏷 I miei prodotti</h2><div class="card myp">
+  box.innerHTML = frzSection() + `<h2>🏷 I miei prodotti</h2><div class="card myp">
       <p class="note">Le marche cambiano le kcal: scansiona il codice a barre di quello che compri e l'app usa i valori della tua confezione.</p>
       ${P.map(([id, p]) => `<button class="pitem" data-pe="${id}"><b>${esc(p.n)}${p.b ? ` <span>· ${esc(p.b)}</span>` : ""}</b><small>${fmt(p.v[0])} kcal · P ${fmt(p.v[1])} · C ${fmt(p.v[2])} · G ${fmt(p.v[3])} per 100 g${p.sub && CB.foods[p.sub] ? ` · al posto di ${esc(CB.foods[p.sub].n.toLowerCase())}` : ""}</small></button>`).join("")}
       <div class="row"><button class="btn primary" id="pScan">📷 Scansiona un prodotto</button><button class="btn" id="pMan">✎ Scrivo l'etichetta</button></div></div>
@@ -1243,7 +1401,7 @@ function renderSpesa(box) {
   box.querySelectorAll("[data-wp]").forEach(b => b.onclick = () => { CS.wpOpen = true; const r = recipeById(b.dataset.wp), P = FOOD().wplan; P[b.dataset.wp] = r.main ? (r.one ? 1 : 2) : 3; save(); renderCibo(); });
   box.querySelectorAll("[data-wpm],[data-wpp]").forEach(b => b.onclick = () => { const id = b.dataset.wpm || b.dataset.wpp, P = FOOD().wplan; P[id] = Math.max(0, (P[id] || 0) + (b.dataset.wpm ? -1 : 1)); if (!P[id]) delete P[id]; save(); renderCibo(); });
   const wn = $("wpNew"); if (wn) wn.onclick = () => { if (!wn.dataset.sure) { wn.dataset.sure = 1; wn.textContent = "Tocca di nuovo: svuoto la settimana"; return; } const f = FOOD(); f.wplan = {}; for (const k of Object.keys(f.shop)) if (k.startsWith("auto:")) delete f.shop[k]; save(); renderCibo(); };
-  $("pScan").onclick = () => scanOpen(); $("pMan").onclick = () => prodForm({});
+  $("pScan").onclick = () => scanOpen(); $("pMan").onclick = () => prodForm({}); frzBind(box);
   box.querySelectorAll("[data-pe]").forEach(b => b.onclick = () => prodForm({ ...prods()[b.dataset.pe], id: b.dataset.pe }));
 }
 
@@ -1254,6 +1412,7 @@ function mergeFood(inc) {
   f.pics = { ...(g.pics || {}), ...f.pics }; f.shop = { ...(g.shop || {}), ...f.shop };
   if (g.myrec) { const R = myRec(); for (const [id, x] of Object.entries(g.myrec)) if (!R[id] || (x.at || 0) > (R[id].at || 0)) R[id] = x; syncRecipes(); }
   if (g.prods) { const P = prods(); for (const [id, x] of Object.entries(g.prods)) if (!P[id] || (x.at || 0) > (P[id].at || 0)) P[id] = x; syncProds(); }
+  if (g.frz) { const L = frz(), M = new Map(L.map(x => [x.id, x])); for (const x of g.frz) { const l = M.get(x.id); if (!l) L.push(x); else if ((x.at || 0) > (l.at || 0)) Object.assign(l, x); } }
   if (g.nobrand) f.nobrand = { ...g.nobrand, ...(f.nobrand || {}) };
   if (g.fridge) { const have = new Set(frList().map(x => x.id)); for (const x of g.fridge) if (!have.has(x.id)) f.fridge.push(x); }
   for (const [w, x] of Object.entries(g.week || {})) { const l = f.week[w]; if (!l || (x.at || 0) > (l.at || 0)) f.week[w] = x; }

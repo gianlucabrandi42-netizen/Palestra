@@ -371,17 +371,17 @@ window.CIBO = {
 Object.assign(window.CIBO, {
   foods: {
     // proteine
-    pollo: { n: "Petto di pollo (crudo)", u: "g", s: 25, v: [110, 23, 0, 1.5], k: "pollo,petto di pollo,tacchino,fesa", d: 150 },
+    pollo: { n: "Petto di pollo (crudo)", u: "g", s: 25, v: [110, 23, 0, 1.5], k: "pollo,petto di pollo,tacchino,fesa", d: 150, cg: { petto: 200, petti: 200, coscia: 150, cosce: 150, fesa: 400, confezione: 400, confezioni: 400, vaschetta: 400, vaschette: 400 } },
     polloc: { n: "Pollo alla griglia (cotto)", u: "g", s: 25, v: [150, 30, 0, 3], k: "pollo alla griglia,pollo grigliato,pollo arrosto,pollo cotto,pollo al forno", d: 150 },
     carnec: { n: "Carne alla griglia (cotta)", u: "g", s: 25, v: [190, 30, 0, 7.5], k: "carne alla griglia,carne grigliata,bistecca,tagliata,carne,arrosto,maiale,lonza", d: 150 },
     pescec: { n: "Pesce cotto (griglia o forno)", u: "g", s: 25, v: [110, 22, 0, 2.5], k: "pesce alla griglia,pesce al forno,pesce cotto,pesce grigliato", d: 150 },
-    merluzzo: { n: "Merluzzo o platessa", u: "g", s: 25, v: [80, 17, 0, 0.8], k: "merluzzo,platessa,nasello,pesce bianco,pesce,orata,branzino,spigola", d: 200 },
-    manzo: { n: "Straccetti di manzo", u: "g", s: 25, v: [130, 21, 0, 5], k: "manzo,straccetti,vitello,fettina", d: 150 },
-    macinato: { n: "Macinato magro", u: "g", s: 25, v: [140, 20, 0, 6.5], k: "macinato,polpett", d: 150 },
+    merluzzo: { n: "Merluzzo o platessa", u: "g", s: 25, v: [80, 17, 0, 0.8], k: "merluzzo,platessa,nasello,pesce bianco,pesce,orata,branzino,spigola", d: 200, cg: { filetto: 120, filetti: 120, confezione: 400, confezioni: 400 } },
+    manzo: { n: "Straccetti di manzo", u: "g", s: 25, v: [130, 21, 0, 5], k: "manzo,straccetti,vitello,fettina", d: 150, cg: { fettina: 120, fettine: 120, confezione: 400, confezioni: 400 } },
+    macinato: { n: "Macinato magro", u: "g", s: 25, v: [140, 20, 0, 6.5], k: "macinato,polpett", d: 150, cg: { confezione: 400, confezioni: 400, vaschetta: 400, vaschette: 400 } },
     ragu: { n: "Ragù (sugo di carne)", u: "g", s: 10, v: [140, 9, 5, 9], k: "ragu,ragù,bolognese,sugo di carne", d: 80 },
     hamb: { n: "Hamburger di carne", u: "hamburger|hamburger", g: 120, s: 1, v: [220, 19, 0, 16], k: "hamburger", d: 1 },
-    gamberi: { n: "Gamberi", u: "g", s: 25, v: [80, 18, 0, 1], k: "gamber,mazzancoll", d: 150 },
-    salmone: { n: "Salmone", u: "g", s: 25, v: [185, 20, 0, 12], k: "salmon", d: 150 },
+    gamberi: { n: "Gamberi", u: "g", s: 25, v: [80, 18, 0, 1], k: "gamber,mazzancoll", d: 150, cg: { busta: 400, buste: 400, confezione: 400 } },
+    salmone: { n: "Salmone", u: "g", s: 25, v: [185, 20, 0, 12], k: "salmon", d: 150, cg: { trancio: 150, tranci: 150, filetto: 150, filetti: 150 } },
     tonno: { n: "Tonno sott'olio sgocciolato", u: "g", s: 10, v: [190, 25, 0, 10], k: "tonno", d: 60, cg: { scatoletta: 52, scatolette: 52 } },
     uovo: { n: "Uova", u: "uovo|uova", g: 55, s: 1, v: [143, 12.6, 0.7, 9.5], k: "uov,frittat,omelette,strapazzat", d: 2 },
     albume: { n: "Albume", u: "albume|albumi", g: 33, s: 0.5, v: [48, 10.5, 0.7, 0.2], k: "albume,albumi", d: 1 },
@@ -425,7 +425,7 @@ Object.assign(window.CIBO, {
     crema: { n: "Crema di riso", u: "g", s: 5, v: [360, 7, 80, 0.6], k: "crema di riso", d: 50 },
     // verdure
     vgrill: { n: "Verdure grigliate surgelate", u: "g", s: 25, v: [35, 1.5, 5, 1], k: "verdure grigliate,grigliata di verdure", d: 200 },
-    vmiste: { n: "Verdure miste surgelate", u: "g", s: 25, v: [50, 3, 8, 0.5], k: "verdure miste,piselli,carot,minestrone", d: 150 },
+    vmiste: { n: "Verdure miste surgelate", u: "g", s: 25, v: [50, 3, 8, 0.5], k: "verdure miste,piselli,carot,minestrone", d: 150, cg: { busta: 450, buste: 450, confezione: 450 } },
     verdure: { n: "Verdure", u: "g", s: 25, v: [25, 1.5, 4, 0.3], k: "verdur,contorno,broccol,cavol,fagiolin,melanzan,funghi,finocch,asparag", d: 200 },
     spinaci: { n: "Spinaci", u: "g", s: 25, v: [25, 3, 1.5, 0.4], k: "spinac,bietol,erbett", d: 150 },
     insalata: { n: "Insalata", u: "g", s: 25, v: [17, 1.5, 2, 0.2], k: "insalat,lattuga,valerian,songino,misticanza", d: 100 },

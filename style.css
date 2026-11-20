@@ -1581,3 +1581,24 @@ html.noscroll .tabbar,html.noscroll .tphase,.drag .cpbar{-webkit-backdrop-filter
 #scan .bpick{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 10px}
 #scan .bpick .chip.on{background:var(--grad);color:#111}
 #scan .bfoot{justify-content:space-between;margin-top:14px;flex-wrap:wrap;gap:10px}
+/* 🧊 congelatore (20/11/2026) */
+.fzc,.fzinv{display:flex;flex-direction:column;gap:10px}
+.fzh{display:flex;justify-content:space-between;align-items:center}
+.fzrow{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:transparent;border:0;color:inherit;padding:6px 0;border-top:1px solid rgba(255,255,255,.06)}
+.fzrow:first-of-type{border-top:0}
+.fzrow>div{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.fzrow small{color:var(--mut,#9aa);font-size:12.5px}
+.fzrow.thaw small{color:#7FC8FF}.fzrow.ready small{color:var(--ok,#5ED39A)}.fzrow.late small{color:#FF9447}
+.fzrow>i{color:var(--mut,#9aa);font-style:normal}
+.fzi{width:44px;height:44px;flex:none;border-radius:12px;object-fit:cover}
+svg.fzi{border-radius:50%}
+.fzbig{max-width:220px;width:80%;border-radius:16px;display:block;margin:0 auto}
+.fzid,.fzp,.fzq{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.fzp .chip small{display:block;font-size:10.5px;opacity:.7}
+.fzask{border-top:1px dashed rgba(255,255,255,.15);padding-top:8px;display:flex;flex-direction:column;gap:4px}
+.fzsoon{margin:0;font-size:13px;color:#FFC36B}
+.fzinfo p{margin:8px 0}
+.fzdl{display:flex;align-items:center;gap:10px;margin:12px 0}
+.fzdl input{flex:1}
+.fzc .fzrow{align-items:flex-start}.fzc .fzrow .fzi{margin-top:2px}
+.fzid .chip,.fzp .chip,.fzq .chip{border-color:color-mix(in srgb,var(--accent) 45%,transparent);color:var(--text,#eee);background:color-mix(in srgb,var(--accent) 8%,transparent)}
