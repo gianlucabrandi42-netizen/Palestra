@@ -289,9 +289,9 @@ function renderOggi(box) {
     if (md.extra && !v && !(m.s1 === "skip" && m.s2 === "skip") && !CS.showDc) { h += `<button class="cmore" data-dc="1">+ Dopo cena (facoltativo)</button>`; continue; }
     const opts = optsFor(md, d), sel = v && v !== "skip" ? optOf(md, v, d) : null, w = whereOf(d, md.id);
     const xs = (day.x || []).filter(x => x.meal === md.id), xk = xs.reduce((a, x) => a + ((xVal(x) || [0])[0]), 0);
-    const kc = (sel && optVal(md.id, v, d) ? optVal(md.id, v, d)[0] : 0) + xk;
+    const kc = (sel && optVal(md.id, v, d) ? optVal(md.id, v, d)[0] : 0) + xk, bq = sel && !sel.dish ? baseQ(md.id, v, d) : null, kp = bq ? valOfQ(bq)[0] : 0, kov = kp && kc > kp * 1.25 ? " hi2" : kp && kc > kp * 1.1 ? " hi" : "";
     const open = !(sel || v === "skip") || (CS.mexp || {})[md.id];
-    h += `<div class="meal${v || xs.length ? " done" : ""}${v === "skip" ? " skipped" : ""}" style="--c:${md.color}"><div class="mh"><i></i><b>${esc(md.name)}</b><span>${v === "skip" ? "saltato" : sel ? "" : xs.length ? "scritto da te" : esc(mealSub(md, d))}</span>${kc ? `<em class="mk">~${r50(kc)} kcal</em>` : ""}</div>${WHERE[w] && open ? `<p class="mwhere">${WHERE[w]}</p>` : ""}`;
+    h += `<div class="meal${v || xs.length ? " done" : ""}${v === "skip" ? " skipped" : ""}" style="--c:${md.color}"><div class="mh"><i></i><b>${esc(md.name)}</b><span>${v === "skip" ? "saltato" : sel ? "" : xs.length ? "scritto da te" : esc(mealSub(md, d))}</span>${kc ? `<em class="mk${kov}">~${r50(kc)} kcal${kov ? ` · +${r50(kc - kp)}` : ""}</em>` : ""}</div>${WHERE[w] && open ? `<p class="mwhere">${WHERE[w]}</p>` : ""}`;
     if (sel && !open) {
       const pic = sel.r && foodPic(sel.r), img = sel.free ? `<span class="ti">🍕</span>` : pic ? `<img src="${pic}" alt="">` : dishSVG(sel.p || [], sel.box, sel.id, "dish");
       h += `<div class="msel"><button class="mselb" data-m="${md.id}" data-o="${sel.id}">${img}<div><b>${esc(sel.t)}</b><small>${esc(detOf(md, sel, m))}${day.q && day.q[md.id] && !sel.dish ? " · modificato" : ""}</small></div><span class="chev">›</span></button>
@@ -375,9 +375,11 @@ function balanceCard(d) {
   else if (pc < .85) msg = "Oggi un po' sotto al piano: se hai fame, il dopo cena è lì apposta.";
   else msg = "In linea col piano 👌";
   if (done && !free && t[1] < 120) msg += " Proteine un po' basse oggi: domani scegli spuntini con bresaola, fiocchi o uova.";
-  return `<div class="card bal"><div class="bh"><b>~${fmt(r50(t[0]))} kcal</b><span>stima di oggi · piano ~${fmt(T[0])}</span></div>
-    <div class="bbar"><i style="width:${Math.min(100, pc * 100).toFixed(0)}%"></i></div>
-    <div class="bmac">${N.map(([n, i]) => `<div><small>${n}</small><b>${Math.round(t[i])} g</b><span class="bbar s"><i style="width:${Math.min(100, t[i] / T[i] * 100).toFixed(0)}%"></i></span><em>su ~${T[i]}</em></div>`).join("")}</div>
+  // 20/11/2026 (richiesta dell'utente): sopra al piano le barre si colorano (arancio oltre +10%, rosso oltre +25%); le proteine in più vanno bene
+  const over = r => r > 1.25 ? " hi2" : r > 1.1 ? " hi" : "";
+  return `<div class="card bal"><div class="bh${over(pc)}"><b>~${fmt(r50(t[0]))} kcal</b><span>stima di oggi · piano ~${fmt(T[0])}${pc > 1.1 ? ` · <i class="ovr">+${fmt(r50(t[0] - T[0]))}</i>` : ""}</span></div>
+    <div class="bbar${over(pc)}"><i style="width:${Math.min(100, pc * 100).toFixed(0)}%"></i></div>
+    <div class="bmac">${N.map(([n, i]) => { const r = t[i] / T[i], o = i === 1 ? "" : over(r); return `<div class="${o}"><small>${n}</small><b>${Math.round(t[i])} g${o ? ` <i class="ovr">+${Math.round(t[i] - T[i])}</i>` : ""}</b><span class="bbar s${o}"><i style="width:${Math.min(100, r * 100).toFixed(0)}%"></i></span><em>su ~${T[i]}</em></div>`; }).join("")}</div>
     <p class="note">${esc(msg)}${nox ? ` · ${nox} cib${nox > 1 ? "i" : "o"} scritt${nox > 1 ? "i" : "o"} che non ho capito: non contat${nox > 1 ? "i" : "o"}.` : ""}</p></div>`;
 }
 function bagCard(d) {
@@ -606,9 +608,13 @@ function prodForm(p, note) {
 }
 
 // ✎ righe modificabili (quantità per ingrediente): − / +, tocco sul numero = scrivi i grammi
-function rowsHTML(L) {
+function rowsHTML(L, base) {
+  const B = base ? new Map(base.map(([f, q]) => [f, q])) : null;
   return L.map(([f, q], i) => { const o = FO(f); if (!o) return ""; const v = valOfQ([[f, q]])[0];
-    return `<div class="qrow${q ? "" : " zero"}"><span>${esc(o.n)}${o.mine ? ` <i class="mine">mio</i>` : ""}</span><div class="qctl"><button data-qd="${i}" aria-label="Meno">−</button><b data-qg="${i}">${qLabel(f, q)}</b><button data-qu="${i}" aria-label="Più">+</button></div><em>${q ? `${v} kcal` : "niente"}</em></div>`; }).join("");
+    // sopra la quantità del piano (oltre +10%) o ingrediente aggiunto: riga colorata (20/11/2026)
+    const b0 = B ? B.get(f) : undefined, up = B && q && (b0 == null ? !CONDF.includes(f) || q > 0 : q > b0 * 1.1 + 1e-9) ? (b0 == null ? " add" : (q > b0 * 1.25 ? " up2" : " up")) : "";
+    const diff = up && b0 != null ? `<small class="qdiff">piano ${qLabel(f, b0)} · +${valOfQ([[f, q - b0]])[0]} kcal</small>` : up ? `<small class="qdiff">aggiunto</small>` : "";
+    return `<div class="qrow${q ? "" : " zero"}${up}"><span>${esc(o.n)}${o.mine ? ` <i class="mine">mio</i>` : ""}${diff}</span><div class="qctl"><button data-qd="${i}" aria-label="Meno">−</button><b data-qg="${i}">${qLabel(f, q)}</b><button data-qu="${i}" aria-label="Più">+</button></div><em>${q ? `${v} kcal` : "niente"}</em></div>`; }).join("");
 }
 function bindRows(box, L, changed) {
   const step = (i, k) => { const [f, q] = L[i], o = FO(f); L[i][1] = Math.max(0, Math.round((q + k * o.s) * 100) / 100); try { iosTap(); } catch (_) {} changed(); };
@@ -649,9 +655,9 @@ function qBox() {
   const e = CS.qe; if (!e) return "";
   const t = valOfQ(e.L), base = baseQ(e.mid, e.oid, e.d), on = (fDay(e.d).m || {})[e.mid] === e.oid;
   return `<div class="qbox"><h3>Quanto ne hai mangiato${e.mid ? ` · ${esc(mealDef(e.mid).name.toLowerCase())}` : ""}</h3><p class="note">Le quantità sono quelle del piano. Se è diverso tocca − o +, oppure tocca il numero e scrivi i grammi: le kcal si ricalcolano${on ? " e si salvano subito" : ""}.</p>
-    ${rowsHTML(e.L)}
+    ${rowsHTML(e.L, base)}
     <div class="qadd">${CS.qAdd ? `<input id="qAddI" placeholder="Cerca (es. parmigiano, noci, pane)" autocomplete="off" value="${esc(CS.qAddT || "")}"><div class="qhits">${hitBtns(CS.qAddT)}</div>` : `<button class="lnk" id="qAddB">+ Aggiungi un ingrediente</button>`}${!sameQ(e.L, base) ? `<button class="lnk" id="qReset">↺ Come da piano</button>` : ""}</div>
-    <p class="qtot"><b>~${fmt(t[0])} kcal</b><span>proteine ${t[1]} g · carboidrati ${t[2]} g · grassi ${t[3]} g</span></p></div>`;
+    <p class="qtot${base && t[0] > valOfQ(base)[0] * 1.1 ? (t[0] > valOfQ(base)[0] * 1.25 ? " hi2" : " hi") : ""}"><b>~${fmt(t[0])} kcal${base && t[0] > valOfQ(base)[0] * 1.1 ? ` <i class="ovr">+${t[0] - valOfQ(base)[0]} sul piano</i>` : ""}</b><span>proteine ${t[1]} g · carboidrati ${t[2]} g · grassi ${t[3]} g</span></p></div>`;
 }
 function qBind(sh) {
   const box = sh.querySelector(".qbox"); if (!box || !CS.qe) return; const e = CS.qe;

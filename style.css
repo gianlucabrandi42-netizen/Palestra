@@ -1517,3 +1517,30 @@ svg.xico{width:40px;height:40px;flex:0 0 40px}
 .wpadd .rfil{margin-top:8px;flex-wrap:wrap}
 .sitem.have{opacity:.6}
 .sitem small{color:var(--muted)}
+.cel{background:var(--grad,linear-gradient(160deg,#4A4F58,#23262C));color:var(--on-accent,#fff)}
+/* CIBO · sopra al piano (20/11/2026, richiesta dell'utente): arancio oltre +10%, rosso oltre +25% */
+.bh.hi b,.bmac .hi b,.mk.hi,.qtot.hi b{color:#FF9447!important}
+.bh.hi2 b,.bmac .hi2 b,.mk.hi2,.qtot.hi2 b{color:#FF5F57!important}
+.bbar.hi i{background:#FF9447!important}
+.bbar.hi2 i{background:#FF5F57!important}
+i.ovr{font-style:normal;font-size:11px;font-weight:800;padding:1px 6px;border-radius:8px;background:color-mix(in srgb,#FF9447 22%,transparent);color:#FF9447;vertical-align:1px}
+.hi2 i.ovr,.bh.hi2 i.ovr,.qtot.hi2 i.ovr{background:color-mix(in srgb,#FF5F57 22%,transparent);color:#FF5F57}
+.qrow.up,.qrow.add{background:color-mix(in srgb,#FF9447 12%,transparent);border-radius:10px;padding-left:8px;padding-right:6px;border-top-color:transparent;margin:2px 0}
+.qrow.up2{background:color-mix(in srgb,#FF5F57 14%,transparent);border-radius:10px;padding-left:8px;padding-right:6px;border-top-color:transparent;margin:2px 0}
+.qrow.up b,.qrow.add b,.qrow.up em,.qrow.add em{color:#FF9447}
+.qrow.up2 b,.qrow.up2 em{color:#FF5F57}
+.qdiff{display:block;font-size:11px;color:var(--muted);margin-top:1px}
+/* CIBO · immagini più piccole, che non toccano i bordi (20/11/2026, iPhone) */
+.rcard svg.dish{width:80%;justify-self:center;margin:6px auto 4px;background:none;border-radius:50%}
+.rcard img{width:100%;border-radius:12px}
+.tile{padding:9px 5px 8px}
+.tile svg.dish,.tile img,.tile .ti{width:48px;height:48px}
+.tile .ti{font-size:22px}
+.qk{width:22px;height:22px;top:3px;right:3px;font-size:11px}
+.tilew{position:relative}
+.rhero svg.dish{width:min(56vw,220px)}
+.mselb{grid-template-columns:48px 1fr auto}
+.mselb svg,.mselb img,.mselb .ti{width:48px;height:48px}
+.ptile svg.pico{width:36px;height:36px}
+.hvr{grid-template-columns:46px 1fr}
+.hvr svg{width:46px;height:46px}

@@ -2021,6 +2021,7 @@ function render() {
   for (const v of ["log", "prog", "plan", "more", "cibo"]) $("v-" + v).hidden = S.view !== v;
   $("console").hidden = S.view !== "log"; if (S.view !== "log") togglePanel(false);
   if (S.view !== "cibo" && typeof closeRecipe === "function") closeRecipe();
+  setTheme(); // 20/11/2026: aprendo direttamente sul Cibo il tema non veniva mai impostato (festa "Giornata completa" trasparente)
   if (S.view === "log") renderLog(); else if (S.view === "prog") renderProg(); else if (S.view === "plan") renderPlans(); else if (S.view === "cibo") { if (typeof renderCibo === "function") renderCibo(); } else renderMore();
   drawTimer(); drawMissing();
 }
