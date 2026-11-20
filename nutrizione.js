@@ -91,6 +91,7 @@ window.CIBO = {
   // caselle in più per pranzo e cena, oltre alle ricette
   mainExtra: [
     { id: "mensa", t: "Mensa", d: "Un secondo normale + verdure a volontà. Primo: porzione normale nei giorni di palestra, mezza il giorno dopo, niente primo (doppio contorno) dal 2° giorno senza palestra. Niente fritti, panna o pane in più.", p: ["pasta", "pollo", "verdure"], only: "pr" },
+    { id: "sala", t: "Sala colazione", d: "Il sabato col turno di mattina cucina la sala colazione: scegli cosa hanno fatto (pasta, frittata, piadina…) e correggi le quantità.", p: ["pasta", "verdure"], go: "p", porta: "Cucinato da loro: non si controlla, si stima. Se c'è scelta, meglio frittata o pasta con verdure." },
     { id: "rist", t: "Dal ristorante", d: "Cucinato dal ristorante del lavoro (es. pollo alla griglia): tu completi con il carboidrato del momento e le verdure.", p: ["pollo", "verdure", "riso"], go: "m", porta: "Riso precotto in busta (2 minuti al microonde) e insalata in busta: si completa senza cucinare." },
     { id: "libero", t: "Pasto libero", d: "Fa parte del piano: 2 a settimana (la pizza del sabato + uno a scelta). Non si compensa.", free: true },
     { id: "altro", t: "Altro piatto", d: "Un carboidrato + una proteina + verdure + 1 cucchiaio d'olio, dalle tabelle degli scambi.", p: ["riso", "pollo", "insalata"] },
@@ -507,7 +508,7 @@ Object.assign(window.CIBO, {
     pastatonno: "tonno 150, pomodorini 7, sale 1", frittatapasta: "uovo 2, albumeg 150, pomodorini 7, insalata 50, olio 1, sale 1",
     frittata: "uovo 2, albumeg 150, verdure 150, insalata 50, olio 1, soia 1", farro: "mozz 1, polloc 100, pomodorini 5, rucola 20, olio 1, sale 1",
     frigo: "uovo 2, albume 1, insalata 150, olio 2, sale 1", altro: "pollo 200, verdure 200, olio 2, sale 1",
-    mensa: "msec 1, verdure 200, olio 2", rist: "polloc 150, verdure 200, olio 2",
+    mensa: "msec 1, verdure 200, olio 2", sala: "pastac 280, verdure 120, parmigiano 5, olio 3", rist: "polloc 150, verdure 200, olio 2",
   },
   // carboidrato di altre caselle (le ricette usano cb)
   mcarb: { altro: "Riso", frigo: "Riso", rist: "Riso precotto in busta" },
@@ -520,6 +521,14 @@ Object.assign(window.CIBO, {
     ["Pane", "una fetta come il palmo ≈ 30 g; un panino ≈ 80 g"],
     ["Formaggio", "un pezzo come due dita ≈ 30 g; un cucchiaio di grattugiato ≈ 5 g"],
     ["Olio", "un giro ≈ 5 g (45 kcal); il piatto lucido e il fondo unto vogliono dire almeno 2-3 giri"],
+  ],
+  // 🍳 SALA COLAZIONE (20/11/2026): il sabato col turno di mattina cucinano loro, piatti non controllabili → varianti stimate
+  // (un piatto di pasta ≈ 100 g da crudo = 280 g cotti; condimento da cucina per tanti: 2-3 giri d'olio). [nome, composizione, nota]
+  sala: [
+    ["Pasta e verdure", "pastac 280, verdure 120, parmigiano 5, olio 3", "piatto pieno di pasta, verdure saltate"],
+    ["Pasta e prosciutto", "pastac 280, pcotto 50, parmigiano 5, olio 3", "se era con la panna: tocca «Molto unto»"],
+    ["Frittata", "uovo 3, formaggio 20, olio 2, pane 50", "di solito 3 uova, con formaggio e un po' di pane"],
+    ["Piadina", "piadina 1, pcotto 50, formaggio 40", "piadina farcita con prosciutto e formaggio"],
   ],
   // ✋ SENZA BILANCIA (20/11/2026, richiesta dell'utente: "al lavoro non ho la bilancia: cucchiai, cucchiaini…"). Il testo scritto capisce anche queste misure.
   misure: [
@@ -534,7 +543,7 @@ Object.assign(window.CIBO, {
     ["🔢 A pezzi", "1 noce 5 g · 1 galletta 8 g · 1 fetta di bresaola 10 g · 1 uovo 55 g · 1 fetta di pane di segale 45 g · 1 pomodorino 15 g"],
     ["📦 Confezioni (il peso è scritto sopra)", "vasetto di yogurt 125-150 g · fiocchi di latte 150-175 g · mozzarella 125 g · bresaola 80-100 g · scatoletta di tonno 80 g (≈ 52 sgocciolato)"],
   ],
-  // ☕ al bar (20/11/2026): cappuccino la mattina, caffè macchiato dopo pranzo o prima della palestra
+  // ☕ caffè e cappuccino fatti a casa o al lavoro (20/11/2026): cappuccino la mattina, caffè macchiato dopo pranzo o prima della palestra
   bar: [["cappuccino", "Cappuccino"], ["macchiato", "Macchiato"], ["caffe", "Caffè"]],
   // quanto condiscono mensa e ristorante: si sceglie a occhio, cambia la riga dell'olio (in giri da 5 g)
   unto: [["Asciutto", 1, "niente fondo, verdure lesse"], ["Normale", 2, "un po' lucido"], ["Condito", 4, "fondo d'olio o sugo grasso"], ["Molto unto", 6, "fritto, burro, fondo abbondante"]],
@@ -578,6 +587,7 @@ Object.assign(window.CIBO, {
     frigo: "Proteina già pronta: sulle verdure 1-2 giri d'olio con limone o balsamico; sale o soia, non tutti e due.",
     altro: "Cuoci con lo spruzzino, poi 1-2 giri d'olio a crudo. Sale o soia, non tutti e due.",
     rist: "Il pollo del ristorante è già condito: niente sale. Sulle verdure 1 giro d'olio e limone o balsamico.",
+    sala: "Cucinano loro: non aggiungere niente. Se è molto condito, a cena tieni il condimento leggero.",
     mensa: "In mensa: niente sale aggiunto, 1 giro d'olio sulle verdure.",
     paneuovo: "Nelle uova 1 cucchiaino di soia oppure un pizzico di sale, con paprika: viene saporito e croccante.",
     uova: "Un pizzico di sale o qualche goccia di soia sulle uova sode.",
