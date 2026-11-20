@@ -71,12 +71,15 @@ window.CIBO = {
   },
   // Pranzo e cena: parte "proteina + verdure + olio" della ricetta per un pasto, a cui si somma il carboidrato del momento (carbCtx).
   mainVals: { pollo: [340, 50, 7, 12], pollocrock: [250, 51, 3, 4], pesce: [296, 44, 4, 12], manzo: [360, 46, 7, 16], polpette: [345, 43, 6, 16], gamberi: [315, 44, 4, 13], gnocchi: [270, 44, 4, 8], salmone: [293, 31, 2, 17], curry: [446, 48, 30, 13], risosaltato: [323, 34, 10, 15], pizzapiadina: [365, 58, 3, 14], pastatonno: [306, 38, 3, 15], frittatapasta: [328, 31, 5, 20], frittata: [328, 31, 5, 20], farro: [348, 54, 3, 13], frigo: [260, 18, 4, 20], mensa: [330, 40, 6, 14], altro: [340, 50, 7, 12] },
-  carbCtx: { prG: [266, 5, 64, 0], pr: [133, 3, 32, 0], ce: [231, 6, 52, 0] },
+  carbCtx: { prG: [266, 5, 64, 0], pr: [133, 3, 32, 0], pr0: [0, 0, 0, 0], ce: [231, 6, 52, 0] },
+  // Scala del PT 80 / 40 / 0 g di riso a pranzo, adattata ai turni (20/11/2026): non segue i giorni della settimana ma la palestra.
+  // 80 = giorno di palestra · 40 = giorno dopo la palestra · 0 = secondo giorno di fila (o più) senza palestra.
+  lunch: { 80: { t: "giorno di palestra", d: "riso 80 g · pasta 75 g" }, 40: { t: "giorno dopo la palestra", d: "riso 40 g · pasta 40 g" }, 0: { t: "2° giorno senza palestra", d: "niente carboidrato · doppia verdura" } },
   // Totale del piano per la giornata (Fase 2): con e senza palestra.
-  target: { gym: [2180, 175, 255, 50], rest: [1830, 165, 190, 46] },
+  target: { gym: [2180, 175, 255, 50], rest: [1830, 165, 190, 46], rest0: [1700, 162, 158, 46] },
   // caselle in più per pranzo e cena, oltre alle ricette
   mainExtra: [
-    { id: "mensa", t: "Mensa", d: "Un secondo normale + verdure a volontà. Primo: porzione normale nei giorni di palestra, mezza negli altri. Niente fritti, panna o pane in più.", p: ["pasta", "pollo", "verdure"], only: "pr" },
+    { id: "mensa", t: "Mensa", d: "Un secondo normale + verdure a volontà. Primo: porzione normale nei giorni di palestra, mezza il giorno dopo, niente primo (doppio contorno) dal 2° giorno senza palestra. Niente fritti, panna o pane in più.", p: ["pasta", "pollo", "verdure"], only: "pr" },
     { id: "libero", t: "Pasto libero", d: "Fa parte del piano: 2 a settimana (la pizza del sabato + uno a scelta). Non si compensa.", free: true },
     { id: "altro", t: "Altro piatto", d: "Un carboidrato + una proteina + verdure + 1 cucchiaio d'olio, dalle tabelle degli scambi.", p: ["riso", "pollo", "insalata"] },
   ],

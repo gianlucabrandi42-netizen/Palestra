@@ -16,6 +16,8 @@ const fDay = d => FOOD().days[d] || { m: {} };
 function setFDay(d, fn) { const f = FOOD(); const x = JSON.parse(JSON.stringify(f.days[d] || { m: {} })); x.m = x.m || {}; fn(x); x.at = Date.now(); f.days[d] = x; save(); }
 const gymAuto = d => Object.values(D.sessions).some(s => s.date === d && hasData(s));
 const isGym = d => { const g = fDay(d).gym; return g === true || g === false ? g : gymAuto(d); };
+// scala 80/40/0 del PT adattata: palestra oggi = 80, palestra ieri = 40, altrimenti 0
+const lunchLvl = d => isGym(d) ? 80 : isGym(addDays(d, -1)) ? 40 : 0;
 const optsFor = (m, d) => m.main ? [...mainRecipes().map(r => ({ id: r.id, t: r.s || r.name, d: r.one ? r.p1 : `Pasto 1: ${r.p1} · Pasto 2: ${r.p2}`, p: r.p, r: r.id, box: r.box, go: r.go, porta: r.porta })), ...CB.mainExtra.filter(e => !e.only || e.only === m.id)] : (m.gym && isGym(d) ? m.gym : m.opts);
 const shiftOf = d => CB.shifts.find(x => x.id === fDay(d).turno) || null;
 const whereOf = (d, mid) => { const sh = shiftOf(d); return sh ? sh.where[mid] || "casa" : "casa"; };
@@ -192,7 +194,7 @@ function detOf(md, o, m) { // pranzo = pasto 1 della ricetta, cena con la stessa
 // Valori già calcolati per ogni casella; i cibi scritti a mano contano se hanno le kcal (anche dalla risposta di Claude).
 function optVal(mid, oid, d) {
   if (!oid || oid === "skip" || oid === "libero") return null;
-  if (mid === "pr" || mid === "ce") { const b = CB.mainVals[oid]; if (!b) return null; const c = CB.carbCtx[mid === "ce" ? "ce" : isGym(d) ? "prG" : "pr"]; return b.map((x, i) => x + c[i]); }
+  if (mid === "pr" || mid === "ce") { const b = CB.mainVals[oid]; if (!b) return null; const L = lunchLvl(d), c = CB.carbCtx[mid === "ce" ? "ce" : L === 80 ? "prG" : L === 40 ? "pr" : "pr0"]; return b.map((x, i) => x + c[i]); }
   const k = (mid === "s2" && isGym(d) && CB.vals["s2g." + oid]) ? "s2g." + oid : mid + "." + oid;
   return CB.vals[k] || CB.vals["s2g." + oid] || null;
 }
@@ -205,7 +207,7 @@ function dayVals(d) {
 const r50 = n => Math.round(n / 50) * 50;
 function balanceCard(d) {
   const { t, free, nox, any } = dayVals(d); if (!any && !free) return "";
-  const T = CB.target[isGym(d) ? "gym" : "rest"], done = dayDone(d), m = fDay(d).m || {};
+  const T = CB.target[isGym(d) ? "gym" : lunchLvl(d) === 40 ? "rest" : "rest0"], done = dayDone(d), m = fDay(d).m || {};
   const pc = t[0] / T[0], N = [["Proteine", 1], ["Carboidrati", 2], ["Grassi", 3]];
   let msg;
   if (free) msg = "Con un pasto libero oggi i conti non contano: domani si riparte normale.";
@@ -231,7 +233,7 @@ function bagCard(d) {
 }
 function mealSub(md, d) {
   const g = isGym(d);
-  if (md.id === "pr") return g ? "palestra: riso 80 g · pasta 75 g" : "senza palestra: riso 40 g · pasta 40 g";
+  if (md.id === "pr") { const L = CB.lunch[lunchLvl(d)]; return `${L.t}: ${L.d}`; }
   if (md.id === "ce") return "patate 300 g · pane 100 g · pasta 65 g";
   if (md.id === "s2") return g ? "dopo la palestra · non si salta" : "si può saltare";
   if (md.id === "s1") return "si può saltare";
@@ -243,7 +245,7 @@ function dayHint(d) {
   if (m.s1 === "skip" && m.s2 === "skip" && !m.dc) return "Hai saltato i 2 spuntini: stasera fai il dopo cena.";
   if (dayDone(d)) return "Tutto segnato. Domani si ricomincia, senza recuperare niente.";
   if (g && !m.s2) return "Giorno di palestra: pranzo da 80 e spuntino 2 dopo l'allenamento.";
-  if (!g && !m.pr) return "Senza palestra: pranzo da 40. Uno spuntino si può saltare.";
+  if (!g && !m.pr) return lunchLvl(d) === 40 ? "Giorno dopo la palestra: pranzo da 40. Uno spuntino si può saltare." : "2° giorno senza palestra: pranzo senza carboidrato, con doppia verdura. Cena normale.";
   const fr = freeInWeek(d); if (fr >= 2) return "Hai già i 2 pasti liberi della settimana: il resto come da piano.";
   return "Tocca la casella di quello che hai mangiato.";
 }
