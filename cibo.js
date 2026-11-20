@@ -8,6 +8,7 @@
 const CB = window.CIBO;
 const FOOD = () => (D.food = D.food || { days: {}, pics: {}, shop: {}, week: {} }, D.food.days = D.food.days || {}, D.food.pics = D.food.pics || {}, D.food.shop = D.food.shop || {}, D.food.week = D.food.week || {}, D.food);
 const CS = { tab: "oggi", day: null, rf: "all", q: "", xform: null, recipe: null };
+const foodPic = id => picOf("food:" + id, FOOD().pics[id]);
 const recipeById = id => CB.recipes.find(r => r.id === id);
 const mainRecipes = () => CB.recipes.filter(r => r.main);
 const mealDef = id => CB.meals.find(m => m.id === id);
@@ -15,15 +16,36 @@ const cDay = () => CS.day || todayISO();
 const fDay = d => FOOD().days[d] || { m: {} };
 function setFDay(d, fn) { const f = FOOD(); const x = JSON.parse(JSON.stringify(f.days[d] || { m: {} })); x.m = x.m || {}; fn(x); x.at = Date.now(); f.days[d] = x; save(); }
 const gymAuto = d => Object.values(D.sessions).some(s => s.date === d && hasData(s));
-const isGym = d => { const g = fDay(d).gym; return g === true || g === false ? g : gymAuto(d); };
+// 20/11/2026: le sedute registrate vincono sempre (anche su un "No" detto la mattina); prima della seduta conta la risposta a "Oggi ti alleni?"
+const isGym = d => gymAuto(d) || fDay(d).gym === true;
 // scala 80/40/0 del PT adattata: palestra oggi = 80, palestra ieri = 40, altrimenti 0
 const lunchLvl = d => isGym(d) ? 80 : isGym(addDays(d, -1)) ? 40 : 0;
-const optsFor = (m, d) => m.main ? [...frOpts(d), ...mainRecipes().map(r => ({ id: r.id, t: r.s || r.name, d: r.one ? r.p1 : `Pasto 1: ${r.p1} · Pasto 2: ${r.p2}`, p: r.p, r: r.id, box: r.box, go: r.go, porta: r.porta })), ...CB.mainExtra.filter(e => !e.only || e.only === m.id)] : [...(m.gym && isGym(d) ? m.gym : m.opts), ...CB.recipes.filter(r => r.mine && r.for && r.for[m.id]).map(r => ({ id: r.id, t: r.s, d: "La tua ricetta", p: r.p, r: r.id, go: r.go, porta: r.porta }))];
+// ✎ I MIEI PIATTI (20/11/2026: "quando scrivo cosa ho mangiato devi creare la sua icona"): quello che scrivi (o componi) diventa
+// un piatto tuo col suo disegno, D.food.mydish[id] = { t, it [[alimento, quantità]], meal, n usi, last, at }; compare tra le caselle di quel pasto.
+const myDish = () => { const f = FOOD(); return (f.mydish = f.mydish || {}); };
+const dishOpts = mid => Object.entries(myDish()).filter(([, x]) => x.meal === mid && x.it && x.it.length).map(([id, x]) => ({ id: "d_" + id, t: x.t, d: "Il tuo piatto", p: drawOf(x.it), dish: 1 }));
+// nome del piatto dal testo: senza quantità né condimenti ("pasta al pomodoro 90 g, parmigiano, 2 giri d'olio" → "Pasta al pomodoro, parmigiano")
+function dishName(t) {
+  const parts = String(t || "").replace(/^Il mio piatto:\s*/i, "").split(/,|;|\+|\n/).map(x => x.replace(/\b\d+([.,]\d+)?\s*(kg|g|gr|grammi|ml|cl|l)?\b/gi, "").replace(/\b(un|una|uno|mezz[oa]|due|tre|quattro|cinque|giri?|cucchia(io|i|ino|ini)|pizzico)\b/gi, " ").replace(/\s+/g, " ").trim().replace(/^(di|d')\s*/i, ""))
+    .filter(x => x && !/^(olio|sale|soia|salsa di soia|pepe|spruzzat\w*|aceto|olio extravergine)( .*)?$/i.test(x) && !/^(l')?olio$/i.test(x));
+  let n = parts.join(", "); if (!n) n = String(t || "Il mio piatto").slice(0, 32);
+  if (n.length > 42) n = n.slice(0, 42).replace(/,?\s*\S*$/, "") || n.slice(0, 42);
+  return n.charAt(0).toUpperCase() + n.slice(1);
+}
+function rememberDish(meal, t, it) {
+  if (!it || !it.length || !meal || meal === "fuori") return null; t = dishName(t); const M = myDish(), key = normT(t);
+  let id = Object.keys(M).find(k => M[k].meal === meal && normT(M[k].t) === key);
+  if (id) { M[id].it = it.map(r => [...r]); M[id].at = Date.now(); }
+  else { id = Date.now().toString(36); M[id] = { t, it: it.map(r => [...r]), meal, n: 0, at: Date.now() };
+    const ks = Object.keys(M).filter(k => M[k].meal === meal); if (ks.length > 30) { const old = ks.sort((a, b) => (M[a].n || 0) - (M[b].n || 0) || (M[a].at || 0) - (M[b].at || 0))[0]; delete M[old]; } }
+  save(); return id;
+}
+const optsFor = (m, d) => m.main ? [...frOpts(d), ...mainRecipes().map(r => ({ id: r.id, t: r.s || r.name, d: r.one ? r.p1 : `Pasto 1: ${r.p1} · Pasto 2: ${r.p2}`, p: r.p, r: r.id, box: r.box, go: r.go, porta: r.porta })), ...dishOpts(m.id), ...CB.mainExtra.filter(e => !e.only || e.only === m.id)] : [...(m.gym && isGym(d) ? m.gym : m.opts), ...dishOpts(m.id), ...CB.recipes.filter(r => r.mine && r.for && r.for[m.id]).map(r => ({ id: r.id, t: r.s, d: "La tua ricetta", p: r.p, r: r.id, go: r.go, porta: r.porta }))];
 const shiftOf = d => CB.shifts.find(x => x.id === fDay(d).turno) || null;
 const whereOf = (d, mid) => { const sh = shiftOf(d); return sh ? sh.where[mid] || "casa" : "casa"; };
 const fits = (o, w) => w === "zero" ? !o.go || o.go === "p" : w === "micro" ? !o.go || o.go !== "c" : true;
 const WHERE = { zero: "🎒 al lavoro · niente attrezzi", micro: "🎒 al lavoro · solo microonde", mensa: "🍽 in mensa", casa: "" };
-const optOf = (m, id, d) => optsFor(m, d).find(o => o.id === id) || (m.gym || []).concat(m.opts || []).find(o => o.id === id) || null;
+const optOf = (m, id, d) => optsFor(m, d).find(o => o.id === id) || (/^d_/.test(id || "") && d && (fDay(d).dn || {})[m.id] ? { id, t: fDay(d).dn[m.id], d: "Il tuo piatto", p: drawOf((fDay(d).q || {})[m.id] || []), dish: 1 } : null) || (m.gym || []).concat(m.opts || []).find(o => o.id === id) || null;
 
 // ---------- QUANTITÀ PER INGREDIENTE (20/11/2026: "invece di 3 noci ne ho mangiate 5: voglio segnarlo e le kcal si ricalcolano") ----------
 // Ogni casella/ricetta = lista [alimento, quantità] (CB.comp, CB.mq + carboidrato del momento). Le modifiche dell'utente
@@ -58,6 +80,7 @@ const frItem = (d, oid) => /^fr_/.test(oid || "") ? (fDay(d).fr || {})[oid] || f
 function baseQ(mid, oid, d) {
   if (!oid || oid === "skip" || oid === "libero" || oid === "x") return null;
   const ur = recipeById(oid); if (ur && ur.mine) return applySubs(ur.q.map(r => [...r]));
+  if (/^d_/.test(oid)) { const x = myDish()[oid.slice(2)]; return x ? applySubs(x.it.map(r => [...r])) : null; }
   if (mid === "pr" || mid === "ce") {
     const fr = frItem(d, oid), key = fr ? "rist" : /^fr_/.test(oid) ? null : oid; if (!key) return null;
     const r = recipeById(key), spec = CB.mq[key]; if (!spec) return null;
@@ -251,25 +274,37 @@ function renderOggi(box) {
   const days = [...Array(7)].map((_, i) => addDays(today, i - 5));
   const nm = nextMeal(d), done = dayDone(d);
   let h = `<div class="cdays">${days.map(x => { const s = ddShort(x); return `<button data-cd="${x}" aria-pressed="${x === d}"><small>${x === today ? "oggi" : x > today ? "domani" : s.w}</small>${plateSVG(x, "pmini")}<b>${s.n}</b></button>`; }).join("")}</div>`;
+  // 🏋️ la mattina (o la sera prima, per domani): se ti alleni più tardi, il pranzo deve già saperlo (scala 80/40/0)
+  if (d >= today && day.gym == null && !auto) h += `<div class="card gask"><div><b>🏋️ ${d === today ? "Oggi" : "Domani"} ti alleni?</b><small>Decide il pranzo: 80 g di carboidrato se sì, ${isGym(addDays(d, -1)) ? "40" : "niente"} se no. Quando registri l'allenamento lo sa da solo.</small></div><div class="seg2"><button data-gym="1">Sì</button><button data-gym="0">No</button></div></div>`;
   h += `<div class="cplate"><div class="pwrap">${plateSVG(d)}<div class="pmid">${done ? `<b>✓</b><small>giornata fatta</small>` : nm ? `<small>prossimo</small><b>${esc(nm)}</b>` : `<b>👌</b>`}</div></div>
     <div class="pside"><div class="pgym"><span>Palestra ${d === today ? "oggi" : "quel giorno"}</span><div class="seg2"><button data-gym="1" aria-pressed="${gym}">Sì</button><button data-gym="0" aria-pressed="${!gym}">No</button></div>${auto && day.gym == null ? `<small>dall'allenamento</small>` : ""}</div>
     <div class="pgym"><span>Turno</span><div class="seg4">${CB.shifts.map(x => `<button data-sh="${x.id}" aria-pressed="${day.turno === x.id}">${esc(x.t)}</button>`).join("")}</div></div>
     <p class="phint">${esc(dayHint(d))}</p></div></div>`;
   h += balanceCard(d) + bagCard(d);
+  // 20/11/2026 ("ci sono tanti piatti da scegliere, migliora il layout"): per ogni pasto le 3 idee più adatte (già segnata, frigo,
+  // pasto 2 della ricetta del pranzo, compatibili col turno, quelle che usi di più, i tuoi piatti) + "Altre idee" con ricerca;
+  // un pasto già segnato si chiude in una riga (tocco = dettagli, "Cambia" = di nuovo le idee).
   for (const md of CB.meals) {
     const v = m[md.id];
     if (md.extra && !v && !(m.s1 === "skip" && m.s2 === "skip") && !CS.showDc) { h += `<button class="cmore" data-dc="1">+ Dopo cena (facoltativo)</button>`; continue; }
-    const opts = optsFor(md, d), sel = v && v !== "skip" ? optOf(md, v, d) : null;
-    let order = opts;
-    if (md.id === "ce" && m.pr && recipeById(m.pr) && !recipeById(m.pr).one) order = [opts.find(o => o.id === m.pr), ...opts.filter(o => o.id !== m.pr)].filter(Boolean);
-    const w = whereOf(d, md.id);
-    if (w !== "casa") order = [...(w === "mensa" ? order.filter(o => o.id === "mensa") : []), ...order.filter(o => fits(o, w) && !(w === "mensa" && o.id === "mensa")), ...order.filter(o => !fits(o, w))];
+    const opts = optsFor(md, d), sel = v && v !== "skip" ? optOf(md, v, d) : null, w = whereOf(d, md.id);
     const xs = (day.x || []).filter(x => x.meal === md.id), xk = xs.reduce((a, x) => a + ((xVal(x) || [0])[0]), 0);
-    h += `<div class="meal${v || xs.length ? " done" : ""}${v === "skip" ? " skipped" : ""}" style="--c:${md.color}"><div class="mh"><i></i><b>${esc(md.name)}</b><span>${v === "skip" ? "saltato" : sel ? esc(sel.t) + (day.q && day.q[md.id] ? " · modificato" : "") : xs.length ? "scritto da te" : esc(mealSub(md, d))}</span>${sel && optVal(md.id, v, d) ? `<em class="mk">~${r50(optVal(md.id, v, d)[0] + xk)} kcal</em>` : xk ? `<em class="mk">~${r50(xk)} kcal</em>` : ""}</div>${WHERE[w] ? `<p class="mwhere">${WHERE[w]}</p>` : ""}
-      <div class="tiles">${order.map(o => tile(md, o, v === o.id, md.id === "ce" && o.id === m.pr && !!recipeById(o.id), !fits(o, w))).join("")}${md.skip ? `<button class="tile skipt${v === "skip" ? " on" : ""}" data-skip="${md.id}"><span class="ti">⤼</span><b>Saltato</b></button>` : ""}<button class="tile addt" data-xadd="${md.id}"><span class="ti">✎</span><b>Scrivo io</b></button></div>
-      ${sel ? `<p class="mdet">${esc(detOf(md, sel, m))}${sel.r ? ` <button class="lnk" data-rec="${sel.r}">Ricetta ›</button>` : ""}</p>${w !== "casa" && w !== "mensa" && sel.porta ? `<p class="mdet porta">🎒 ${esc(sel.porta)}</p>` : ""}` : ""}
-      ${xs.map(x => xRow(x)).join("")}
-      ${CS.xform && CS.xform.meal === md.id ? xForm() : ""}</div>`;
+    const kc = (sel && optVal(md.id, v, d) ? optVal(md.id, v, d)[0] : 0) + xk;
+    const open = !(sel || v === "skip") || (CS.mexp || {})[md.id];
+    h += `<div class="meal${v || xs.length ? " done" : ""}${v === "skip" ? " skipped" : ""}" style="--c:${md.color}"><div class="mh"><i></i><b>${esc(md.name)}</b><span>${v === "skip" ? "saltato" : sel ? "" : xs.length ? "scritto da te" : esc(mealSub(md, d))}</span>${kc ? `<em class="mk">~${r50(kc)} kcal</em>` : ""}</div>${WHERE[w] && open ? `<p class="mwhere">${WHERE[w]}</p>` : ""}`;
+    if (sel && !open) {
+      const pic = sel.r && foodPic(sel.r), img = sel.free ? `<span class="ti">🍕</span>` : pic ? `<img src="${pic}" alt="">` : dishSVG(sel.p || [], sel.box, sel.id, "dish");
+      h += `<div class="msel"><button class="mselb" data-m="${md.id}" data-o="${sel.id}">${img}<div><b>${esc(sel.t)}</b><small>${esc(detOf(md, sel, m))}${day.q && day.q[md.id] && !sel.dish ? " · modificato" : ""}</small></div><span class="chev">›</span></button>
+        <div class="mselx"><button class="lnk" data-mexp="${md.id}">Cambia</button>${sel.r ? `<button class="lnk" data-rec="${sel.r}">Ricetta</button>` : ""}<button class="lnk" data-qm="${md.id}" data-qo="${sel.id}">Togli</button></div></div>
+        ${w !== "casa" && w !== "mensa" && sel.porta ? `<p class="mdet porta">🎒 ${esc(sel.porta)}</p>` : ""}`;
+    } else if (v === "skip" && !open) {
+      h += `<div class="mselx"><button class="lnk" data-mexp="${md.id}">Cambia</button></div>`;
+    } else {
+      const top = rankOpts(md, d, opts), show = top.length <= 4 ? top : top.slice(0, 3), more = top.length - show.length;
+      h += `<div class="tiles4">${show.map(o => tile(md, o, v === o.id, md.id === "ce" && o.id === m.pr && !!recipeById(o.id) && !recipeById(o.id).one, !fits(o, w))).join("")}${more ? `<button class="tile moret" data-more="${md.id}"><span class="ti">＋</span><b>Altre idee</b><i class="tw">${more}</i></button>` : ""}</div>
+        <div class="mselx"><button class="lnk" data-xadd="${md.id}">✎ Scrivo io</button>${md.skip ? `<button class="lnk" data-skip="${md.id}">${v === "skip" ? "Non saltato" : "⤼ Saltato"}</button>` : ""}${(CS.mexp || {})[md.id] ? `<button class="lnk" data-mclose="${md.id}">Chiudi</button>` : ""}</div>`;
+    }
+    h += `${xs.map(x => xRow(x)).join("")}${CS.xform && CS.xform.meal === md.id ? xForm() : ""}</div>`;
   }
   const loose = (day.x || []).filter(x => !x.meal || x.meal === "fuori");
   h += `<div class="meal extra"><div class="mh"><i></i><b>Fuori pasto</b><span>quello che non è nelle caselle</span></div>${loose.map(x => xRow(x)).join("")}${CS.xform && CS.xform.meal === "fuori" ? xForm() : `<button class="cmore" data-xadd="fuori">+ Aggiungi un cibo</button>`}</div>`;
@@ -277,6 +312,32 @@ function renderOggi(box) {
   box.innerHTML = h;
   box.querySelectorAll(".tiles").forEach(t => { const x = t.querySelector(".tile.on"), on = x && (x.closest(".tilew") || x); if (on && on.offsetLeft + on.offsetWidth > t.clientWidth) t.scrollLeft = on.offsetLeft - 14; });
   bindOggi(box, d);
+}
+// quante volte hai scelto ogni casella di quel pasto nelle ultime 4 settimane
+function useCounts(mid, d) { const c = {}; for (let i = 1; i <= 28; i++) { const v = (fDay(addDays(d, -i)).m || {})[mid]; if (v) c[v] = (c[v] || 0) + 1; } return c; }
+function rankOpts(md, d, opts) {
+  const m = fDay(d).m || {}, w = whereOf(d, md.id), use = useCounts(md.id, d), r2 = recipeById(m.pr);
+  const sc = o => (o.id === m[md.id] ? 1e4 : 0) + (o.fr ? 5000 : 0) + (md.id === "ce" && o.id === m.pr && r2 && !r2.one ? 3000 : 0) + (w === "mensa" && o.id === "mensa" ? 2000 : 0)
+    + (fits(o, w) ? 0 : -1000) + (use[o.id] || 0) * 60 + (o.dish ? 25 + (myDish()[o.id.slice(2)] || {}).n * 10 : 0) + (o.free || o.id === "altro" || o.id === "rist" || o.id === "mensa" ? -300 : 0);
+  return opts.map((o, i) => [o, sc(o) - i * 0.01]).sort((a, b) => b[1] - a[1]).map(x => x[0]);
+}
+// tutte le idee di un pasto, con ricerca e filtri
+function openPicker(mid) {
+  const md = mealDef(mid), d = cDay(), sh = $("fsheet"), w = whereOf(d, mid), m = fDay(d).m || {}; CS.pick = CS.pick && CS.pick.mid === mid ? CS.pick : { mid, q: "", f: "all" };
+  const P = CS.pick, all = rankOpts(md, d, optsFor(md, d));
+  const F = [["all", "Tutte"], ...(w !== "casa" ? [["work", "Per il lavoro"]] : []), ["fast", "Veloci"], ["mine", "Le mie"], ...(md.main ? [["rec", "Ricette"]] : [])];
+  const ok = o => (!P.q || normT(o.t + " " + (o.d || "")).includes(normT(P.q))) && (P.f === "all" || (P.f === "work" && fits(o, w)) || (P.f === "fast" && o.r && (recipeById(o.r) || {}).min <= 12) || (P.f === "mine" && (o.dish || (o.r && (recipeById(o.r) || {}).mine) || o.fr)) || (P.f === "rec" && o.r));
+  const L = all.filter(ok);
+  sh.querySelector(".is-h").innerHTML = `<b>${esc(md.name)} · tutte le idee</b><span class="rmeta">${all.length} idee${WHERE[w] ? " · " + WHERE[w] : ""}</span>`;
+  sh.querySelector(".is-c").innerHTML = `<input id="pkQ" class="pkq" placeholder="Cerca (es. pollo, pasta, uova)" value="${esc(P.q)}" autocomplete="off">
+    <div class="rfil">${F.map(([k, n]) => `<button class="chip" data-pf="${k}" aria-pressed="${P.f === k}">${n}</button>`).join("")}</div>
+    <div class="pkgrid">${L.map(o => tile(md, o, m[mid] === o.id, mid === "ce" && o.id === m.pr && !!recipeById(o.id) && !recipeById(o.id).one, !fits(o, w))).join("") || `<p class="note">Niente con questo nome: prova "✎ Scrivo io".</p>`}</div>`;
+  if (sh.hidden) showSheet(sh);
+  const bindG = () => { sh.querySelectorAll(".pkgrid .tile[data-m]").forEach(b => b.onclick = () => openOpt(b.dataset.m, b.dataset.o));
+    sh.querySelectorAll(".pkgrid [data-qm]").forEach(b => b.onclick = () => { const was = (fDay(d).m || {})[b.dataset.qm] === b.dataset.qo; logMeal(d, b.dataset.qm, b.dataset.qo, was); closeRecipe(); delete (CS.mexp || {})[mid]; renderCibo(); }); };
+  bindG();
+  sh.querySelectorAll("[data-pf]").forEach(b => b.onclick = () => { P.f = b.dataset.pf; openPicker(mid); });
+  const q = $("pkQ"); q.oninput = () => { P.q = q.value; const g = sh.querySelector(".pkgrid"); g.innerHTML = all.filter(ok).map(o => tile(md, o, m[mid] === o.id, false, !fits(o, w))).join("") || `<p class="note">Niente con questo nome: prova "✎ Scrivo io".</p>`; bindG(); };
 }
 function detOf(md, o, m) { // pranzo = pasto 1 della ricetta, cena con la stessa ricetta = pasto 2
   const r = o.r && md.main && recipeById(o.r); if (!r || r.one) return o.d || "";
@@ -348,14 +409,15 @@ function dayHint(d) {
   return "Tocca la casella di quello che hai mangiato.";
 }
 function tile(md, o, on, p2, off) {
-  const pic = o.r && FOOD().pics[o.r];
+  const pic = o.r && foodPic(o.r);
   const img = o.free ? `<span class="ti">🍕</span>` : pic ? `<img src="${pic}" alt="">` : o.p ? dishSVG(o.p, o.box, o.id, "dish") : `<span class="ti">🍽</span>`;
   return `<div class="tilew"><button class="tile${on ? " on" : ""}${o.free ? " free" : ""}${off && !on ? " off" : ""}" data-m="${md.id}" data-o="${o.id}">${img}<b>${esc(o.t)}</b>${p2 ? `<em>pasto 2</em>` : ""}${off ? `<i class="tw">${o.go === "m" ? "serve microonde" : "a casa"}</i>` : o.r ? `<i class="tw">ricetta</i>` : ""}</button><button class="qk${on ? " on" : ""}" data-qm="${md.id}" data-qo="${o.id}" aria-label="${on ? "Togli" : "Segna come mangiato"}">✓</button></div>`;
 }
 const SIZES = { p: "poco", n: "normale", t: "tanto" };
 const xRow = x => { const r = !x.k && !x.it && readFood(x.t, x.s), v = xVal(x);
   const what = x.it && x.it.length ? x.it.filter(([, q]) => q).map(([f, q]) => qText(f, q)).join(" · ") : "";
-  return `<div class="xrow"><span>✎</span><div><b>${esc(x.t)}</b>${what ? `<small>${esc(what)}</small>` : ""}<small>${x.it ? "" : (SIZES[x.s] || "") + " · "}${v ? `~${v[0]} kcal${x.k && x.p != null ? ` · P ${x.p} · C ${x.c} · G ${x.f}` : x.k ? "" : x.it ? "" : " (letto dal testo)"}` : "non ho capito: kcal non contate"}</small>${r && r.miss.length && r.items.length ? `<small class="xmiss">Non ho capito: «${esc(r.miss.join("», «"))}»</small>` : ""}</div><button class="bx" data-xdel="${x.id}" aria-label="Elimina">✕</button></div>`; };
+  const pp = drawOf(x.it || (r ? r.items.map(i => [i.f, i.q]) : []));
+  return `<div class="xrow">${pp.length ? dishSVG(pp, null, x.id, "xico") : `<span>✎</span>`}<div><b>${esc(x.t)}</b>${what ? `<small>${esc(what)}</small>` : ""}<small>${x.it ? "" : (SIZES[x.s] || "") + " · "}${v ? `~${v[0]} kcal${x.k && x.p != null ? ` · P ${x.p} · C ${x.c} · G ${x.f}` : x.k ? "" : x.it ? "" : " (letto dal testo)"}` : "non ho capito: kcal non contate"}</small>${r && r.miss.length && r.items.length ? `<small class="xmiss">Non ho capito: «${esc(r.miss.join("», «"))}»</small>` : ""}</div><button class="bx" data-xdel="${x.id}" aria-label="Elimina">✕</button></div>`; };
 // cosa ha capito l'app (dal testo o dalla risposta di Claude): righe modificabili come nelle ricette
 function xParse(f) {
   if (!f) return "";
@@ -389,11 +451,14 @@ function freeInWeek(d) { const mon = weekStart(d); let n = 0; for (let i = 0; i 
 
 function bindOggi(box, d) {
   box.querySelectorAll("[data-cd]").forEach(b => b.onclick = () => { CS.day = b.dataset.cd === todayISO() ? null : b.dataset.cd; CS.xform = null; renderCibo(); });
-  box.querySelectorAll("[data-gym]").forEach(b => b.onclick = () => { const v = b.dataset.gym === "1"; setFDay(d, x => { x.gym = v === gymAuto(d) ? undefined : v; if (x.gym === undefined) delete x.gym; }); renderCibo(); });
-  box.querySelectorAll(".tile[data-m]").forEach(b => b.onclick = () => openOpt(b.dataset.m, b.dataset.o));
-  box.querySelectorAll("[data-qm]").forEach(b => b.onclick = () => { const was = (fDay(d).m || {})[b.dataset.qm] === b.dataset.qo; b.closest(".tilew").querySelector(".tile").classList.add("pop"); logMeal(d, b.dataset.qm, b.dataset.qo, was); setTimeout(renderCibo, was ? 0 : 160); });
+  box.querySelectorAll("[data-gym]").forEach(b => b.onclick = () => { const v = b.dataset.gym === "1"; setFDay(d, x => { x.gym = v; if (v && gymAuto(d)) delete x.gym; }); renderCibo(); });
+  box.querySelectorAll(".tile[data-m], .mselb").forEach(b => b.onclick = () => openOpt(b.dataset.m, b.dataset.o));
+  box.querySelectorAll("[data-qm]").forEach(b => b.onclick = () => { const was = (fDay(d).m || {})[b.dataset.qm] === b.dataset.qo; const tw = b.closest(".tilew"); if (tw) tw.querySelector(".tile").classList.add("pop"); logMeal(d, b.dataset.qm, b.dataset.qo, was); setTimeout(renderCibo, was ? 0 : 160); });
   box.querySelectorAll("[data-skip]").forEach(b => b.onclick = () => { const mid = b.dataset.skip, was = (fDay(d).m || {})[mid] === "skip"; logMeal(d, mid, "skip", was); renderCibo(); });
   box.querySelectorAll("[data-dc]").forEach(b => b.onclick = () => { CS.showDc = true; renderCibo(); });
+  box.querySelectorAll("[data-more]").forEach(b => b.onclick = () => openPicker(b.dataset.more));
+  box.querySelectorAll("[data-mexp]").forEach(b => b.onclick = () => { CS.mexp = { ...(CS.mexp || {}), [b.dataset.mexp]: 1 }; renderCibo(); });
+  box.querySelectorAll("[data-mclose]").forEach(b => b.onclick = () => { delete (CS.mexp || {})[b.dataset.mclose]; renderCibo(); });
   box.querySelectorAll("[data-sh]").forEach(b => b.onclick = () => { const v = b.dataset.sh; setFDay(d, x => { if (x.turno === v) delete x.turno; else x.turno = v; }); renderCibo(); });
   box.querySelectorAll("[data-rec]").forEach(b => b.onclick = () => openRecipe(b.dataset.rec));
   box.querySelectorAll("[data-xadd]").forEach(b => b.onclick = () => { CS.xform = { meal: b.dataset.xadd, s: "n" }; renderCibo(); setTimeout(() => { const i = $("xT"); if (i) i.focus(); }, 60); });
@@ -415,16 +480,19 @@ function bindOggi(box, d) {
       if (!txt) return toast("Scrivi cosa hai mangiato");
       const e = { id: "x" + Date.now().toString(36), meal: f.meal, t: txt.slice(0, 80), s: f.s, at: Date.now() };
       if (+f.k > 0) { e.k = Math.min(5000, +f.k); if (f.p != null) { e.p = f.p; e.c = f.c; e.f = f.f; } } else if (it.length) e.it = it.map(r => [...r]);
-      setFDay(d, x => x.x = [...(x.x || []), e]); CS.xform = null;
+      CS.xform = null;
+      if (e.it && f.meal !== "fuori" && !(fDay(d).m || {})[f.meal]) { const id = rememberDish(f.meal, txt, e.it); logMeal(d, f.meal, "d_" + id, false, e.it); toast(`✓ ${dishName(txt)} · ~${valOfQ(e.it)[0]} kcal · lo ritrovi tra le caselle`); renderCibo(); return; }
+      setFDay(d, x => x.x = [...(x.x || []), e]); if (e.it) rememberDish(f.meal, txt, e.it);
       const v = xVal(e); toast(v ? `Aggiunto: ~${v[0]} kcal` : "Aggiunto, ma non ho capito le kcal: scrivilo diversamente o chiedi a Claude"); renderCibo(); };
     $("xPic").onchange = e => { const file = e.target.files[0]; if (file) askClaude(file, (f.t || "").trim(), SIZES[f.s], f.meal === "pr" || f.meal === "ce" ? "" : ""); e.target.value = ""; };
   }
 }
 // segna (o toglie) un pasto: frase incoraggiante e festa a giornata completa
 function logMeal(d, mid, oid, undo, L) {
-  const before = dayDone(d), fr = !undo && frItem(d, oid);
+  const before = dayDone(d), fr = !undo && frItem(d, oid); if (CS.mexp) delete CS.mexp[mid];
   setFDay(d, x => { if (x.q) delete x.q[mid]; if (undo) { delete x.m[mid]; return; } x.m[mid] = oid; if (fr) x.fr = { ...(x.fr || {}), [oid]: { ...fr } }; });
-  if (!undo && L && !sameQ(L, baseQ(mid, oid, d))) setFDay(d, x => x.q = { ...(x.q || {}), [mid]: L.map(r => [...r]) });
+  if (!undo && /^d_/.test(oid)) { const L2 = L || baseQ(mid, oid, d), x0 = myDish()[oid.slice(2)]; if (L2) setFDay(d, x => { x.q = { ...(x.q || {}), [mid]: L2.map(r => [...r]) }; x.dn = { ...(x.dn || {}), [mid]: x0 ? x0.t : "Il mio piatto" }; }); if (x0) { x0.n = (x0.n || 0) + 1; x0.last = d; save(); } }
+  else if (!undo && L && !sameQ(L, baseQ(mid, oid, d))) setFDay(d, x => x.q = { ...(x.q || {}), [mid]: L.map(r => [...r]) });
   if (fr && !CS.frKeep) { const f = FOOD(); f.fridge = frList().filter(x => "fr_" + x.id !== oid); save(); }
   CS.frKeep = false;
   if (undo) return;
@@ -444,9 +512,11 @@ function openOpt(mid, oid, keep) {
     ${o.porta ? `<p class="rgo ${o.go}">${o.go === "p" ? "🎒 Si porta al lavoro, niente attrezzi" : o.go === "m" ? "🎒 Al lavoro col microonde" : "🏠 Solo a casa"}<small>${esc(o.porta)}</small></p>` : ""}
     ${w !== "casa" && !fits(o, w) ? `<p class="note">Oggi questo pasto lo fai ${w === "zero" ? "al lavoro senza attrezzi" : w === "micro" ? "al lavoro col solo microonde" : "in mensa"}: questa idea va meglio a casa.</p>` : ""}
     ${rist ? ristBox(oid) : ""}${rist || oid === "mensa" ? estBox(oid) : ""}${qBox()}${condBox(rist ? "rist" : oid === "mensa" ? "mensa" : "")}
+    ${o.dish ? `<div class="rlog"><button class="btn" id="dishDel">🗑 Togli dai miei piatti</button></div>` : ""}
     <div class="rlog"><button class="btn ${on ? "" : "primary"}" id="ideaOk">${on ? "Togli: non l'ho mangiato" : `✓ Fatto: mangiato ${MEALN[mid] || ""}`}</button></div>`;
   if (sh.hidden || !keep) showSheet(sh); else sh.querySelector(".is-c").scrollTop = y;
   qBind(sh); if (rist) ristBind(sh, oid); estBind(sh, mid, oid);
+  const dd = $("dishDel"); if (dd) dd.onclick = () => { if (!dd.dataset.sure) { dd.dataset.sure = 1; dd.textContent = "Tocca di nuovo per toglierlo"; return; } delete myDish()[oid.slice(2)]; save(); closeRecipe(); renderCibo(); toast("Tolto dai tuoi piatti"); };
   $("ideaOk").onclick = () => { logMeal(d, mid, oid, on, CS.qe && CS.qe.L); closeRecipe(); renderCibo(); };
 }
 // 🍽 Il tuo piatto: grammi per UN pasto, col carboidrato giusto per quel pasto (scala 80/40/0 a pranzo, cena fissa)
@@ -737,7 +807,10 @@ function openCompose(keep) {
   const ci = $("cpI"), ch = $("cpH"); ci.oninput = () => { ch.innerHTML = ci.value.trim() ? foodHits(ci.value).map(f => `<button class="chip" data-cpa="${f}">${esc(FO(f).n)}</button>`).join("") : ""; ch.querySelectorAll("[data-cpa]").forEach(b => b.onclick = () => { pantry()[b.dataset.cpa] = 1; save(); toggle(b.dataset.cpa); }); };
   const lg = $("cpLog"); if (lg) lg.onclick = () => { const it = C.L.filter(([, q]) => q);
     const e = { id: "x" + Date.now().toString(36), meal: C.meal, t: ("Il mio piatto: " + it.filter(([f]) => !CONDF.includes(f)).map(([f]) => shortN(f).toLowerCase()).join(", ")).slice(0, 80), s: "n", it: it.map(r => [...r]), at: Date.now() };
-    setFDay(d, x => x.x = [...(x.x || []), e]); CS.cp = null; closeRecipe(); CS.tab = "oggi"; renderCibo(); toast(`Segnato: ~${valOfQ(e.it)[0]} kcal`); };
+    CS.cp = null; closeRecipe(); CS.tab = "oggi";
+    if (C.meal && !(fDay(d).m || {})[C.meal]) { const id = rememberDish(C.meal, e.t, e.it); logMeal(d, C.meal, "d_" + id, false, e.it); }
+    else { setFDay(d, x => x.x = [...(x.x || []), e]); rememberDish(C.meal, e.t, e.it); }
+    renderCibo(); toast(`Segnato: ~${valOfQ(e.it)[0]} kcal · lo ritrovi tra le caselle`); };
   const ak = $("cpAsk"); if (ak) ak.onclick = async () => { const H = CS.hv = CS.hv || { open: false, meal: C.meal, r: "" }; H.meal = C.meal; H.t = C.L.filter(([, q]) => q).map(([f, q]) => qText(f, q)).join(", ");
     const txt = hvPrompt().replace("con quello che ho in casa", "con esattamente questi ingredienti e queste quantità");
     try { if (navigator.share) { await navigator.share({ text: txt }); } else throw 0; } catch (e) { if (e && e.name === "AbortError") return; try { await navigator.clipboard.writeText(txt); toast("Richiesta copiata: apri Claude e incollala"); } catch (_) {} }
@@ -874,14 +947,14 @@ function renderRicette(box) {
   const L = CB.recipes.filter(ok);
   box.innerHTML = `${hvCard()}<div class="rfil">${F.map(([k, n]) => `<button class="chip" data-rf="${k}" aria-pressed="${CS.rf === k}">${n}</button>`).join("")}</div>
     ${CS.rf === "all" ? `<p class="note rtip">Nuovo in cucina? Parti da <button class="lnk" data-rf="base">Le basi</button>: friggitrice, padella e pasta spiegate passo passo.</p>` : ""}
-    <div class="rgrid">${L.map(r => { const pic = FOOD().pics[r.id]; return `<button class="rcard" data-rec="${r.id}">${pic ? `<img src="${pic}" alt="">` : dishSVG(r.p, r.box, r.id, "dish")}<b>${esc(r.name)}</b><small>${r.min} min · ${esc(r.tools)}</small><em>${r.mine ? "la tua · " : ""}${r.main ? (r.one ? "1 pasto" : "2 pasti") : esc(CATN[r.cat] || "")}</em>${r.lvl === 2 ? `<i class="rnew">da imparare</i>` : ""}</button>`; }).join("")}</div>`;
+    <div class="rgrid">${L.map(r => { const pic = foodPic(r.id); return `<button class="rcard" data-rec="${r.id}">${pic ? `<img src="${pic}" alt="">` : dishSVG(r.p, r.box, r.id, "dish")}<b>${esc(r.name)}</b><small>${r.min} min · ${esc(r.tools)}</small><em>${r.mine ? "la tua · " : ""}${r.main ? (r.one ? "1 pasto" : "2 pasti") : esc(CATN[r.cat] || "")}</em>${r.lvl === 2 ? `<i class="rnew">da imparare</i>` : ""}</button>`; }).join("")}</div>`;
   box.querySelectorAll("[data-rf]").forEach(b => b.onclick = () => { CS.rf = b.dataset.rf; renderCibo(); });
   hvBind(box);
   box.querySelectorAll("[data-rec]").forEach(b => b.onclick = () => openRecipe(b.dataset.rec));
 }
 function openRecipe(id, ctx, keep) {
   const r = recipeById(id), sh = $("fsheet"); if (!r || !sh) return; if (CS.recipe !== id) CS.recMid = null; CS.recipe = id; CS.recCtx = ctx;
-  const pic = FOOD().pics[id], d = cDay(), all = ctx ? [ctx.mid] : r.main ? ["pr", "ce"] : Object.keys(r.for || {});
+  const pic = foodPic(id), d = cDay(), all = ctx ? [ctx.mid] : r.main ? ["pr", "ce"] : Object.keys(r.for || {});
   const qm = all.includes(CS.recMid) ? CS.recMid : all[0], qo = qm && (ctx && ctx.mid === qm ? ctx.oid : r.main ? id : (r.for || {})[qm]), logs = qm ? [qm] : [];
   if (qm && (!keep || !CS.qe || CS.qe.mid !== qm || CS.qe.oid !== qo || CS.qe.d !== d)) qeInit(d, qm, qo); else if (!qm) CS.qe = null;
   const y = keep && !sh.hidden ? sh.querySelector(".is-c").scrollTop : 0;
@@ -907,7 +980,7 @@ function openRecipe(id, ctx, keep) {
   qBind(sh); sh.querySelectorAll("[data-qf]").forEach(b => b.onclick = () => { CS.recMid = b.dataset.qf; openRecipe(id, ctx, true); });
   $("cookGo").onclick = () => { closeRecipe(); cook(id, ctx); };
   $("rPic").onchange = e => { const f = e.target.files[0]; if (f) saveFoodPic(id, f); e.target.value = ""; };
-  const del = $("rPicDel"); if (del) del.onclick = () => { delete FOOD().pics[id]; save(); openRecipe(id, ctx, true); renderCibo(); };
+  const del = $("rPicDel"); if (del) del.onclick = () => { delete FOOD().pics[id]; picDel("food:" + id); save(); openRecipe(id, ctx, true); renderCibo(); };
   sh.querySelectorAll("[data-kt]").forEach(b => b.onclick = () => kStart(+b.dataset.kt, b.dataset.kl));
   sh.querySelectorAll("[data-rl]").forEach(b => b.onclick = () => { const mid = b.dataset.rl, oid = ctx && ctx.mid === mid ? ctx.oid : r.main ? id : r.for[mid];
     logMeal(cDay(), mid, oid, !!b.dataset.un, CS.qe && CS.qe.mid === mid ? CS.qe.L : null); closeRecipe(); CS.tab = "oggi"; renderCibo(); });
@@ -928,7 +1001,7 @@ function cook(id, ctx, i) {
   else if (i <= N) body = `<p class="cstep">Passo ${i} di ${N} · ${esc(TOOLN[st.tool] || st.tool)}</p><div class="cpic">${toolSVG(st.tool, st.p, r.id + (i - 1))}</div><p class="ctext">${esc(st.t)}</p>
       ${st.ok ? `<p class="sok">✓ <b>Pronto quando:</b> ${esc(st.ok)}</p>` : ""}${st.tip ? `<p class="stip">💡 ${esc(st.tip)}</p>` : ""}
       ${st.min ? `<button class="btn kt" data-kt="${st.min}">⏱ Avvia timer ${st.min} min</button>` : ""}`;
-  else { const pic = FOOD().pics[id], logs = ctx ? [ctx.mid] : CS.qe && CS.qe.mid ? [CS.qe.mid] : r.main ? ["pr", "ce"] : Object.keys(r.for || {});
+  else { const pic = foodPic(id), logs = ctx ? [ctx.mid] : CS.qe && CS.qe.mid ? [CS.qe.mid] : r.main ? ["pr", "ce"] : Object.keys(r.for || {});
     body = `<div class="cpic">${pic ? `<img src="${pic}" alt="">` : dishSVG(r.p, r.box, r.id, "dish")}</div><h2>Fatto! 👨‍🍳</h2>
       ${r.p1 ? `<p class="ctext">${r.p2 ? `<b>Ora:</b> ${esc(r.p1)}<br><b>Per dopo:</b> ${esc(r.p2)}` : esc(r.p1)}</p>` : ""}${r.porta && r.p2 ? `<p class="stip">🎒 ${esc(r.porta)}</p>` : ""}
       <div class="rlog">${logs.map(m => `<button class="btn primary" data-cl="${m}">✓ L'ho mangiato ${MEALN[m]}</button>`).join("")}</div>
@@ -968,16 +1041,34 @@ function kTick() {
 }
 document.addEventListener("visibilitychange", () => { if (!document.hidden && CS.kt) kTick(); });
 function closeRecipe() { const sh = $("fsheet"); if (!sh || sh.hidden) return; sh.classList.remove("on"); document.documentElement.classList.remove("noscroll"); CS.recipe = null; setTimeout(() => { if (!sh.classList.contains("on")) sh.hidden = true; }, 220); }
+// trascina giù per chiudere (20/11/2026, "come per l'allenamento"): da qualsiasi punto quando il contenuto è in cima,
+// direzione decisa ai primi 8 px (orizzontale = scorri le caselle), chiude oltre 1/4 di altezza o con uno scatto veloce.
 (() => { const sh = $("fsheet"); if (!sh) return; sh.querySelector(".is-bg").onclick = closeRecipe; sh.querySelector(".is-x").onclick = closeRecipe; sh.querySelector(".is-close").onclick = closeRecipe;
-  let y0 = null; const top = sh.querySelector(".is-top"), bx = sh.querySelector(".is-box");
-  top.addEventListener("touchstart", e => { y0 = e.touches[0].clientY; }, { passive: true });
-  top.addEventListener("touchmove", e => { if (y0 == null) return; const dy = Math.max(0, e.touches[0].clientY - y0); bx.style.transform = `translateY(${dy}px)`; }, { passive: true });
-  top.addEventListener("touchend", e => { const dy = (e.changedTouches[0].clientY - (y0 || 0)); bx.style.transform = ""; y0 = null; if (dy > 90) closeRecipe(); }); })();
+  const box = sh.querySelector(".is-box"), cont = sh.querySelector(".is-c"), bg = sh.querySelector(".is-bg"), grab = sh.querySelector(".is-top");
+  let y0 = null, x0 = 0, dy = 0, lock = null, t0 = 0, lastY = 0, lastT = 0, vel = 0;
+  const start = (e, top) => { const t = e.touches[0]; if (e.target.closest && e.target.closest("input, textarea, select")) { y0 = null; return; }
+    y0 = t.clientY; x0 = t.clientX; dy = 0; lock = top ? "y" : null; t0 = lastT = Date.now(); lastY = y0; vel = 0; };
+  const move = e => { if (y0 == null) return; const t = e.touches[0];
+    if (!lock) { const ax = Math.abs(t.clientX - x0), ay = Math.abs(t.clientY - y0);
+      if (t.clientY > y0 && ay >= ax && cont.scrollTop <= 0 && e.cancelable) e.preventDefault();
+      if (ax < 8 && ay < 8) return;
+      lock = ax > ay ? "x" : (t.clientY > y0 && cont.scrollTop <= 0 ? "y" : "scroll"); }
+    if (lock !== "y") return;
+    dy = Math.max(0, t.clientY - y0); const now = Date.now(); vel = (t.clientY - lastY) / Math.max(1, now - lastT); lastY = t.clientY; lastT = now;
+    if (e.cancelable) e.preventDefault();
+    box.style.transition = "none"; box.style.transform = `translateY(${dy}px)`; bg.style.transition = "none"; bg.style.opacity = String(Math.max(0.15, 1 - dy / (box.offsetHeight || 600))); };
+  const end = () => { if (y0 == null) return; const h = box.offsetHeight || 600; box.style.transition = ""; bg.style.transition = ""; bg.style.opacity = "";
+    const avg = dy / Math.max(1, Date.now() - t0);
+    if (lock === "y" && (dy > h * 0.25 || (dy > 40 && Math.max(vel, avg) > 0.5))) { closeRecipe(); setTimeout(() => { box.style.transform = ""; }, 260); } else box.style.transform = "";
+    y0 = null; lock = null; };
+  for (const [el, top] of [[cont, false], [grab, true]]) { el.addEventListener("touchstart", e => start(e, top), { passive: true }); el.addEventListener("touchmove", move, { passive: false }); el.addEventListener("touchend", end); el.addEventListener("touchcancel", end); }
+})();
 function saveFoodPic(id, file) {
   const img = new Image(), url = URL.createObjectURL(file);
   img.onload = () => { const k = 560 / Math.max(img.width, img.height), c = document.createElement("canvas"); c.width = Math.round(img.width * Math.min(1, k)); c.height = Math.round(img.height * Math.min(1, k));
     c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
-    FOOD().pics[id] = c.toDataURL("image/jpeg", .7); try { save(); toast("Foto salvata 📷"); } catch (e) { toast("Spazio pieno: foto non salvata"); } if (CS.cook) cook(CS.cook.id, CS.cook.ctx, CS.cook.i); else openRecipe(id, CS.recCtx, true); renderCibo(); };
+    picPut("food:" + id, c.toDataURL("image/jpeg", .7)).then(() => { FOOD().pics[id] = 1; save(); toast("Foto salvata 📷"); if (CS.cook) cook(CS.cook.id, CS.cook.ctx, CS.cook.i); else openRecipe(id, CS.recCtx, true); renderCibo(); })
+      .catch(() => toast("Foto non salvata: memoria del telefono piena?")); };
   img.src = url;
 }
 
@@ -995,6 +1086,28 @@ function renderScambi(box) {
 }
 
 // ---------- spesa ----------
+// 🗓 SPESA DELLA SETTIMANA (20/11/2026): scegli cosa cucini e quante volte, l'app somma gli ingredienti (porzioni del piano)
+// e toglie i condimenti; quello che hai "in casa" resta in fondo da controllare. D.food.wplan = { ricetta: pasti }.
+function weekList() {
+  const P = FOOD().wplan = FOOD().wplan || {}, need = new Map(), d = todayISO();
+  for (const [id, n] of Object.entries(P)) { const r = recipeById(id); if (!r || !n) continue;
+    const mid = r.main ? "ce" : Object.keys(r.for || {})[0], oid = r.main ? id : (r.for || {})[mid], L = mid && oid ? baseQ(mid, oid, d) : null;
+    for (const [f, q] of L || []) if (q && !PANTRY.has(f) && FO(f)) need.set(f, (need.get(f) || 0) + q * n); }
+  const ord = PGRID.flatMap(([, L]) => L), pos = f => { const i = ord.indexOf(grpOf(f, false)); return i < 0 ? 999 : i; };
+  return [...need].map(([f, q]) => { const o = FO(f); const r = isW(o) ? (q >= 100 ? Math.ceil(q / 50) * 50 : Math.ceil(q / 10) * 10) : Math.ceil(q); return [f, r]; }).sort((a, b) => pos(a[0]) - pos(b[0]));
+}
+function planCard() {
+  const P = FOOD().wplan = FOOD().wplan || {}, S0 = FOOD().shop, chosen = Object.keys(P).filter(id => recipeById(id) && P[id]);
+  const R = CB.recipes.filter(r => (r.main || r.cat === "col" || r.cat === "sp") && !chosen.includes(r.id)), list = weekList(), PA = pantry();
+  const buy = list.filter(([f]) => !PA[f]), have = list.filter(([f]) => PA[f]);
+  const row = ([f, q], h) => { const k = "auto:" + f; return `<button class="sitem${S0[k] ? " on" : ""}${h ? " have" : ""}" data-it="${k}"><i>${S0[k] ? "✓" : ""}</i>${esc(qText(f, q))}${h ? ` <small>· in casa: controlla</small>` : ""}</button>`; };
+  return `<h2>🗓 La spesa della settimana</h2><div class="card wplan">
+    <p class="note">Scegli cosa cucini e per quanti pasti: l'app somma gli ingredienti con le porzioni del piano. Olio, sale e soia non li conta.</p>
+    ${chosen.length ? `<div class="wpsel">${chosen.map(id => { const r = recipeById(id); return `<div class="wprow"><span>${esc(r.s || r.name)}</span><div class="qctl"><button data-wpm="${id}" aria-label="Meno">−</button><b>${P[id]} ${P[id] === 1 ? "pasto" : "pasti"}</b><button data-wpp="${id}" aria-label="Più">+</button></div></div>`; }).join("")}</div>` : ""}
+    <details class="wpadd" id="wpAdd"${!chosen.length || CS.wpOpen ? " open" : ""}><summary>+ Aggiungi ricette</summary><div class="rfil">${R.map(r => `<button class="chip" data-wp="${r.id}">${esc(r.s || r.name)}</button>`).join("")}</div></details>
+    ${list.length ? `<p class="plab">Da comprare</p><div class="shop">${buy.map(x => row(x)).join("") || `<p class="note">Hai già tutto in casa 👌</p>`}${have.map(x => row(x, true)).join("")}</div>
+      <div class="row"><button class="btn" id="wpNew">Nuova settimana</button></div>` : ""}</div>`;
+}
 function renderSpesa(box) {
   const S0 = FOOD().shop, n = Object.keys(S0).length;
   const P = Object.entries(prods()).sort((a, b) => (b[1].at || 0) - (a[1].at || 0));
@@ -1003,11 +1116,16 @@ function renderSpesa(box) {
       ${P.map(([id, p]) => `<button class="pitem" data-pe="${id}"><b>${esc(p.n)}${p.b ? ` <span>· ${esc(p.b)}</span>` : ""}</b><small>${fmt(p.v[0])} kcal · P ${fmt(p.v[1])} · C ${fmt(p.v[2])} · G ${fmt(p.v[3])} per 100 g${p.sub && CB.foods[p.sub] ? ` · al posto di ${esc(CB.foods[p.sub].n.toLowerCase())}` : ""}</small></button>`).join("")}
       <div class="row"><button class="btn primary" id="pScan">📷 Scansiona un prodotto</button><button class="btn" id="pMan">✎ Scrivo l'etichetta</button></div></div>
     <details class="card brands"><summary><b>Cosa comprare</b><span>marche facili da trovare e cosa guardare</span></summary>${CB.brands.map(([a, b, c]) => `<div class="brow"><b>${esc(a)}</b><span>${esc(b)}</span><small>${esc(c)}</small></div>`).join("")}<p class="note">Poi scansiona quella che prendi: i numeri giusti sono quelli della tua confezione.</p></details>
-    <h2>Lista della spesa</h2><p class="note">Tocca quello che hai già preso. Le proteine: prendi quelle delle ricette della settimana.</p>
+    ${planCard()}
+    <h2>Lista base</h2><p class="note">Tocca quello che hai già preso. Le proteine: prendi quelle delle ricette della settimana.</p>
     ${CB.shop.map(c => `<h2>${esc(c.cat)}</h2><div class="shop">${c.items.map(it => `<button class="sitem${S0[it] ? " on" : ""}" data-it="${esc(it)}"><i>${S0[it] ? "✓" : ""}</i>${esc(it)}</button>`).join("")}</div>`).join("")}
     ${n ? `<div class="row"><button class="btn" id="shopReset">Ricomincia la lista (${n} presi)</button></div>` : ""}`;
   box.querySelectorAll("[data-it]").forEach(b => b.onclick = () => { const k = b.dataset.it, f = FOOD(); if (f.shop[k]) delete f.shop[k]; else f.shop[k] = 1; save(); renderCibo(); });
   const r = $("shopReset"); if (r) r.onclick = () => { FOOD().shop = {}; save(); renderCibo(); };
+  const wa = $("wpAdd"); if (wa) wa.ontoggle = () => { CS.wpOpen = wa.open; };
+  box.querySelectorAll("[data-wp]").forEach(b => b.onclick = () => { CS.wpOpen = true; const r = recipeById(b.dataset.wp), P = FOOD().wplan; P[b.dataset.wp] = r.main ? (r.one ? 1 : 2) : 3; save(); renderCibo(); });
+  box.querySelectorAll("[data-wpm],[data-wpp]").forEach(b => b.onclick = () => { const id = b.dataset.wpm || b.dataset.wpp, P = FOOD().wplan; P[id] = Math.max(0, (P[id] || 0) + (b.dataset.wpm ? -1 : 1)); if (!P[id]) delete P[id]; save(); renderCibo(); });
+  const wn = $("wpNew"); if (wn) wn.onclick = () => { if (!wn.dataset.sure) { wn.dataset.sure = 1; wn.textContent = "Tocca di nuovo: svuoto la settimana"; return; } const f = FOOD(); f.wplan = {}; for (const k of Object.keys(f.shop)) if (k.startsWith("auto:")) delete f.shop[k]; save(); renderCibo(); };
   $("pScan").onclick = () => scanOpen(); $("pMan").onclick = () => prodForm({});
   box.querySelectorAll("[data-pe]").forEach(b => b.onclick = () => prodForm({ ...prods()[b.dataset.pe], id: b.dataset.pe }));
 }
@@ -1028,3 +1146,6 @@ function foodReport(from) {
   let lib = 0, x = 0; for (const d of ds) { const m = f.days[d].m; for (const k of ["pr", "ce"]) if (m[k] === "libero") lib++; x += (f.days[d].x || []).length; }
   return ["", "🍽 ALIMENTAZIONE", `Giorni segnati: ${ds.length} · pasti liberi: ${lib}${x ? ` · cibi extra scritti: ${x}` : ""}`];
 }
+
+// app aperta direttamente sul Cibo: app.js disegna prima che questo file sia caricato
+if (typeof S !== "undefined" && S.view === "cibo") renderCibo();

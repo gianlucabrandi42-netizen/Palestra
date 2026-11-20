@@ -373,14 +373,38 @@ function renderSite() {
   if (off) off.onclick = () => { const x = JSON.parse(JSON.stringify(current())); delete x.site; x.updatedAt = Date.now(); D.sessions[x.id] = x; save(); renderLog(); };
   if (nm) nm.oninput = () => { const x = JSON.parse(JSON.stringify(current())); x.site = nm.value.trim(); x.updatedAt = Date.now(); D.sessions[x.id] = x; save(); renderConsole(); };
 }
-// Foto delle macchine scattate dall'utente (D.machines[gym][nome minuscolo] = JPEG ridotto), nel backup
-const machinePic = n => (((D.machines || {})[S.gym] || {})[(n || "").trim().toLowerCase()]) || "";
+// ---------- 📷 ARCHIVIO FOTO (20/11/2026) ----------
+// Le foto (macchine e piatti) stavano dentro i dati in localStorage, che su iPhone ha ~5 MB: con qualche decina di foto si
+// riempiva e l'app non salvava più nemmeno le serie. Ora stanno in IndexedDB ("palestra-foto", chiavi "mach:<gym>:<nome>",
+// "food:<ricetta>"); nei dati resta solo il segno 1. In memoria (PICM) per disegnarle subito. Backup (file e online) le porta
+// a parte, nel campo "pics" accanto a "data". Le foto vecchie (dataURL nei dati) vengono spostate all'avvio (migratePics).
+const PICM = new Map(); let picDb = null;
+const idb = () => picDb || (picDb = new Promise((ok, ko) => { const r = indexedDB.open("palestra-foto", 1); r.onupgradeneeded = () => r.result.createObjectStore("p"); r.onsuccess = () => ok(r.result); r.onerror = () => ko(r.error); }));
+const idbDo = (mode, fn) => idb().then(db => new Promise((ok, ko) => { const t = db.transaction("p", mode), st = t.objectStore("p"), res = fn(st); t.oncomplete = () => ok(res); t.onerror = t.onabort = () => ko(t.error); }));
+async function picPut(k, v) { await idbDo("readwrite", st => st.put(v, k)); PICM.set(k, v); }
+async function picDel(k) { PICM.delete(k); try { await idbDo("readwrite", st => st.delete(k)); } catch (e) {} }
+async function picLoadAll() { const r = await idbDo("readonly", st => ({ k: st.getAllKeys(), v: st.getAll() })); r.k.result.forEach((k, i) => PICM.set(k, r.v.result[i])); }
+const picOf = (k, legacy) => PICM.get(k) || (typeof legacy === "string" && legacy.startsWith("data:") ? legacy : "");
+async function migratePics() {
+  let moved = 0;
+  const F = (D.food && D.food.pics) || {};
+  for (const [id, v] of Object.entries(F)) if (typeof v === "string" && v.startsWith("data:")) { await picPut("food:" + id, v); F[id] = 1; moved++; }
+  for (const [g, m] of Object.entries(D.machines || {})) for (const [n, v] of Object.entries(m || {})) if (typeof v === "string" && v.startsWith("data:")) { await picPut(`mach:${g}:${n}`, v); m[n] = 1; moved++; }
+  if (moved) save(true);
+  return moved;
+}
+async function restorePics(j) { for (const [k, v] of Object.entries((j && j.pics) || {})) if (!PICM.has(k) && typeof v === "string") { try { await picPut(k, v); } catch (e) {} } try { await migratePics(); } catch (e) {} }
+const picsSig = () => { let n = 0; for (const v of PICM.values()) n += v.length; return PICM.size + "/" + n; };
+if (window.indexedDB) picLoadAll().then(migratePics).then(() => render()).catch(() => {});
+// Foto delle macchine scattate dall'utente (D.machines[gym][nome minuscolo] = 1, la foto in "mach:<gym>:<nome>")
+const machinePic = n => { const k = (n || "").trim().toLowerCase(); return picOf(`mach:${S.gym}:${k}`, ((D.machines || {})[S.gym] || {})[k]); };
 function saveMachinePic(n, file) {
   const img = new Image(), url = URL.createObjectURL(file);
   img.onload = () => { const k = 480 / Math.max(img.width, img.height), c = document.createElement("canvas"); c.width = Math.round(img.width * Math.min(1, k)); c.height = Math.round(img.height * Math.min(1, k));
     c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
-    D.machines = D.machines || {}; D.machines[S.gym] = { ...(D.machines[S.gym] || {}), [n.trim().toLowerCase()]: c.toDataURL("image/jpeg", 0.72) };
-    try { save(); toast("Foto salvata"); } catch (e) { toast("Spazio pieno: foto non salvata"); } renderLog(); };
+    const mk = n.trim().toLowerCase(), g = S.gym;
+    picPut(`mach:${g}:${mk}`, c.toDataURL("image/jpeg", 0.72)).then(() => { D.machines = D.machines || {}; D.machines[g] = { ...(D.machines[g] || {}), [mk]: 1 }; save(); toast("Foto salvata"); renderLog(); })
+      .catch(() => toast("Foto non salvata: memoria del telefono piena?")); };
   img.src = url;
 }
 // ---------- Info ed esecuzione in un riquadro che sale dal basso (17/11/2026) ----------
@@ -1858,7 +1882,7 @@ function renderPlans() {
 }
 
 // ---------- backup ----------
-function backupData() { return JSON.stringify({ app: "palestra", v: 1, exportedAt: new Date().toISOString(), data: D }, null, 1); }
+function backupData() { return JSON.stringify({ app: "palestra", v: 1, exportedAt: new Date().toISOString(), data: D, pics: Object.fromEntries(PICM) }, null, 1); }
 // Promemoria backup (17/11/2026): dopo 3 sedute nuove o 7 giorni dall'ultimo; anche nel recap. Il telefono non deve cancellare i dati da solo.
 const sessSinceBackup = () => { const t = D.prefs.lastBackup ? Date.parse(D.prefs.lastBackup) : 0; return Object.values(D.sessions).filter(s => hasData(s) && (s.updatedAt || 0) > t && s.date >= (D.prefs.lastBackup || "").slice(0, 10)).length; };
 const needBackup = () => { const c = cloud(); if (c.code && c.last && Date.now() - c.last < 3 * 864e5) return false; const ds = daysSince(D.prefs.lastBackup); return Object.values(D.sessions).some(hasData) && (ds == null || ds >= 7 || sessSinceBackup() >= 3); };
@@ -1906,12 +1930,12 @@ async function codeKey(code) {
 }
 async function gzip(str) { if (!window.CompressionStream) return null; return new Uint8Array(await new Response(new Blob([str]).stream().pipeThrough(new CompressionStream("gzip"))).arrayBuffer()); }
 async function gunzip(u8) { return new Response(new Blob([u8]).stream().pipeThrough(new DecompressionStream("gzip"))).text(); }
-const dataSig = () => { const t = JSON.stringify(D); let h = 5381; for (let i = 0; i < t.length; i += 7) h = (h * 33 + t.charCodeAt(i)) | 0; return t.length + ":" + h; };
+const dataSig = () => { const t = JSON.stringify(D); let h = 5381; for (let i = 0; i < t.length; i += 7) h = (h * 33 + t.charCodeAt(i)) | 0; return t.length + ":" + h + ":" + picsSig(); };
 async function cloudUpload(force) {
   const c = cloud(); if (!c.code || S.cloudBusy) return; const sig = dataSig(); if (!force && c.sig === sig) return;
   S.cloudBusy = true;
   try {
-    const raw = JSON.stringify({ app: "palestra", v: 1, exportedAt: new Date().toISOString(), data: D }), z = await gzip(raw).catch(() => null);
+    const raw = JSON.stringify({ app: "palestra", v: 1, exportedAt: new Date().toISOString(), data: D, pics: Object.fromEntries(PICM) }), z = await gzip(raw).catch(() => null);
     const iv = crypto.getRandomValues(new Uint8Array(12)), ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await codeKey(c.code), z || new TextEncoder().encode(raw)));
     const data = JSON.stringify({ v: 1, z: !!z, iv: b64e(iv), ct: b64e(ct) });
     const r = await fetch(PUSH_URL + "/vault/put", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: await codeId(c.code), data, at: Date.now() }) });
@@ -1930,8 +1954,14 @@ async function cloudRestore(code, prev) {
 }
 let cloudT = 0; const cloudSoon = () => { if (!cloud().code) return; clearTimeout(cloudT); cloudT = setTimeout(() => cloudUpload(), 90000); };
 setTimeout(() => cloudUpload(), 4000);
+// quanto spazio usano i dati (20/11/2026): su iPhone localStorage ha circa 5 MB
+function renderStorage() {
+  const el = $("stUse"); if (!el) return; const mb = n => (n / 1048576).toLocaleString("it-IT", { maximumFractionDigits: 1, minimumFractionDigits: 1 });
+  const ls = ((localStorage.getItem(KEY) || "").length) * 2, pct = ls / (5 * 1048576); let pb = 0; for (const v of PICM.values()) pb += v.length;
+  el.innerHTML = `Dati dell'app: <b>${mb(ls)} MB</b> su circa 5 MB${pct > .7 ? ` · <span class="warnc">quasi pieno: fai un backup e dimmelo</span>` : ""} · Foto: <b>${PICM.size}</b> (${mb(pb)} MB, in un archivio a parte, senza limite stretto)`;
+}
 function renderCloud() {
-  const box = $("cloudSet"); if (!box) return; const c = cloud();
+  renderStorage(); const box = $("cloudSet"); if (!box) return; const c = cloud();
   const when = t => { if (!t) return "mai"; const d = new Date(t), today = new Date().toDateString() === d.toDateString(); return (today ? "oggi" : d.toLocaleDateString("it-IT", { day: "numeric", month: "short" })) + " alle " + d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" }); };
   box.innerHTML = c.code ? `<p><b class="okc">● Attivo</b> · ultimo backup online: <b>${when(c.last)}</b>${c.err ? ` · <span class="warnc">${esc(c.err)}</span>` : ""}</p>
       <p class="note">Si salva da solo a fine allenamento e quando modifichi i dati. È cifrato: si apre solo col tuo codice di recupero.</p>
@@ -1948,7 +1978,7 @@ function renderCloud() {
   $("cdGo").onclick = async () => {
     const code = $("cdIn").value, msg = $("cdMsg"); if (normCode(code).length < 16) { msg.textContent = "Il codice ha 16 caratteri."; return; }
     msg.textContent = "Scarico e apro il backup…";
-    try { const j = await cloudRestore(code); const n = mergeData(j.data); setCloud({ code: fmtCode(code), sig: "", err: "" }); save(true);
+    try { const j = await cloudRestore(code); const n = mergeData(j.data); await restorePics(j); setCloud({ code: fmtCode(code), sig: "", err: "" }); save(true);
       const done = `Fatto: ${n} sedute recuperate (backup del ${new Date(j.exportedAt).toLocaleDateString("it-IT")}). Da ora il backup continua con questo codice.`;
       S.cdMsg = done; toast("Backup ripristinato"); render(); cloudUpload(true); }
     catch (e) { msg.textContent = e.message || "Non riuscito"; }
@@ -1958,7 +1988,7 @@ $("bkFile").onchange = async e => {
   const f = e.target.files[0]; if (!f) return;
   try {
     const j = JSON.parse(await f.text()); if (!j || j.app !== "palestra" || !j.data) throw 0;
-    const added = mergeData(j.data);
+    const added = mergeData(j.data); await restorePics(j);
     save(true); $("bkMsg").textContent = `Ripristino fatto: ${added} sedute importate o aggiornate.`; toast("Backup ripristinato"); render();
   } catch (err) { $("bkMsg").textContent = "Questo file non è un backup dell'app Palestra."; }
   e.target.value = "";
@@ -2325,8 +2355,26 @@ let toastT;
 function toast(t) { const el = $("toast"); el.textContent = t; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => el.hidden = true, 2200); }
 
 if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+// 20/11/2026 (richiesta dell'utente): l'app si apre sul CIBO, a meno che ci sia un allenamento in corso (recupero che conta,
+// oppure seduta di oggi iniziata, non finita, senza "Fine allenamento" e con l'ultimo inserimento da meno di 45'): allora torna lì.
+function trainingActive() {
+  if (running()) return true;
+  let L = null; try { L = JSON.parse(localStorage.getItem(LKEY)); } catch (e) {}
+  if (!L || L.date !== todayISO()) return false;
+  const s = Object.values(D.sessions).filter(x => x.date === L.date && x.gym === L.gym && x.day === L.day && hasData(x)).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0];
+  if (!s || s.tEnd || sessDone(s)) return false;
+  return Date.now() - (s.t1 || s.updatedAt || 0) < 45 * 60000;
+}
+if (!trainingActive()) S.view = "cibo";
 render();
 resumeLast();
+// tornando nell'app dopo più di 10 minuti: allenamento in corso → la seduta; altrimenti il Cibo (se eri in Allenamento)
+{ let away = 0; document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") { away = Date.now(); return; }
+  if (!away || Date.now() - away < 600000 || document.activeElement?.matches("input,textarea")) return;
+  if (trainingActive()) { if (S.view !== "log") resumeLast(true); }
+  else if (S.view === "log") { S.view = "cibo"; render(); scrollTo(0, 0); }
+}); }
 // Aggiornamenti (20/11/2026: "non vedo l'app cambiata"): controlla sw.js a ogni apertura e ritorno nell'app; quando il service worker
 // nuovo prende il comando, ricarica la pagina una volta (subito se non stai scrivendo, altrimenti alla prossima uscita/rientro).
 if ("serviceWorker" in navigator && location.protocol === "https:") {
