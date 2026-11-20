@@ -1373,3 +1373,40 @@ html[data-theme="sparta"] .tile u,html[data-theme="sparta"] .tile em{color:#0B0E
 .cing button.on i{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .cfoot{display:grid;grid-template-columns:1fr 1.6fr;gap:10px;padding-top:8px}
 .cfoot .btn{min-height:52px;font-size:16px}
+/* CIBO · quantità per ingrediente, condimenti, ristorante (20/11/2026) */
+.qbox{margin-top:14px;background:var(--raised);border:1px solid color-mix(in srgb,var(--accent) 45%,var(--line));border-radius:14px;padding:10px 12px}
+.qbox h3{margin:0 0 2px!important;color:var(--ink)!important}
+.qbox>.note{margin:0 0 6px}
+.qrow{display:grid;grid-template-columns:1fr auto 58px;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--line)}
+.qrow span{font-size:13.5px;line-height:1.25}
+.qrow em{font-style:normal;font-size:12px;color:var(--muted);text-align:right}
+.qrow.zero span,.qrow.zero b{color:var(--muted);text-decoration:line-through}
+.qctl{display:flex;align-items:center;gap:6px}
+.qctl b{min-width:74px;text-align:center;font-size:13.5px;font-variant-numeric:tabular-nums}
+.qctl button{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:20px;font-weight:700;display:grid;place-items:center;padding:0}
+.qctl button:active{background:color-mix(in srgb,var(--accent) 30%,var(--surface))}
+.qadd{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:8px 0 2px;border-top:1px solid var(--line)}
+.qadd input{width:100%;padding:9px 11px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:16px}
+.qhits{display:flex;flex-wrap:wrap;gap:6px}
+.qtot{display:grid;gap:1px;margin:8px 0 0;padding-top:8px;border-top:1px solid var(--line)}
+.qtot b{font-size:17px;color:var(--accent)}
+.qtot span{font-size:12.5px;color:var(--muted)}
+.qfor{display:flex;align-items:center;gap:8px;justify-content:center;margin-top:12px;font-size:13px;color:var(--muted)}
+.cond{margin-top:12px;background:var(--raised);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.cond summary{list-style:none;display:grid;gap:3px;cursor:pointer}
+.cond summary::-webkit-details-marker{display:none}
+.cond summary span{font-size:13.5px;line-height:1.4}
+.cond summary::after{content:"perché e regole ›";font-size:12px;color:var(--accent);font-weight:700}
+.cond[open] summary::after{content:"chiudi"}
+.cond ul{margin:8px 0 0;padding-left:18px;display:grid;gap:5px;font-size:13px;color:var(--muted);line-height:1.4}
+.rist{margin-top:12px;background:var(--raised);border:1px dashed color-mix(in srgb,var(--accent) 55%,var(--line));border-radius:14px;padding:10px 12px;display:grid;gap:8px}
+.rist h3{margin:0!important;color:var(--ink)!important}
+.rist .note{margin:0}
+.rchips{display:flex;flex-wrap:wrap;gap:6px}
+.rist .btn[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
+.xparse p{margin:6px 0 0;font-size:13px;line-height:1.4}
+.xpok{color:var(--ink)}
+.xpok b{color:var(--accent)}
+.xpno{color:#F2C14E}
+.xrow small.xmiss{display:block;color:#F2C14E}
+.qctl b{min-width:0;width:84px;white-space:normal;line-height:1.15;font-size:13px}
