@@ -558,13 +558,56 @@ function openOpt(mid, oid, keep) {
 const prods = () => { const f = FOOD(); return (f.prods = f.prods || {}); };
 function syncProds() {
   for (const k of Object.keys(CB.foods)) if (k.startsWith("p_")) delete CB.foods[k];
-  for (const [id, p] of Object.entries(prods())) { if (!p.v || p.v[0] == null) continue; const sf = p.sub && CB.foods[p.sub];
-    CB.foods["p_" + id] = { n: p.n + (p.b ? " · " + p.b : ""), u: "g", s: 10, v: p.v.map(x => +x || 0), k: [p.n, p.b && `${p.b} ${p.n}`].filter(Boolean).map(x => x.replace(/,/g, " ")).join(","), d: p.d || (sf ? Math.round(sf.d * (isW(sf) ? 1 : sf.g)) : 100), mine: 1 }; }
+  for (const [id, p] of Object.entries(prods())) { if (!p.v || p.v[0] == null) continue; const sf = (p.of || p.sub) && CB.foods[p.of || p.sub];
+    const pu = p.pu && sf && !isW(sf) ? { u: sf.u, g: sf.g, s: sf.s } : { u: "g", s: 10 };
+    CB.foods["p_" + id] = { n: p.n + (p.b ? " · " + p.b : ""), ...pu, of: p.of || p.sub, b: p.b, v: p.v.map(x => +x || 0), k: [p.n, p.b && `${p.b} ${p.n}`].filter(Boolean).map(x => x.replace(/,/g, " ")).join(","), d: p.d || (sf ? Math.round(sf.d * (isW(sf) ? 1 : sf.g)) : 100), mine: 1 }; }
   KW = null;
 }
 function applySubs(L) {
   const S = {}; for (const [id, p] of Object.entries(prods())) if (p.sub && CB.foods["p_" + id]) S[p.sub] = "p_" + id;
-  return L.map(([f, q]) => S[f] ? [S[f], Math.round(gramsOf(f, q))] : [f, q]);
+  return L.map(([f, q]) => S[f] ? [S[f], convQ(f, q, S[f])] : [f, q]);
+}
+// quantità di un alimento espressa nell'unità di un altro (pezzi se tutti e due a pezzi, altrimenti grammi)
+function convQ(f, q, to) { const a = FO(f), b = FO(to); if (!isW(a) && !isW(b) && a.g === b.g) return q; return isW(b) ? Math.round(gramsOf(f, q)) : Math.round(gramsOf(f, q) / b.g * 100) / 100; }
+
+// 🏷 MARCHE MAN MANO (20/11/2026, richiesta dell'utente: "mentre compilo gli ingredienti chiedimi la marca delle cose
+// confezionate: man mano si crea il database"). Accanto agli ingredienti confezionati c'è "🏷 marca?": scegli o scrivi la marca,
+// diventa un tuo prodotto (D.food.prods, of = alimento del piano) e da lì in poi è quello usato al suo posto (sub).
+// Senza codice a barre i valori restano quelli standard dell'alimento (std) finché non scansioni la confezione.
+const PACK = new Set("yogurt cornflakes galletta bresaola fiocchi prot mozz mozzn tonno segale piadina pasta pastai riso cous farro quinoa rprec farrop gnocchi crema albumeg latte pcotto pcrudo ceci passata vgrill vmiste parmigiano formaggio cracker grissino biscotto pane".split(" "));
+const BRANDS = { segale: "Mestemacher, Pema", piadina: "Loriana, Mulino Bianco", yogurt: "Vipiteno, Müller, Yomo", fiocchi: "Jocca, Granarolo", mozz: "Santa Lucia, Granarolo", bresaola: "Rigamonti", tonno: "Rio Mare, Mareblu", rprec: "Riso Scotti, Ben's Original", galletta: "Riso Scotti, Gallo", cornflakes: "Kellogg's", pasta: "Barilla, De Cecco, Rummo", riso: "Gallo, Scotti", gnocchi: "Rana, Giovanni Rana", latte: "Granarolo, Parmalat", albumeg: "Eurovo, Naturelle", passata: "Mutti, Cirio", ceci: "Valfrutta, Cirio" };
+const ofFood = f => { const o = FO(f); return o && o.mine ? o.of || null : PACK.has(f) ? f : null; };
+const nobrand = () => { const f = FOOD(); return (f.nobrand = f.nobrand || {}); };
+function brandUse(id) { // questo prodotto diventa quello usato al posto dell'alimento generico
+  const P = prods(), p = P[id], of = p.of || p.sub; if (!of) return;
+  for (const x of Object.values(P)) if ((x.of || x.sub) === of && x !== p && x.sub) { x.of = x.of || x.sub; delete x.sub; x.at = Date.now(); }
+  p.of = of; p.sub = of; p.at = Date.now(); save(); syncProds();
+}
+function brandPick(f0, done) {
+  const of = ofFood(f0); if (!of) return; const base = FO(of), P = prods();
+  const mine = Object.entries(P).filter(([, p]) => (p.of || p.sub) === of).sort((a, b) => (b[1].at || 0) - (a[1].at || 0));
+  const sug = [...new Set([...mine.map(([, p]) => p.b).filter(Boolean), ...(BRANDS[of] || "").split(",").map(x => x.trim()).filter(Boolean), "marca del supermercato"])];
+  const ov = panel(); CS.scanSub = of;
+  ov.innerHTML = `<div class="sc-top"><b>🏷 Che marca è?</b><button class="is-x" id="scX" aria-label="Chiudi">✕</button></div>
+    <p class="note sc-msg">${esc(base.n)}: la marca scelta resta per le prossime volte (la cambi da qui quando vuoi).</p>
+    ${mine.length ? `<p class="plab">Le tue</p><div class="bpick">${mine.map(([id, p]) => `<button class="chip${FO(f0).mine && f0 === "p_" + id ? " on" : ""}" data-bu="${id}">${esc(p.b || p.n)}${p.std ? "" : " ✓"}</button>`).join("")}</div>` : ""}
+    <p class="plab">${mine.length ? "Un'altra marca" : "Marca"}</p>
+    <div class="bpick">${sug.filter(b => !mine.some(([, p]) => p.b === b)).map(b => `<button class="chip" data-bs="${esc(b)}">${esc(b)}</button>`).join("")}</div>
+    <div class="row"><input id="bN" placeholder="scrivi la marca" autocomplete="off"><button class="btn primary" id="bOk">Salva</button></div>
+    <p class="note">Senza codice a barre uso i valori standard di «${esc(base.n)}». Per quelli esatti della tua confezione:</p>
+    <button class="btn" id="bScan">📷 Scansiona il codice a barre</button>
+    <div class="row bfoot">${FO(f0).mine ? `<button class="lnk" id="bGen">↺ Torna a «${esc(base.n)}» generico</button>` : ""}<button class="lnk" id="bNo">Non è confezionato: non chiedere più</button></div>`;
+  $("scX").onclick = panelClose;
+  const fin = id => { brandUse(id); panelClose(); toast("🏷 " + (prods()[id].b || prods()[id].n)); done("p_" + id); };
+  const add = b => { b = (b || "").trim(); if (!b) return toast("Scrivi la marca");
+    const old = mine.find(([, p]) => normT(p.b || "") === normT(b)); if (old) return fin(old[0]);
+    const id = Date.now().toString(36); P[id] = { n: base.n.replace(/ \(.*\)$/, ""), b, v: [...base.v], of, sub: of, pu: isW(base) ? undefined : 1, std: 1, at: Date.now() }; fin(id); };
+  ov.querySelectorAll("[data-bu]").forEach(x => x.onclick = () => fin(x.dataset.bu));
+  ov.querySelectorAll("[data-bs]").forEach(x => x.onclick = () => add(x.dataset.bs));
+  $("bOk").onclick = () => add($("bN").value); $("bN").onkeydown = e => { if (e.key === "Enter") add($("bN").value); };
+  $("bScan").onclick = () => scanOpen(f => { const p = prods()[f.slice(2)]; if (p) { p.of = of; if (!p.pu && !isW(base) && !p.d) p.pu = 1; delete p.std; brandUse(f.slice(2)); } done(f); });
+  const g = $("bGen"); if (g) g.onclick = () => { for (const x of Object.values(P)) if ((x.of || x.sub) === of && x.sub) { x.of = of; delete x.sub; x.at = Date.now(); } save(); syncProds(); panelClose(); done(of); };
+  $("bNo").onclick = () => { nobrand()[of] = 1; save(); panelClose(); done(null); };
 }
 const GENERIC = () => Object.entries(CB.foods).filter(([k, o]) => !o.mine && !["msec", "mpri", "acqua", "sale", "zero"].includes(k)).sort((a, b) => a[1].n.localeCompare(b[1].n, "it"));
 function guessSub(name) { const r = readFood(name || "", "n").items.find(i => !FO(i.f).mine); return r ? r.f : ""; }
@@ -573,7 +616,7 @@ function guessSub(name) { const r = readFood(name || "", "n").items.find(i => !F
 const loadScan = () => window.__Html5QrcodeLibrary__ ? Promise.resolve() : new Promise((ok, ko) => { const x = document.createElement("script"); x.src = "vendor/html5-qrcode.min.js"; x.onload = ok; x.onerror = ko; document.head.appendChild(x); });
 function panel() { let ov = $("scan"); if (!ov) { ov = document.createElement("div"); ov.id = "scan"; document.body.appendChild(ov); } ov.hidden = false; document.documentElement.classList.add("noscroll"); return ov; }
 async function scanStop() { const sc = CS.scanner; CS.scanner = null; if (sc) { try { if (sc.isScanning) await sc.stop(); sc.clear(); } catch (_) {} } }
-function panelClose() { scanStop(); const ov = $("scan"); if (ov) { ov.hidden = true; ov.innerHTML = ""; } if ($("fsheet").hidden) document.documentElement.classList.remove("noscroll"); }
+function panelClose() { scanStop(); CS.scanSub = null; const ov = $("scan"); if (ov) { ov.hidden = true; ov.innerHTML = ""; } if ($("fsheet").hidden) document.documentElement.classList.remove("noscroll"); }
 async function scanOpen(cb) {
   CS.scanCb = cb; const ov = panel();
   ov.innerHTML = `<div class="sc-top"><b>Codice a barre</b><button class="is-x" id="scX" aria-label="Chiudi">✕</button></div>
@@ -613,7 +656,7 @@ async function offGet(code) {
   return { n: (P.product_name_it || P.product_name || "").trim(), b: (P.brands || "").split(",")[0].trim(), v: [kc, n.proteins_100g, n.carbohydrates_100g, n.fat_100g].map(num), code, d: num(P.serving_quantity) };
 }
 function prodForm(p, note) {
-  const ov = panel(), v = p.v || [], sub = p.sub != null ? p.sub : guessSub(p.n);
+  const ov = panel(), v = p.v || [], sub = p.sub != null ? p.sub : CS.scanSub || guessSub(p.n);
   ov.innerHTML = `<div class="sc-top"><b>${p.id ? "Il mio prodotto" : "Nuovo prodotto"}</b><button class="is-x" id="scX" aria-label="Chiudi">✕</button></div>
     ${note ? `<p class="note sc-msg">${esc(note)}</p>` : ""}
     <div class="pform"><label>Nome<input id="pN" value="${esc(p.n || "")}" placeholder="es. Pane di segale integrale" autocomplete="off"></label>
@@ -630,7 +673,7 @@ function prodForm(p, note) {
     const n = $("pN").value.trim(), V = [0, 1, 2, 3].map(i => { const x = parseFloat(($("pV" + i).value || "").replace(",", ".")); return isNaN(x) ? null : x; });
     if (!n) return toast("Scrivi il nome"); if (V.some(x => x == null)) return toast("Servono kcal, proteine, carboidrati e grassi per 100 g");
     const id = p.id || Date.now().toString(36), d = parseFloat(($("pD").value || "").replace(",", "."));
-    prods()[id] = { n, b: $("pB").value.trim(), v: V, code: p.code || undefined, sub: $("pS").value || undefined, d: d > 0 ? d : undefined, at: Date.now() };
+    const sv = $("pS").value || undefined; prods()[id] = { ...(p.id ? prods()[p.id] : {}), n, b: $("pB").value.trim(), v: V, code: p.code || undefined, sub: sv, of: sv, d: d > 0 ? d : undefined, at: Date.now() }; delete prods()[id].std; CS.scanSub = null;
     save(); syncProds(); const cb = CS.scanCb; CS.scanCb = null; panelClose(); toast("🏷 Salvato: " + n); if (cb) cb("p_" + id); else renderCibo(); };
   const del = $("pDel"); if (del) del.onclick = () => { if (!del.dataset.sure) { del.dataset.sure = 1; del.textContent = "Tocca di nuovo per eliminare"; return; } delete prods()[p.id]; save(); syncProds(); panelClose(); renderCibo(); };
 }
@@ -642,12 +685,16 @@ function rowsHTML(L, base) {
     // sopra la quantità del piano (oltre +10%) o ingrediente aggiunto: riga colorata (20/11/2026)
     const b0 = B ? B.get(f) : undefined, up = B && q && (b0 == null ? !CONDF.includes(f) || q > 0 : q > b0 * 1.1 + 1e-9) ? (b0 == null ? " add" : (q > b0 * 1.25 ? " up2" : " up")) : "";
     const diff = up && b0 != null ? `<small class="qdiff">piano ${qLabel(f, b0)} · +${valOfQ([[f, q - b0]])[0]} kcal</small>` : up ? `<small class="qdiff">aggiunto</small>` : "";
-    return `<div class="qrow${q ? "" : " zero"}${up}"><span>${esc(o.n)}${o.mine ? ` <i class="mine">mio</i>` : ""}${diff}</span><div class="qctl"><button data-qd="${i}" aria-label="Meno">−</button><b data-qg="${i}">${qLabel(f, q)}</b><button data-qu="${i}" aria-label="Più">+</button></div><em>${q ? `${v} kcal` : "niente"}</em></div>`; }).join("");
+    const of = ofFood(f), bt = of && !(nobrand()[of] && !o.mine) ? `<button class="qbr${o.mine ? " on" : ""}" data-qb="${i}">🏷 ${o.mine ? esc(o.b || "marca") : "marca?"}</button>` : "";
+    const nm = o.mine && of ? FO(of).n : o.n;
+    return `<div class="qrow${q ? "" : " zero"}${up}"><span>${esc(nm)}${o.mine && !of ? ` <i class="mine">mio</i>` : ""}${bt}${diff}</span><div class="qctl"><button data-qd="${i}" aria-label="Meno">−</button><b data-qg="${i}">${qLabel(f, q)}</b><button data-qu="${i}" aria-label="Più">+</button></div><em>${q ? `${v} kcal` : "niente"}</em></div>`; }).join("");
 }
 function bindRows(box, L, changed) {
   const step = (i, k) => { const [f, q] = L[i], o = FO(f); L[i][1] = Math.max(0, Math.round((q + k * o.s) * 100) / 100); try { iosTap(); } catch (_) {} changed(); };
   box.querySelectorAll("[data-qd]").forEach(b => b.onclick = () => step(+b.dataset.qd, -1));
   box.querySelectorAll("[data-qu]").forEach(b => b.onclick = () => step(+b.dataset.qu, 1));
+  box.querySelectorAll("[data-qb]").forEach(b => b.onclick = e => { e.stopPropagation(); const i = +b.dataset.qb, [f, q] = L[i];
+    brandPick(f, to => { if (to && to !== f && L[i]) L[i] = [to, convQ(f, q, to)]; changed(); }); });
   box.querySelectorAll("[data-qg]").forEach(b => b.onclick = () => {
     const i = +b.dataset.qg, [f, q] = L[i], o = FO(f), g = Math.round(gramsOf(f, q));
     b.outerHTML = `<span class="qinw"><input class="qin" inputmode="decimal" data-qi="${i}" value="${g || ""}" placeholder="0">${o.u === "ml" ? "ml" : "g"}</span>`;
@@ -688,7 +735,7 @@ function qBox() {
   return `<div class="qbox"><h3>Quanto ne hai mangiato${e.mid ? ` · ${esc(mealDef(e.mid).name.toLowerCase())}` : ""}</h3><p class="note">Le quantità sono quelle del piano. Se è diverso tocca − o +, oppure tocca il numero e scrivi i grammi: le kcal si ricalcolano${on ? " e si salvano subito" : ""}.</p>
     ${rowsHTML(e.L, base)}
     <div class="qadd">${CS.qAdd ? `<input id="qAddI" placeholder="Cerca (es. parmigiano, noci, pane)" autocomplete="off" value="${esc(CS.qAddT || "")}"><div class="qhits">${hitBtns(CS.qAddT)}</div>` : `<button class="lnk" id="qAddB">+ Aggiungi un ingrediente</button>`}${!sameQ(e.L, base) ? `<button class="lnk" id="qReset">↺ Come da piano</button>` : ""}</div>
-    ${scaleGuide()}<p class="qbrand">🏷 Usi una marca precisa? <button class="lnk" data-qscan="1">Scansiona la confezione</button>: da lì in poi l'app usa i suoi valori.</p>
+    ${scaleGuide()}<p class="qbrand">🏷 Tocca «marca?» accanto a un ingrediente confezionato: la marca resta per le prossime volte. Per i valori esatti <button class="lnk" data-qscan="1">scansiona la confezione</button>.</p>
     <p class="qtot${base && t[0] > valOfQ(base)[0] * 1.1 ? (t[0] > valOfQ(base)[0] * 1.25 ? " hi2" : " hi") : ""}"><b>~${fmt(t[0])} kcal${base && t[0] > valOfQ(base)[0] * 1.1 ? ` <i class="ovr">+${t[0] - valOfQ(base)[0]} sul piano</i>` : ""}</b><span>proteine ${t[1]} g · carboidrati ${t[2]} g · grassi ${t[3]} g</span></p></div>`;
 }
 function qBind(sh) {
@@ -1207,6 +1254,7 @@ function mergeFood(inc) {
   f.pics = { ...(g.pics || {}), ...f.pics }; f.shop = { ...(g.shop || {}), ...f.shop };
   if (g.myrec) { const R = myRec(); for (const [id, x] of Object.entries(g.myrec)) if (!R[id] || (x.at || 0) > (R[id].at || 0)) R[id] = x; syncRecipes(); }
   if (g.prods) { const P = prods(); for (const [id, x] of Object.entries(g.prods)) if (!P[id] || (x.at || 0) > (P[id].at || 0)) P[id] = x; syncProds(); }
+  if (g.nobrand) f.nobrand = { ...g.nobrand, ...(f.nobrand || {}) };
   if (g.fridge) { const have = new Set(frList().map(x => x.id)); for (const x of g.fridge) if (!have.has(x.id)) f.fridge.push(x); }
   for (const [w, x] of Object.entries(g.week || {})) { const l = f.week[w]; if (!l || (x.at || 0) > (l.at || 0)) f.week[w] = x; }
 }
