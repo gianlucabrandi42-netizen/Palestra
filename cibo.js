@@ -56,9 +56,17 @@ const FD = {
   fiocchi: [24, 1.5, (x, y) => `<circle cx="${x}" cy="${y}" r="1.7" fill="#FFFFFF" stroke="#E2E2E2" stroke-width=".35"/>`],
   shaker: [1, 8, (x, y) => `<rect x="${x - 6}" y="${y - 12}" width="12" height="24" rx="3" fill="#6D95FF" opacity=".9"/><rect x="${x - 6.6}" y="${y - 14.5}" width="13.2" height="5" rx="1.5" fill="#3B4A63"/><rect x="${x - 4}" y="${y - 5}" width="8" height="12" rx="1.5" fill="#E9EEF7" opacity=".85"/>`],
   torta: [1, 10, (x, y) => `<path d="M${x - 13},${y + 3} q0,-15 13,-15 q13,0 13,15z" fill="#8B5A2B" stroke="#5E3B1B" stroke-width=".8"/><circle cx="${x - 5}" cy="${y - 5}" r="1.3" fill="#B07A45"/><circle cx="${x + 4}" cy="${y - 7}" r="1.1" fill="#B07A45"/><rect x="${x - 14}" y="${y + 2}" width="28" height="9" rx="2" fill="#E9EEF2" stroke="#B8C3CC" stroke-width=".7"/>`],
+  toast: [2, 7, (x, y, r) => `<g transform="rotate(${(r() - .5) * 40} ${x} ${y})"><rect x="${x - 8}" y="${y - 6.5}" width="16" height="13" rx="3" fill="#D9A15A" stroke="#8E5A26" stroke-width="1.2"/><path d="M${x - 6},${y - 3} q3,-2 6,0 q3,2 5,-1 M${x - 5},${y + 2} q4,2 8,0" fill="none" stroke="#F4C542" stroke-width="2.2" stroke-linecap="round"/><circle cx="${x + 3}" cy="${y + 3.5}" r="1.4" fill="#C0392B" opacity=".7"/></g>`],
+  pancake: [1, 10, (x, y) => [5, 1, -3].map(d => `<ellipse cx="${x}" cy="${y + d}" rx="15" ry="6" fill="#DDA157" stroke="#93602A" stroke-width=".8"/>`).join("") + `<ellipse cx="${x}" cy="${y - 3}" rx="12" ry="4" fill="#E9B46A"/><path d="M${x - 5},${y - 4} q5,-5 10,0 q-5,3 -10,0" fill="#FBF8F1"/><circle cx="${x - 1}" cy="${y - 4.5}" r=".8" fill="#6B3E1E"/><circle cx="${x + 2}" cy="${y - 3.8}" r=".7" fill="#6B3E1E"/>`],
+  pizzetta: [2, 8, (x, y) => `<circle cx="${x}" cy="${y}" r="8.4" fill="#F1E2BE" stroke="#CDB68A" stroke-width=".9"/><circle cx="${x}" cy="${y}" r="6.2" fill="#C8412F"/><circle cx="${x - 2}" cy="${y - 1.5}" r="1.8" fill="#FFFDF5"/><circle cx="${x + 2.4}" cy="${y + 1}" r="1.7" fill="#FFFDF5"/><circle cx="${x - .5}" cy="${y + 3}" r="1.5" fill="#FFFDF5"/><circle cx="${x + 2}" cy="${y - 3}" r=".9" fill="#4E8F31"/>`],
+  gnocchi: [14, 2.5, (x, y, r) => `<g transform="rotate(${r() * 180} ${x} ${y})"><ellipse cx="${x}" cy="${y}" rx="3.4" ry="2.4" fill="${r() < .5 ? "#E8C47A" : "#F1DCA0"}" stroke="#C49A4C" stroke-width=".45"/><path d="M${x - 1.6},${y - 2}v4M${x},${y - 2.3}v4.6M${x + 1.6},${y - 2}v4" stroke="#C49A4C" stroke-width=".35"/></g>`],
+  cotoletta: [2, 8, (x, y, r) => `<g transform="rotate(${(r() - .5) * 60} ${x} ${y})"><path d="M${x - 12},${y} q1,-7 10,-7 q11,0 13,5 q2,8 -9,9 q-13,1 -14,-7z" fill="#D99A3E" stroke="#9C6420" stroke-width=".9"/>${[[-6, -2], [-1, 2], [4, -3], [7, 2], [-3, -5], [1, -1]].map(([a, b]) => `<circle cx="${x + a}" cy="${y + b}" r=".9" fill="#F3C978"/>`).join("")}</g>`],
+  strapazzate: [9, 3, (x, y, r) => `<path d="M${x - 3.4},${y} q.5,-3 3.4,-2.8 q3.2,.3 3,2.9 q-.6,3 -3.2,2.7 q-3.2,-.2 -3.2,-2.8z" transform="rotate(${r() * 180} ${x} ${y})" fill="#F6CF4E" stroke="#D8A825" stroke-width=".45"/>`],
+  piselli: [16, 1.5, (x, y, r) => r() < .7 ? `<circle cx="${x}" cy="${y}" r="1.7" fill="#6DB33F" stroke="#4A8A28" stroke-width=".35"/>` : `<rect x="${x - 1.5}" y="${y - 1.5}" width="3" height="3" rx=".6" fill="#F08A2C"/>`],
+  pizza: [1, 0, (x, y) => `<circle cx="${x}" cy="${y}" r="27" fill="#E9C98A" stroke="#B98B44" stroke-width="1.2"/><circle cx="${x}" cy="${y}" r="22" fill="#C8412F"/>${[[-9, -7], [7, -10], [11, 5], [-4, 9], [-12, 4], [2, 0], [5, 12]].map(([a, b]) => `<ellipse cx="${x + a}" cy="${y + b}" rx="3.6" ry="3" fill="#FFFDF5"/>`).join("")}${[[-2, -12], [-8, 13], [12, -3], [0, 7], [-14, -4]].map(([a, b], i) => `<path d="M${x + a - 2.5},${y + b} l1,-1.2 l.8,.8 l1,-1.3 l.9,1 l1.1,-1 l1,1 -1,1.2z" transform="rotate(${i * 70} ${x + a} ${y + b})" fill="#4E8F31"/>`).join("")}`],
   proteine: [1, 6, (x, y) => `<path d="M${x - 8},${y + 4} q8,-12 16,0z" fill="#EFE6D2" stroke="#CFC3A8" stroke-width=".6"/>`],
 };
-const ORDER = ["sugo", "yogurt", "frittata", "piadina", "pesce", "salmone", "gallette", "pane", "bresaola", "torta", "shaker"];
+const ORDER = ["pizza", "sugo", "yogurt", "frittata", "pancake", "piadina", "pesce", "salmone", "cotoletta", "gallette", "pane", "toast", "bresaola", "torta", "shaker"];
 // sparge gli ingredienti in un cerchio (cx, cy, R): uno spicchio per ingrediente
 function scatter(parts, cx, cy, R, k, seed) {
   const r = rng(seed + parts.join()), ps = parts.filter(p => FD[p]), n = ps.length || 1, out = [];
@@ -66,7 +74,7 @@ function scatter(parts, cx, cy, R, k, seed) {
   const sorted = ps.map((p, i) => ({ p, i })).sort((a, b) => oi(a.p) - oi(b.p));
   for (const { p, i } of sorted) {
     const [cnt, pad, draw] = FD[p], a0 = i / n * 2 * Math.PI - Math.PI / 2, a1 = (i + 1) / n * 2 * Math.PI - Math.PI / 2;
-    const many = Math.max(1, Math.round(cnt * (n === 1 ? 1.4 : 1) * k * k));
+    const many = cnt === 1 ? 1 : Math.max(1, Math.round(cnt * (n === 1 ? 1.4 : 1) * k * k));
     for (let j = 0; j < many; j++) {
       const big = cnt <= 2, ang = n === 1 && big ? (j / many) * 2 * Math.PI : a0 + (a1 - a0) * (.15 + .7 * r());
       const rad = big && n === 1 && many === 1 ? 0 : Math.max(0, (R - pad * k) * (big ? .5 : Math.sqrt(.12 + .88 * r())));
@@ -254,24 +262,29 @@ async function askClaude(file, what, size) {
 }
 
 // ---------- ricette ----------
+const CATN = { col: "Colazione", sp: "Spuntino", base: "Le basi" };
+const MEALN = { col: "a colazione", s1: "allo spuntino 1", s2: "allo spuntino 2", pr: "a pranzo", ce: "a cena" };
 function renderRicette(box) {
-  const F = [["all", "Tutte"], ["main", "Pranzo e cena"], ["fast", "Veloci (≤ 12′)"], ["air", "Friggitrice"], ["prep", "Colazione e basi"]];
-  const ok = r => CS.rf === "all" || (CS.rf === "main" && r.main) || (CS.rf === "fast" && r.min <= 12) || (CS.rf === "air" && r.steps.some(s => s.tool === "friggitrice")) || (CS.rf === "prep" && !r.main);
+  const F = [["all", "Tutte"], ["main", "Pranzo e cena"], ["col", "Colazione"], ["sp", "Spuntini"], ["new", "Da imparare"], ["fast", "Veloci (≤ 12′)"], ["base", "Le basi"]];
+  const ok = r => CS.rf === "all" || (CS.rf === "main" && r.main) || (CS.rf === r.cat) || (CS.rf === "new" && r.lvl === 2) || (CS.rf === "fast" && r.min <= 12);
   const L = CB.recipes.filter(ok);
   box.innerHTML = `<div class="rfil">${F.map(([k, n]) => `<button class="chip" data-rf="${k}" aria-pressed="${CS.rf === k}">${n}</button>`).join("")}</div>
-    <div class="rgrid">${L.map(r => { const pic = FOOD().pics[r.id]; return `<button class="rcard" data-rec="${r.id}">${pic ? `<img src="${pic}" alt="">` : dishSVG(r.p, r.box, r.id, "dish")}<b>${esc(r.name)}</b><small>${r.min} min · ${esc(r.tools)}</small>${r.main ? `<em>${r.one ? "1 pasto" : "2 pasti"}</em>` : `<em>${esc(r.prep || "")}</em>`}</button>`; }).join("")}</div>`;
+    ${CS.rf === "all" ? `<p class="note rtip">Nuovo in cucina? Parti da <button class="lnk" data-rf="base">Le basi</button>: friggitrice, padella e pasta spiegate passo passo.</p>` : ""}
+    <div class="rgrid">${L.map(r => { const pic = FOOD().pics[r.id]; return `<button class="rcard" data-rec="${r.id}">${pic ? `<img src="${pic}" alt="">` : dishSVG(r.p, r.box, r.id, "dish")}<b>${esc(r.name)}</b><small>${r.min} min · ${esc(r.tools)}</small><em>${r.main ? (r.one ? "1 pasto" : "2 pasti") : esc(CATN[r.cat] || "")}</em>${r.lvl === 2 ? `<i class="rnew">da imparare</i>` : ""}</button>`; }).join("")}</div>`;
   box.querySelectorAll("[data-rf]").forEach(b => b.onclick = () => { CS.rf = b.dataset.rf; renderCibo(); });
   box.querySelectorAll("[data-rec]").forEach(b => b.onclick = () => openRecipe(b.dataset.rec));
 }
 function openRecipe(id) {
   const r = recipeById(id), sh = $("fsheet"); if (!r || !sh) return; CS.recipe = id;
-  const pic = FOOD().pics[id], d = cDay();
-  sh.querySelector(".is-h").innerHTML = `<b>${esc(r.name)}</b><span class="rmeta">${r.min} min · ${esc(r.tools)}${r.main ? ` · ${r.one ? "1 pasto" : "2 pasti"}` : ""}</span>`;
+  const pic = FOOD().pics[id], d = cDay(), logs = r.main ? ["pr", "ce"] : Object.keys(r.for || {});
+  sh.querySelector(".is-h").innerHTML = `<b>${esc(r.name)}</b><span class="rmeta">${r.min} min · ${esc(r.tools)}${r.main ? ` · ${r.one ? "1 pasto" : "2 pasti"}` : ""} · ${r.lvl === 2 ? "da imparare" : "facile"}</span>`;
   sh.querySelector(".is-c").innerHTML = `<div class="rhero">${pic ? `<img src="${pic}" alt="Il mio piatto">` : dishSVG(r.p, r.box, r.id, "dish big")}</div>
     <div class="rpic"><label class="btn sm" for="rPic">📷 ${pic ? "Cambia la foto" : "Foto del mio piatto"}</label><input type="file" id="rPic" accept="image/*" capture="environment" hidden>${pic ? `<button class="btn sm" id="rPicDel">Torna al disegno</button>` : ""}</div>
-    ${r.main ? `<div class="rlog"><button class="btn primary" data-rl="pr">✓ Mangiato a pranzo</button><button class="btn primary" data-rl="ce">✓ Mangiato a cena</button></div><p class="note rlday">${d === todayISO() ? "Si segna su oggi" : "Si segna sul " + fmtDate(d)}</p>` : ""}
+    ${logs.length ? `<div class="rlog">${logs.map(m => `<button class="btn primary" data-rl="${m}">✓ Mangiato ${MEALN[m]}</button>`).join("")}</div><p class="note rlday">${d === todayISO() ? "Si segna su oggi" : "Si segna sul " + fmtDate(d)}</p>` : ""}
     <h3>Ingredienti${r.main && !r.one ? " (per 2 pasti)" : ""}</h3><ul class="ringr">${r.ingr.map(i => `<li>${esc(i)}</li>`).join("")}</ul>
-    <h3>Passo passo</h3><ol class="rsteps">${r.steps.map((s, i) => `<li>${toolSVG(s.tool, s.p, r.id + i)}<div><small>${i + 1} · ${esc(TOOLN[s.tool] || s.tool)}</small><p>${esc(s.t)}</p></div></li>`).join("")}</ol>
+    <h3>Passo passo</h3><ol class="rsteps">${r.steps.map((st, i) => `<li>${toolSVG(st.tool, st.p, r.id + i)}<div><small>${i + 1} · ${esc(TOOLN[st.tool] || st.tool)}</small><p>${esc(st.t)}</p>
+      ${st.ok ? `<p class="sok">✓ <b>Pronto quando:</b> ${esc(st.ok)}</p>` : ""}${st.tip ? `<p class="stip">💡 ${esc(st.tip)}</p>` : ""}
+      ${st.min ? `<button class="btn sm kt" data-kt="${st.min}" data-kl="${esc(r.s || r.name)} · passo ${i + 1}">⏱ Timer ${st.min} min</button>` : ""}</div></li>`).join("")}</ol>
     ${r.p1 ? `<h3>${r.p2 ? "I due pasti" : "Come si mangia"}</h3><div class="rp"><p><b>${r.p2 ? "Pasto 1" : "✓"}</b> ${esc(r.p1)}</p>${r.p2 ? `<p><b>Pasto 2</b> ${esc(r.p2)}</p>` : ""}</div>` : ""}
     ${r.olio ? `<p class="note">Olio: ${esc(r.olio)}. Quello per cuocere è compreso.</p>` : ""}
     <p class="note">I disegni mostrano come dovrebbe venire. Con 📷 metti la foto del tuo piatto: diventa la copertina della ricetta.</p>`;
@@ -279,8 +292,30 @@ function openRecipe(id) {
   sh.querySelector(".is-c").scrollTop = 0;
   $("rPic").onchange = e => { const f = e.target.files[0]; if (f) saveFoodPic(id, f); e.target.value = ""; };
   const del = $("rPicDel"); if (del) del.onclick = () => { delete FOOD().pics[id]; save(); openRecipe(id); renderCibo(); };
-  sh.querySelectorAll("[data-rl]").forEach(b => b.onclick = () => { const mid = b.dataset.rl; setFDay(cDay(), x => x.m[mid] = id); toast(mid === "pr" ? "Pranzo segnato 🍽" : "Cena segnata 🌙"); closeRecipe(); CS.tab = "oggi"; renderCibo(); });
+  sh.querySelectorAll("[data-kt]").forEach(b => b.onclick = () => kStart(+b.dataset.kt, b.dataset.kl));
+  sh.querySelectorAll("[data-rl]").forEach(b => b.onclick = () => { const mid = b.dataset.rl, oid = r.main ? id : r.for[mid]; setFDay(cDay(), x => x.m[mid] = oid);
+    const c = CHEER[mid] || ["Segnato 👌"]; toast(c[Math.floor(Math.random() * c.length)]); closeRecipe(); CS.tab = "oggi"; renderCibo(); });
 }
+// Timer di cucina (20/11/2026): l'utente è alle prime armi, ogni passaggio con un tempo ha il suo timer.
+// A fine tempo: bip (se l'audio è sbloccato), tocco aptico su iPhone, vibrazione su Android, festa a schermo.
+function kStart(min, label) {
+  CS.kt = { end: Date.now() + min * 60000, label }; try { if (typeof unlockAudio === "function") unlockAudio(); } catch (e) {}
+  toast(`⏱ Timer ${min} min avviato`); kTick();
+}
+function kTick() {
+  let el = $("ktimer"); const k = CS.kt;
+  if (!k) { if (el) el.remove(); return; }
+  if (!el) { el = document.createElement("div"); el.id = "ktimer"; el.className = "ktimer"; document.body.appendChild(el); }
+  const left = Math.max(0, Math.round((k.end - Date.now()) / 1000));
+  el.innerHTML = `<span>⏱ ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}</span><small>${esc(k.label)}</small><button aria-label="Ferma il timer">✕</button>`;
+  el.querySelector("button").onclick = () => { CS.kt = null; clearTimeout(CS.ktT); kTick(); };
+  if (left <= 0) { CS.kt = null; el.remove();
+    try { if (typeof AC !== "undefined" && AC) { const t = AC.currentTime; [0, .35, .7].forEach(d => beep(t + d, 880, .25, .5)); } } catch (e) {}
+    try { iosTap(); navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch (e) {}
+    celebrate("⏰ Tempo!", k.label); return; }
+  clearTimeout(CS.ktT); CS.ktT = setTimeout(kTick, 1000);
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden && CS.kt) kTick(); });
 function closeRecipe() { const sh = $("fsheet"); if (!sh || sh.hidden) return; sh.classList.remove("on"); document.documentElement.classList.remove("noscroll"); CS.recipe = null; setTimeout(() => { if (!sh.classList.contains("on")) sh.hidden = true; }, 220); }
 (() => { const sh = $("fsheet"); if (!sh) return; sh.querySelector(".is-bg").onclick = closeRecipe; sh.querySelector(".is-x").onclick = closeRecipe; sh.querySelector(".is-close").onclick = closeRecipe;
   let y0 = null; const top = sh.querySelector(".is-top"), bx = sh.querySelector(".is-box");
