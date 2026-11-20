@@ -859,6 +859,7 @@ function recapCard(d, s, units) {
     ${worse.length ? `<p class="rc-l dn">↓ <b>Sotto l'ultima volta:</b> ${worse.map(x => `${esc(x.n)} ${pcs(x)}`).join(" · ")}${special ? " (giornata particolare, non conta)" : ""}</p>` : ""}
     ${skipEx.length ? `<p class="rc-l">⤼ <b>Saltati oggi:</b> ${esc(listIt(skipEx))}</p>` : ""}
     <div class="rc-feel" aria-label="Com'erano le serie">${["easy", "ok", "hard", "dirty", "help"].map(f => { const n = f === "easy" ? nE : f === "hard" ? nH : f === "dirty" ? dirty : f === "help" ? nA : clean - nE - nH - nA; return n ? `<span data-f="${f}"><i>${feelIcon(f)}</i>${n} ${FEEL[f].n.toLowerCase()}</span>` : ""; }).join("")}</div>
+    ${typeof logShake === "function" && s.date === todayISO() ? `<button type="button" class="rc-bk rc-sh" data-shake>${shakeDone(s.date) ? "✓ Shaker segnato nel Cibo" : "🥤 Segna lo shaker post-palestra"} <small>${shakeDone(s.date) ? "conta nelle proteine di oggi" : "un tocco: va nello spuntino 2 (o nel dopo cena)"}</small></button>` : ""}
     ${needBackup() ? `<button type="button" class="rc-bk" data-bk>💾 Salva il backup <small>File → iCloud Drive · i dati sono solo su questo telefono</small></button>` : ""}
     <p class="rc-l nx">→ <b>Prossima volta:</b> ${reduced(s) ? "si riparte dai carichi dell'ultima seduta normale" : !upEx.length ? "stessi carichi, punta alle reps piene" : upEx.length <= 3 ? `carico su in ${esc(listIt(upEx))}` : `carico su in ${upEx.length} esercizi`}.</p>`;
   return el;
@@ -894,7 +895,7 @@ function renderLog0() {
   if ($("nagBk")) $("nagBk").onclick = exportBackup;
 
   const list = $("list"), oldListImgs = keepImgs(list); list.textContent = ""; S.listImgs = oldListImgs;
-  { const rc = recapCard(d, sess, dayUnitsList(d, sess)); if (rc) { list.appendChild(rc); const bk = rc.querySelector("[data-bk]"); if (bk) bk.onclick = exportBackup; } }
+  { const rc = recapCard(d, sess, dayUnitsList(d, sess)); if (rc) { list.appendChild(rc); const bk = rc.querySelector("[data-bk]"); if (bk) bk.onclick = exportBackup; const sh = rc.querySelector("[data-shake]"); if (sh) sh.onclick = () => { logShake(sess.date); renderLog(); }; } }
   const units = dayUnitsList(d, sess), curU = currentUnit(d, sess, units);
   S.sig = units.filter(u => unitOpen(u, curU)).map(u => u.keys[0]).join(",") + "|" + (curU ? curU.keys[0] : "");
   let exN = 0;

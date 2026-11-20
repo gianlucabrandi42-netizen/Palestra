@@ -1545,3 +1545,32 @@ i.ovr{font-style:normal;font-size:11px;font-weight:800;padding:1px 6px;border-ra
 .hvr{grid-template-columns:46px 1fr}
 .hvr svg{width:46px;height:46px}
 .xrep{margin-bottom:8px}.xrep button{font-size:12.5px;line-height:1.2;padding:8px 6px}
+/* CIBO · spazi, colori, scorrevolezza (20/11/2026: "le caselle troppo vicine al riquadro del pasto", "migliora i colori", "quando tiro giù lagga") */
+.meal{padding:12px 0 12px;background:linear-gradient(180deg,color-mix(in srgb,var(--c) 9%,var(--surface)) 0,var(--surface) 70px);border-radius:20px;position:relative;overflow:hidden}
+.meal::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:var(--c);opacity:.75}
+.meal .tiles4{padding:0 12px;gap:8px;margin-top:10px}
+.meal .mselx{padding:0 14px;margin-top:8px}
+.meal .msel{margin:10px 12px 0}
+.meal .mwhere,.meal .mdet{margin-left:14px;margin-right:14px}
+.meal .xrow{margin-left:12px;margin-right:12px}
+.meal .xform{margin:8px 12px 0}
+.tile{background:color-mix(in srgb,var(--c,var(--accent)) 6%,var(--raised));border-color:color-mix(in srgb,var(--c,var(--accent)) 18%,var(--line))}
+.tile.on{background:color-mix(in srgb,var(--c,var(--accent)) 22%,var(--raised));border-color:var(--c,var(--accent));box-shadow:0 0 0 1px var(--c,var(--accent)) inset}
+.tile b{color:var(--ink)}
+.tw.ez{color:color-mix(in srgb,var(--c,var(--accent)) 75%,var(--ink));font-weight:800}
+.mselb{background:color-mix(in srgb,var(--c,var(--accent)) 10%,var(--raised))}
+.bal{background:linear-gradient(160deg,color-mix(in srgb,var(--accent) 10%,var(--surface)),var(--surface) 60%)}
+.bbar i{background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 70%,#fff),var(--accent))}
+.barc{display:grid;gap:8px;margin-bottom:12px;padding:12px 14px}
+.barh{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.barh span{font-size:12.5px;color:var(--muted);text-align:right}
+.barb{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.barb .chip i{font-style:normal;font-weight:800;color:var(--accent)}
+.qbrand{font-size:12.5px;color:var(--muted);margin:8px 0 0;line-height:1.4}
+.occhio li{margin-bottom:2px}
+.rc-sh{border-color:var(--accent)!important}
+/* trascinare giù senza scatti: il riquadro su un suo livello, niente sfocature dietro mentre è aperto */
+.is-box{will-change:transform;backface-visibility:hidden}
+.is-c{contain:paint}
+html.noscroll .tabbar,html.noscroll .tphase,.drag .cpbar{-webkit-backdrop-filter:none;backdrop-filter:none}
+.isheet.drag .is-box{box-shadow:none}

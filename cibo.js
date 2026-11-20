@@ -20,6 +20,20 @@ const gymAuto = d => Object.values(D.sessions).some(s => s.date === d && hasData
 const isGym = d => gymAuto(d) || fDay(d).gym === true;
 // scala 80/40/0 del PT adattata: palestra oggi = 80, palestra ieri = 40, altrimenti 0
 const lunchLvl = d => isGym(d) ? 80 : isGym(addDays(d, -1)) ? 40 : 0;
+  // ☕ al bar (20/11/2026): cappuccino, macchiato, caffè con un tocco; contano nelle kcal ma non segnano un pasto
+function barCard(day) {
+  const B = (day.x || []).filter(x => x.bar), su = !!FOOD().barSugar;
+  return `<div class="card barc"><div class="barh"><b>☕ Al bar</b>${B.length ? `<span>${B.map(x => esc(x.t)).join(" · ")} · ~${B.reduce((a, x) => a + ((xVal(x) || [0])[0]), 0)} kcal</span>` : `<span>cappuccino, macchiato, caffè</span>`}</div>
+      <div class="barb">${CB.bar.map(([f, n]) => `<button class="chip" data-bar="${f}">+ ${n}${(() => { const c = B.filter(x => x.bar === f).length; return c ? ` <i>×${c}</i>` : ""; })()}</button>`).join("")}<button class="chip" data-bsug aria-pressed="${su}">${su ? "✓ con zucchero" : "senza zucchero"}</button>${B.length ? `<button class="lnk" data-bundo>↶ togli l'ultimo</button>` : ""}</div></div>`;
+}
+// 🥤 shaker dopo l'allenamento (20/11/2026): dal riepilogo dell'allenamento con un tocco; va nello spuntino 2 (versione palestra)
+// se è libero, altrimenti nel dopo cena. Se c'è già uno shaker segnato oggi, non lo rimette.
+function shakeDone(d) { const m = fDay(d).m || {}; return ["A2", "shg", "shn"].includes(m.s2) || m.dc === "shn" || m.s1 === "shn"; }
+function logShake(d) {
+  d = d || todayISO(); if (shakeDone(d)) return toast("Shaker già segnato oggi 👍");
+  const m = fDay(d).m || {}; if (!m.s2 || m.s2 === "skip") logMeal(d, "s2", "A2"); else logMeal(d, "dc", "shn");
+  toast("🥤 Shaker segnato: lo trovi nel Cibo");
+}
 // ✎ I MIEI PIATTI (20/11/2026: "quando scrivo cosa ho mangiato devi creare la sua icona"): quello che scrivi (o componi) diventa
 // un piatto tuo col suo disegno, D.food.mydish[id] = { t, it [[alimento, quantità]], meal, n usi, last, at }; compare tra le caselle di quel pasto.
 const myDish = () => { const f = FOOD(); return (f.mydish = f.mydish || {}); };
@@ -281,6 +295,7 @@ function renderOggi(box) {
     <div class="pgym"><span>Turno</span><div class="seg4">${CB.shifts.map(x => `<button data-sh="${x.id}" aria-pressed="${day.turno === x.id}">${esc(x.t)}</button>`).join("")}</div></div>
     <p class="phint">${esc(dayHint(d))}</p></div></div>`;
   h += balanceCard(d) + bagCard(d);
+  h += barCard(day);
   // 20/11/2026 ("ci sono tanti piatti da scegliere, migliora il layout"): per ogni pasto le 3 idee più adatte (già segnata, frigo,
   // pasto 2 della ricetta del pranzo, compatibili col turno, quelle che usi di più, i tuoi piatti) + "Altre idee" con ricerca;
   // un pasto già segnato si chiude in una riga (tocco = dettagli, "Cambia" = di nuovo le idee).
@@ -306,7 +321,7 @@ function renderOggi(box) {
     }
     h += `${xs.map(x => xRow(x)).join("")}${CS.xform && CS.xform.meal === md.id ? xForm() : ""}</div>`;
   }
-  const loose = (day.x || []).filter(x => !x.meal || x.meal === "fuori");
+  const loose = (day.x || []).filter(x => (!x.meal || x.meal === "fuori") && !x.bar);
   h += `<div class="meal extra"><div class="mh"><i></i><b>Fuori pasto</b><span>quello che non è nelle caselle</span></div>${loose.map(x => xRow(x)).join("")}${CS.xform && CS.xform.meal === "fuori" ? xForm() : `<button class="cmore" data-xadd="fuori">+ Aggiungi un cibo</button>`}</div>`;
   h += weekCard(d);
   box.innerHTML = h;
@@ -318,7 +333,7 @@ function useCounts(mid, d) { const c = {}; for (let i = 1; i <= 28; i++) { const
 function rankOpts(md, d, opts) {
   const m = fDay(d).m || {}, w = whereOf(d, md.id), use = useCounts(md.id, d), r2 = recipeById(m.pr);
   const sc = o => (o.id === m[md.id] ? 1e4 : 0) + (o.fr ? 5000 : 0) + (md.id === "ce" && o.id === m.pr && r2 && !r2.one ? 3000 : 0) + (w === "mensa" && o.id === "mensa" ? 2000 : 0)
-    + (fits(o, w) ? 0 : -1000) + (use[o.id] || 0) * 60 + (o.dish ? 25 + (myDish()[o.id.slice(2)] || {}).n * 10 : 0) + (o.free || o.id === "altro" || o.id === "rist" || o.id === "mensa" ? -300 : 0);
+    + (fits(o, w) ? 0 : -1000) + (w !== "casa" && o.easy ? 80 : 0) + (use[o.id] || 0) * 60 + (o.dish ? 25 + (myDish()[o.id.slice(2)] || {}).n * 10 : 0) + (o.free || o.id === "altro" || o.id === "rist" || o.id === "mensa" ? -300 : 0);
   return opts.map((o, i) => [o, sc(o) - i * 0.01]).sort((a, b) => b[1] - a[1]).map(x => x[0]);
 }
 // tutte le idee di un pasto, con ricerca e filtri
@@ -326,7 +341,7 @@ function openPicker(mid) {
   const md = mealDef(mid), d = cDay(), sh = $("fsheet"), w = whereOf(d, mid), m = fDay(d).m || {}; CS.pick = CS.pick && CS.pick.mid === mid ? CS.pick : { mid, q: "", f: "all" };
   const P = CS.pick, all = rankOpts(md, d, optsFor(md, d));
   const F = [["all", "Tutte"], ...(w !== "casa" ? [["work", "Per il lavoro"]] : []), ["fast", "Veloci"], ["mine", "Le mie"], ...(md.main ? [["rec", "Ricette"]] : [])];
-  const ok = o => (!P.q || normT(o.t + " " + (o.d || "")).includes(normT(P.q))) && (P.f === "all" || (P.f === "work" && fits(o, w)) || (P.f === "fast" && o.r && (recipeById(o.r) || {}).min <= 12) || (P.f === "mine" && (o.dish || (o.r && (recipeById(o.r) || {}).mine) || o.fr)) || (P.f === "rec" && o.r));
+  const ok = o => (!P.q || normT(o.t + " " + (o.d || "")).includes(normT(P.q))) && (P.f === "all" || (P.f === "work" && fits(o, w)) || (P.f === "fast" && (o.easy || (o.r && (recipeById(o.r) || {}).min <= 12))) || (P.f === "mine" && (o.dish || (o.r && (recipeById(o.r) || {}).mine) || o.fr)) || (P.f === "rec" && o.r));
   const L = all.filter(ok);
   sh.querySelector(".is-h").innerHTML = `<b>${esc(md.name)} · tutte le idee</b><span class="rmeta">${all.length} idee${WHERE[w] ? " · " + WHERE[w] : ""}</span>`;
   sh.querySelector(".is-c").innerHTML = `<input id="pkQ" class="pkq" placeholder="Cerca (es. pollo, pasta, uova)" value="${esc(P.q)}" autocomplete="off">
@@ -413,7 +428,7 @@ function dayHint(d) {
 function tile(md, o, on, p2, off) {
   const pic = o.r && foodPic(o.r);
   const img = o.free ? `<span class="ti">🍕</span>` : pic ? `<img src="${pic}" alt="">` : o.p ? dishSVG(o.p, o.box, o.id, "dish") : `<span class="ti">🍽</span>`;
-  return `<div class="tilew"><button class="tile${on ? " on" : ""}${o.free ? " free" : ""}${off && !on ? " off" : ""}" data-m="${md.id}" data-o="${o.id}">${img}<b>${esc(o.t)}</b>${p2 ? `<em>pasto 2</em>` : ""}${off ? `<i class="tw">${o.go === "m" ? "serve microonde" : "a casa"}</i>` : o.r ? `<i class="tw">ricetta</i>` : ""}</button><button class="qk${on ? " on" : ""}" data-qm="${md.id}" data-qo="${o.id}" aria-label="${on ? "Togli" : "Segna come mangiato"}">✓</button></div>`;
+  return `<div class="tilew"><button class="tile${on ? " on" : ""}${o.free ? " free" : ""}${off && !on ? " off" : ""}" data-m="${md.id}" data-o="${o.id}">${img}<b>${esc(o.t)}</b>${p2 ? `<em>pasto 2</em>` : ""}${off ? `<i class="tw">${o.go === "m" ? "serve microonde" : "a casa"}</i>` : o.easy ? `<i class="tw ez">pronto · 2 cose</i>` : o.r ? `<i class="tw">ricetta</i>` : ""}</button><button class="qk${on ? " on" : ""}" data-qm="${md.id}" data-qo="${o.id}" aria-label="${on ? "Togli" : "Segna come mangiato"}">✓</button></div>`;
 }
 const SIZES = { p: "poco", n: "normale", t: "tanto" };
 const xRow = x => { const r = !x.k && !x.it && readFood(x.t, x.s), v = xVal(x);
@@ -435,6 +450,7 @@ function xForm() {
   return `<div class="xform">${so ? `<div class="seg2 xrep"><button data-xrep="1" aria-pressed="${!!f.rep}">Al posto di «${esc(so.t)}»</button><button data-xrep="0" aria-pressed="${!f.rep}">In più</button></div>` : ""}<input id="xT" placeholder="Cosa hai mangiato? (es. 2 biscotti e una birra)" value="${esc(f.t || "")}" autocomplete="off">
     <div class="seg3">${Object.entries(SIZES).map(([k, n]) => `<button data-xs="${k}" aria-pressed="${f.s === k}">${n}</button>`).join("")}</div>
     <div class="xparse">${xParse(f)}</div>
+    ${scaleGuide()}
     <p class="note">Scrivi cosa e quanto ("mezza pizza", "4 noci", "80 g di pasta"). Se non sai quanto o com'era condito: 📷 foto a Claude, poi incolla qui sotto la risposta e le righe si riempiono da sole.</p>
     <div class="row"><label class="btn sm" for="xPic">📷 Foto a Claude</label><input type="file" id="xPic" accept="image/*" capture="environment" hidden><input id="xK" inputmode="numeric" placeholder="kcal se le sai" value="${f.k || ""}"></div>
     <textarea id="xR" rows="2" placeholder="Incolla qui la risposta di Claude">${esc(f.r || "")}</textarea>
@@ -461,6 +477,11 @@ function bindOggi(box, d) {
   box.querySelectorAll("[data-skip]").forEach(b => b.onclick = () => { const mid = b.dataset.skip, was = (fDay(d).m || {})[mid] === "skip"; logMeal(d, mid, "skip", was); renderCibo(); });
   box.querySelectorAll("[data-dc]").forEach(b => b.onclick = () => { CS.showDc = true; renderCibo(); });
   box.querySelectorAll("[data-more]").forEach(b => b.onclick = () => openPicker(b.dataset.more));
+  box.querySelectorAll("[data-bar]").forEach(b => b.onclick = () => { const f = b.dataset.bar, n = (CB.bar.find(x => x[0] === f) || [0, f])[1], su = !!FOOD().barSugar;
+    const it = [[f, 1], ...(su ? [["zucchero", 1]] : [])], hh = new Date().toTimeString().slice(0, 5);
+    setFDay(d, x => x.x = [...(x.x || []), { id: "x" + Date.now().toString(36), meal: "fuori", bar: f, t: n + (su ? " zuccherato" : ""), it, s: "n", at: Date.now(), hh }]); try { iosTap(); } catch (_) {} toast(`☕ ${n} · ~${valOfQ(it)[0]} kcal`); renderCibo(); });
+  box.querySelectorAll("[data-bsug]").forEach(b => b.onclick = () => { FOOD().barSugar = !FOOD().barSugar; save(); renderCibo(); });
+  box.querySelectorAll("[data-bundo]").forEach(b => b.onclick = () => { setFDay(d, x => { const i = (x.x || []).map(y => !!y.bar).lastIndexOf(true); if (i >= 0) x.x.splice(i, 1); }); renderCibo(); });
   box.querySelectorAll("[data-mexp]").forEach(b => b.onclick = () => { CS.mexp = { ...(CS.mexp || {}), [b.dataset.mexp]: 1 }; renderCibo(); });
   box.querySelectorAll("[data-mclose]").forEach(b => b.onclick = () => { delete (CS.mexp || {})[b.dataset.mclose]; renderCibo(); });
   box.querySelectorAll("[data-sh]").forEach(b => b.onclick = () => { const v = b.dataset.sh; setFDay(d, x => { if (x.turno === v) delete x.turno; else x.turno = v; }); renderCibo(); });
@@ -632,6 +653,8 @@ function bindRows(box, L, changed) {
     inp.onblur = fin; inp.onkeydown = e => { if (e.key === "Enter") inp.blur(); };
   });
 }
+// ✋ senza bilancia: cucchiai, cucchiaini, mani, pezzi, confezioni (CB.misure)
+const scaleGuide = (open) => `<details class="occhio"${open ? " open" : ""}><summary>✋ Senza bilancia: come misurare</summary><ul>${CB.misure.map(([a, b]) => `<li><b>${esc(a)}</b><br>${esc(b)}</li>`).join("")}</ul><p class="note">Puoi anche scriverlo così: "2 cucchiai di yogurt", "una tazza di cornflakes", "un mestolo di riso": l'app lo capisce.</p></details>`;
 // 🍽 grammi di un pasto in sola lettura (cucina passo passo) + condimento consigliato
 function plateBox(r, mid, d) {
   const m = mid || (r.main ? "pr" : Object.keys(r.for || {})[0]), oid = r.main ? r.id : (r.for || {})[m], L = m && oid && baseQ(m, oid, d);
@@ -661,6 +684,7 @@ function qBox() {
   return `<div class="qbox"><h3>Quanto ne hai mangiato${e.mid ? ` · ${esc(mealDef(e.mid).name.toLowerCase())}` : ""}</h3><p class="note">Le quantità sono quelle del piano. Se è diverso tocca − o +, oppure tocca il numero e scrivi i grammi: le kcal si ricalcolano${on ? " e si salvano subito" : ""}.</p>
     ${rowsHTML(e.L, base)}
     <div class="qadd">${CS.qAdd ? `<input id="qAddI" placeholder="Cerca (es. parmigiano, noci, pane)" autocomplete="off" value="${esc(CS.qAddT || "")}"><div class="qhits">${hitBtns(CS.qAddT)}</div>` : `<button class="lnk" id="qAddB">+ Aggiungi un ingrediente</button>`}${!sameQ(e.L, base) ? `<button class="lnk" id="qReset">↺ Come da piano</button>` : ""}</div>
+    ${scaleGuide()}<p class="qbrand">🏷 Usi una marca precisa? <button class="lnk" data-qscan="1">Scansiona la confezione</button>: da lì in poi l'app usa i suoi valori.</p>
     <p class="qtot${base && t[0] > valOfQ(base)[0] * 1.1 ? (t[0] > valOfQ(base)[0] * 1.25 ? " hi2" : " hi") : ""}"><b>~${fmt(t[0])} kcal${base && t[0] > valOfQ(base)[0] * 1.1 ? ` <i class="ovr">+${t[0] - valOfQ(base)[0]} sul piano</i>` : ""}</b><span>proteine ${t[1]} g · carboidrati ${t[2]} g · grassi ${t[3]} g</span></p></div>`;
 }
 function qBind(sh) {
@@ -671,8 +695,11 @@ function qBind(sh) {
     if (i >= 0) e.L[i][1] = Math.round((e.L[i][1] + (isW(o) ? o.d : 1)) * 100) / 100; else e.L.push([f, o.d]);
     CS.qAdd = false; CS.qAddT = ""; qPersist(); redraw(); toast(`+ ${o.n}`); };
   const ab = $("qAddB"); if (ab) ab.onclick = () => { CS.qAdd = true; redraw(true); };
-  const bindAdd = () => { box.querySelectorAll("[data-qa]").forEach(b => b.onclick = () => add(b.dataset.qa)); box.querySelectorAll("[data-qscan]").forEach(b => b.onclick = () => scanOpen(f => { if (CS.qe === e) add(f); })); };
-  const ai = $("qAddI"); if (ai) ai.oninput = () => { CS.qAddT = ai.value; box.querySelector(".qhits").innerHTML = hitBtns(ai.value); bindAdd(); };
+  // prodotto scansionato: se prende il posto di un ingrediente della lista, lo sostituisce (stessi grammi); altrimenti si aggiunge
+  const bindAdd = () => box.querySelectorAll("[data-qa]").forEach(b => b.onclick = () => add(b.dataset.qa));
+  box.querySelectorAll("[data-qscan]").forEach(b => b.onclick = () => scanOpen(f => { if (CS.qe !== e) return; const p = prods()[f.slice(2)], i = p && p.sub ? e.L.findIndex(([x]) => x === p.sub) : -1;
+    if (i >= 0) { e.L[i] = [f, Math.round(gramsOf(e.L[i][0], e.L[i][1]))]; qPersist(); redraw(); toast("🏷 Ora usa " + FO(f).n); } else add(f); }));
+  const ai = $("qAddI"); if (ai) ai.oninput = () => { CS.qAddT = ai.value; box.querySelector(".qhits").innerHTML = hitBtns(ai.value); bindAdd(); box.querySelectorAll(".qhits [data-qscan]").forEach(b => b.onclick = () => scanOpen(f => { if (CS.qe === e) add(f); })); };
   bindAdd();
   const rs = $("qReset"); if (rs) rs.onclick = () => { e.L = baseQ(e.mid, e.oid, e.d).map(r => [...r]); qPersist(); redraw(); };
 }
@@ -734,7 +761,7 @@ function estBox(oid) {
     <textarea id="oR" rows="2" placeholder="Incolla qui la risposta di Claude"></textarea>
     <p class="plab">Quanto era condito?</p>
     <div class="unto">${CB.unto.map(([n, g, d]) => `<button data-unto="${g}" aria-pressed="${ol === g}"><b>${n}</b><small>${esc(d)}</small></button>`).join("")}</div>
-    <details class="occhio"><summary>✋ Come stimare a occhio, senza bilancia</summary><ul>${CB.occhio.map(([a, b]) => `<li><b>${esc(a)}</b>: ${esc(b)}</li>`).join("")}</ul></details></div>`;
+    ${scaleGuide()}</div>`;
 }
 function estBind(sh, mid, oid) {
   const e = CS.qe; if (!e || !$("oR")) return; const ctx = oid === "mensa" ? "un piatto della mensa del lavoro" : "un piatto del ristorante";
@@ -1055,7 +1082,7 @@ function closeRecipe() { const sh = $("fsheet"); if (!sh || sh.hidden) return; s
 // direzione decisa ai primi 8 px (orizzontale = scorri le caselle), chiude oltre 1/4 di altezza o con uno scatto veloce.
 (() => { const sh = $("fsheet"); if (!sh) return; sh.querySelector(".is-bg").onclick = closeRecipe; sh.querySelector(".is-x").onclick = closeRecipe; sh.querySelector(".is-close").onclick = closeRecipe;
   const box = sh.querySelector(".is-box"), cont = sh.querySelector(".is-c"), bg = sh.querySelector(".is-bg"), grab = sh.querySelector(".is-top");
-  let y0 = null, x0 = 0, dy = 0, lock = null, t0 = 0, lastY = 0, lastT = 0, vel = 0;
+  let y0 = null, x0 = 0, dy = 0, lock = null, t0 = 0, lastY = 0, lastT = 0, vel = 0, raf = 0, h0 = 0;
   const start = (e, top) => { const t = e.touches[0]; if (e.target.closest && e.target.closest("input, textarea, select")) { y0 = null; return; }
     y0 = t.clientY; x0 = t.clientX; dy = 0; lock = top ? "y" : null; t0 = lastT = Date.now(); lastY = y0; vel = 0; };
   const move = e => { if (y0 == null) return; const t = e.touches[0];
@@ -1066,8 +1093,10 @@ function closeRecipe() { const sh = $("fsheet"); if (!sh || sh.hidden) return; s
     if (lock !== "y") return;
     dy = Math.max(0, t.clientY - y0); const now = Date.now(); vel = (t.clientY - lastY) / Math.max(1, now - lastT); lastY = t.clientY; lastT = now;
     if (e.cancelable) e.preventDefault();
-    box.style.transition = "none"; box.style.transform = `translateY(${dy}px)`; bg.style.transition = "none"; bg.style.opacity = String(Math.max(0.15, 1 - dy / (box.offsetHeight || 600))); };
-  const end = () => { if (y0 == null) return; const h = box.offsetHeight || 600; box.style.transition = ""; bg.style.transition = ""; bg.style.opacity = "";
+    // un solo aggiornamento per fotogramma: prima ogni movimento del dito ridisegnava tutto e il riquadro "laggava"
+    if (!raf) { box.style.transition = "none"; bg.style.transition = "none"; sh.classList.add("drag"); h0 = box.offsetHeight || 600; }
+    cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { box.style.transform = `translate3d(0,${dy}px,0)`; bg.style.opacity = String(Math.max(0.15, 1 - dy / h0)); }); };
+  const end = () => { if (y0 == null) return; cancelAnimationFrame(raf); raf = 0; sh.classList.remove("drag"); const h = h0 || box.offsetHeight || 600; box.style.transition = ""; bg.style.transition = ""; bg.style.opacity = "";
     const avg = dy / Math.max(1, Date.now() - t0);
     if (lock === "y" && (dy > h * 0.25 || (dy > 40 && Math.max(vel, avg) > 0.5))) { closeRecipe(); setTimeout(() => { box.style.transform = ""; }, 260); } else box.style.transform = "";
     y0 = null; lock = null; };
@@ -1086,7 +1115,7 @@ function saveFoodPic(id, file) {
 function renderScambi(box) {
   const q = CS.q.toLowerCase().trim(), hit = r => !q || r[0].toLowerCase().includes(q);
   const C = CB.carbs.filter(hit), P = CB.prots.filter(hit);
-  box.innerHTML = `<input class="sq" id="sq" placeholder="Cerca un alimento (es. pasta, salmone)" value="${esc(CS.q)}" autocomplete="off">
+  box.innerHTML = `<div class="card">${scaleGuide()}</div><input class="sq" id="sq" placeholder="Cerca un alimento (es. pasta, salmone)" value="${esc(CS.q)}" autocomplete="off">
     <p class="note">Al posto di un alimento del piano scegli una riga: le quantità sono già equivalenti, ±10% va benissimo. Pesi da crudi; con le confezioni arrotonda alla confezione.</p>
     ${C.length ? `<h2>Carboidrati</h2><div class="card tbl"><table><thead><tr><th>Alimento</th><th>Palestra</th><th>Senza</th><th>Cena</th></tr></thead><tbody>${C.map(r => `<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td><td>${esc(r[3])}</td></tr>`).join("")}</tbody></table></div>` : ""}
     ${P.length ? `<h2>Proteine (pranzo e cena)</h2><div class="card tbl"><table><thead><tr><th>Alimento</th><th>Quantità</th><th>Olio</th></tr></thead><tbody>${P.map(r => `<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td></tr>`).join("")}</tbody></table></div>` : ""}
