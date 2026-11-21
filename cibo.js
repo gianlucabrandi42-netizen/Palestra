@@ -161,7 +161,7 @@ function fuzzyHit(p) {
 function readFood(txt, size, oneEach) {
   const fac = size === "p" ? .7 : size === "t" ? 1.4 : 1, items = [], miss = [];
   // 21/11/2026: i nomi dei piatti con "e"/"con" dentro ("pasta e fagioli", "cacio e pepe", "piadina con…") non si spezzano
-  let src = normT(txt).replace(/\bfettin([ae])\b/g, "fett$1").replace(/\bun (tot|po|paio)\b/g, "$1"); for (const k of kwList()) if (/ /.test(k[3]) && src.includes(k[3])) src = src.split(k[3]).join(k[3].replace(/ /g, "_"));
+  let src = normT(txt).replace(/(\d+(?:[.,]\d+)?)\s*[-–]\s*(\d+(?:[.,]\d+)?)/g, (m, a, b) => String((parseFloat(a.replace(",", ".")) + parseFloat(b.replace(",", "."))) / 2)).replace(/\bfettin([ae])\b/g, "fett$1").replace(/\bun (tot|po|paio)\b/g, "$1"); for (const k of kwList()) if (/ /.test(k[3]) && src.includes(k[3])) src = src.split(k[3]).join(k[3].replace(/ /g, "_"));
   for (const clause of src.split(/,|;|\+|\n|\.(?!\d)/)) { const c0 = items.length;
   for (let p of clause.split(/\be\b|\bed\b|\bcon\b|\bcol\b|\bpiu\b|\bpoi\b|\banche\b/)) {
     p = p.replace(/\bun'/g, "un ").trim(); if (!p) continue;
@@ -827,6 +827,10 @@ function showSheet(sh) { sh.hidden = false; document.documentElement.classList.a
 // Legge i numeri dalla risposta di Claude: "kcal 450 · proteine 30 g · carboidrati 40 g · grassi 18 g" (anche con altre parole intorno).
 function readClaude(txt) {
   const T = (txt || "").toLowerCase().replace(/(\d)[.,](\d{3})\b/g, "$1$2"), g = re => { const m = T.match(re); return m ? Math.round(parseFloat(m[1].replace(",", "."))) : null; };
+  // il totale: la riga con "totale" (o l'ultima con kcal e proteine), non la prima kcal che capita
+  const lines = T.split(/\n/), tl = lines.filter(l => /\btot(ale)?\b|in tutto|complessiv/.test(l) && /cal/.test(l)).pop() || lines.filter(l => /cal/.test(l) && /prot/.test(l)).pop();
+  if (tl && !/prot/.test(tl)) { const i = lines.indexOf(tl); const near = lines.slice(i, i + 4).join(" "); if (/prot/.test(near)) return readClaude(near); }
+  if (tl && tl !== T && /prot/.test(tl)) return readClaude(tl);
   const k = g(/(\d+(?:[.,]\d+)?)\s*(?:k?cal|kilocalorie|calorie)/) ?? g(/(?:kcal|calorie)\D{0,12}(\d+(?:[.,]\d+)?)/);
   const p = g(/prot\w*\D{0,12}(\d+(?:[.,]\d+)?)/) ?? g(/(\d+(?:[.,]\d+)?)\s*g\s*(?:di\s*)?prot/);
   const c = g(/carbo\w*\D{0,12}(\d+(?:[.,]\d+)?)/) ?? g(/(\d+(?:[.,]\d+)?)\s*g\s*(?:di\s*)?carbo/);
@@ -845,8 +849,12 @@ verdure 120 g
 olio 15 g
 Ultima riga: kcal X · proteine X g · carboidrati X g · grassi X g`;
 }
+// 21/11/2026: Claude in chat scrive anche "Pollo: 150 g (~250 kcal)" e "Totale circa 550 kcal" → "totale" era letto come "torta 550" (193.000 kcal)
 function readClaudeList(txt) {
-  const body = (txt || "").split(/\n/).filter(l => /\d/.test(l) && !(/kcal|calorie/i.test(l) && /prot/i.test(l))).map(l => l.replace(/^[\s\-•*·\d.)]+(?=[a-zà-ù])/i, "")).join("\n");
+  const body = (txt || "").replace(/\*\*|__/g, "").split(/\n/)
+    .filter(l => !/\btot(ale)?\b|\bin tutto\b|\bcomplessiv/i.test(l) && !/^[\s\-•*·]*(proteine|carboidrati|grassi|fibre|zuccheri|kcal|calorie|energia|valori)\b/i.test(l) && !(/kcal|calorie/i.test(l) && /prot|carbo|grass/i.test(l)))
+    .map(l => l.replace(/[(\[]?\s*[~≈±]?\s*(circa\s*)?\d+(?:[.,]\d+)?\s*(?:-\s*\d+\s*)?k?cal(?:orie)?\s*[)\]]?/gi, "").replace(/\s[–—-]\s*$/, ""))
+    .filter(l => /\d/.test(l)).map(l => l.replace(/^[\s\-•*·\d.)]+(?=[a-zà-ù])/i, "").replace(/\s*[:–—]\s*(?=[~≈]?\s*\d)/, " ").replace(/[~≈]/g, "")).join("\n");
   const r = readFood(body, "n", true); return { items: r.items.map(i => [i.f, i.q]), miss: r.miss, tot: readClaude(txt) };
 }
 async function askClaude(file, what, size, ctx) {
