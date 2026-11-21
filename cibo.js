@@ -1514,7 +1514,7 @@ function drawShot() {
   sh.querySelector(".is-h").innerHTML = `<b>📷 Il tuo piatto</b><span class="rmeta">${S.st === "off" ? "analisi automatica da attivare" : "analisi di Claude · stima ±20%"}</span>`;
   sh.querySelector(".is-c").innerHTML = `<div class="aishot"><img class="shotimg" src="${S.data}" alt="">
     ${S.st === "run" ? `<div class="shotrun"><i class="spin"></i><b>Claude sta guardando il piatto…</b><small>di solito 5-10 secondi</small></div>` : ""}
-    ${S.st === "off" ? `<div class="card shotoff"><b>L'analisi automatica non è ancora attiva su questo telefono.</b><p class="note">Scrivi il codice dell'app in Impostazioni → Foto del cibo. Intanto puoi mandare la foto a Claude in chat e incollare la risposta in «Scrivo io».</p><div class="row"><button class="btn primary" id="shChat">Manda a Claude in chat</button><button class="btn" id="shSet">Vai alle Impostazioni</button></div></div>` : ""}
+    ${S.st === "off" ? `<div class="card shotoff"><b>L'analisi automatica non è ancora attiva su questo telefono.</b><p class="note">Intanto fai così: <b>1.</b> «Manda a Claude» (foto + richiesta già scritta) · <b>2.</b> copia la sua risposta · <b>3.</b> incollala qui sotto e segna il pasto.</p><div class="row"><button class="btn primary" id="shChat">1 · Manda a Claude</button><button class="btn" id="shSet">Attiva l'analisi automatica</button></div><textarea id="shPaste" rows="3" placeholder="3 · Incolla qui la risposta di Claude">${esc(S.paste || "")}</textarea>${S.pasteErr ? `<p class="xpno">${esc(S.pasteErr)}</p>` : ""}</div>` : ""}
     ${S.st === "err" ? `<div class="card shotoff"><b>⚠️ ${esc(S.err)}</b><div class="row"><button class="btn primary" id="shRetry">↻ Riprova</button><button class="btn" id="shChat">Manda a Claude in chat</button></div></div>` : ""}
     ${S.st === "ok" ? `<label class="plab">Nome del piatto<input id="shN" value="${esc(S.name)}" autocomplete="off"></label>
       ${S.res && S.res.note ? `<p class="note shnote">🤖 ${esc(S.res.note)}${S.res.sicurezza === "bassa" ? " · <b>stima incerta</b>: controlla le quantità" : ""}</p>` : ""}
@@ -1533,6 +1533,9 @@ function drawShot() {
   const nt = $("shNote"); if (nt) nt.oninput = e => { S.note = e.target.value; };
   const ag = $("shAgain"); if (ag) ag.onclick = () => { if (!aiOn()) return; aiRun(); };
   const rt = $("shRetry"); if (rt) rt.onclick = () => aiRun();
+  const pz = $("shPaste"); if (pz) pz.oninput = e => { S.paste = e.target.value; const r = readClaudeList(S.paste); if (!r.items.length) { S.pasteErr = S.paste.trim().length > 15 ? "Non riesco a leggerla: servono righe tipo «pollo 150 g»." : ""; const z = sh.querySelector(".shotoff .xpno"); if (z) z.textContent = S.pasteErr; return; }
+    const L = []; for (const row of r.items) { const i = L.findIndex(([f]) => f === row[0]); if (i >= 0) L[i][1] += row[1]; else L.push([row[0], row[1]]); }
+    S.L = L; S.miss = r.miss; S.name = S.name || "Il mio piatto"; S.res = { note: "Stima di Claude in chat" }; S.st = "ok"; S.pasteErr = ""; drawShot(); };
   const ch = $("shChat"); if (ch) ch.onclick = () => askClaude(S.file, S.note || "", "", S.meal === "pr" || S.meal === "ce" ? "un piatto" : "");
   const st = $("shSet"); if (st) st.onclick = () => { closeRecipe(); CS.shot = null; const b = document.querySelector('[data-view="backup"],[data-view="imp"],[data-view="set"]'); if (b) b.click(); setTimeout(() => { const c = $("aiSet"); if (c) c.scrollIntoView({ block: "start" }); }, 120); };
   const ok = $("shOk"); if (ok) ok.onclick = () => shotSave();
