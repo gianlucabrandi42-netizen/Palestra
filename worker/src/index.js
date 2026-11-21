@@ -111,6 +111,9 @@ Per ogni alimento dai il peso in grammi COME SI VEDE (pasta, riso, carne e verdu
 Includi sempre i condimenti nascosti che si intuiscono (olio, burro, sughi, formaggio grattugiato, panature): l'olio come voce "olio" a parte.
 Usa nomi semplici in italiano (es. "pasta cotta", "petto di pollo", "patate al forno", "zucchine", "parmigiano", "olio").
 Se ci sono una forchetta, un piatto o una mano, usali per capire le dimensioni.`,
+  testo: `Sei un nutrizionista esperto di cucina italiana. Una persona ha scritto cosa ha mangiato, a parole sue (anche con nomi regionali, marche o errori di battitura).
+Capisci di che piatto o cibo si tratta e scomponilo in alimenti con grammi e valori. Se non dice la quantità usa una porzione normale italiana.
+Includi i condimenti tipici di quel piatto (olio, burro, sughi, formaggio) come voci a parte se non sono già nel nome.`,
   congelatore: `Guarda la foto del congelatore o della spesa da congelare ed elenca gli alimenti che riconosci.
 Per ogni alimento il peso in grammi (usa quello scritto sulla confezione se si legge, altrimenti una stima) e i valori di quella quantità.
 Nomi semplici in italiano (es. "petto di pollo", "merluzzo", "verdure miste", "pane di segale"). Niente condimenti.`,
@@ -119,13 +122,13 @@ const FOTO_FORMAT = `Rispondi SOLO con un oggetto JSON valido, senza testo prima
 {"piatto":"nome breve del piatto","items":[{"n":"alimento","g":grammi,"cotto":true,"kcal":0,"p":0,"c":0,"f":0}],"note":"una frase su cosa è incerto","sicurezza":"alta|media|bassa"}
 p, c, f = grammi di proteine, carboidrati, grassi della quantità indicata. Massimo 12 alimenti.`;
 async function fotoAnalyze(env, b) {
-  const mode = b.mode === "congelatore" ? "congelatore" : "piatto";
-  const text = FOTO_PROMPT[mode] + (b.meal ? `\nPasto: ${clip(b.meal, 40)}.` : "") + (b.note ? `\nNota di chi mangia: ${clip(b.note, 300)}` : "") + "\n\n" + FOTO_FORMAT;
+  const mode = b.mode === "congelatore" ? "congelatore" : b.mode === "testo" ? "testo" : "piatto";
+  const text = FOTO_PROMPT[mode] + (b.meal ? `\nPasto: ${clip(b.meal, 40)}.` : "") + (mode === "testo" ? `\nHa scritto: «${clip(b.text, 500)}»` : b.note ? `\nNota di chi mangia: ${clip(b.note, 300)}` : "") + "\n\n" + FOTO_FORMAT;
+  const content = mode === "testo" ? [{ type: "text", text }] : [{ type: "image", source: { type: "base64", media_type: b.mime, data: b.img } }, { type: "text", text }];
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model: FOTO_MODEL, max_tokens: 1200, messages: [{ role: "user", content: [
-      { type: "image", source: { type: "base64", media_type: b.mime, data: b.img } }, { type: "text", text }] }] }),
+    body: JSON.stringify({ model: FOTO_MODEL, max_tokens: 1200, messages: [{ role: "user", content }] }),
   });
   const out = await r.json().catch(() => null);
   if (!r.ok || !out) return { error: (out && out.error && out.error.message) || "errore " + r.status, status: r.status };
@@ -172,7 +175,8 @@ export default {
         if (!sameCode(b.code, env.FOTO_CODICE)) return json({ ok: false, configured: true, error: "codice sbagliato" }, 403);
         const now = new Date(), day = now.toISOString().slice(0, 10), month = day.slice(0, 7), ks = env.KEYS.get(env.KEYS.idFromName("foto-uso"));
         if (url.pathname === "/food/status") return json({ ok: true, configured: true, ...(await ks.useFoto(day, month, FOTO_MAX_DAY, FOTO_MAX_MONTH, true)), maxDay: FOTO_MAX_DAY, maxMonth: FOTO_MAX_MONTH });
-        if (typeof b.img !== "string" || b.img.length < 100 || b.img.length > 7 * 1024 * 1024 || !/^image\/(jpeg|png|webp)$/.test(b.mime || "")) return json({ error: "foto non valida" }, 400);
+        if (b.mode === "testo") { if (typeof b.text !== "string" || !b.text.trim() || b.text.length > 600) return json({ error: "testo non valido" }, 400); }
+        else if (typeof b.img !== "string" || b.img.length < 100 || b.img.length > 7 * 1024 * 1024 || !/^image\/(jpeg|png|webp)$/.test(b.mime || "")) return json({ error: "foto non valida" }, 400);
         const u = await ks.useFoto(day, month, FOTO_MAX_DAY, FOTO_MAX_MONTH);
         if (!u.ok) return json({ error: `limite raggiunto (${FOTO_MAX_DAY} foto al giorno, ${FOTO_MAX_MONTH} al mese)` }, 429);
         const res = await fotoAnalyze(env, b);

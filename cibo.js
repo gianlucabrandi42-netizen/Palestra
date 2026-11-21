@@ -116,33 +116,71 @@ function curQ(d, mid, oid) { const day = fDay(d); if ((day.m || {})[mid] === oid
 
 // ✎ testo scritto a mano → alimenti (20/11/2026: "se scrivo dei messaggi devi estrapolare quello che ho scritto e integrarlo").
 // "2 biscotti e una birra", "80 g di pasta col tonno", "mezza pizza", "un pugno di noci". Quello che non capisce lo dice.
-const FILL = new Set("ho abbiamo mangiato mangiata mangiati bevuto bevuta preso presa fatto fatta oggi ieri stasera stamattina pranzo cena colazione merenda spuntino della delle dello degli dei del alla alle allo agli poco poca tanto tanta normale piccolo piccola grande anche altro altra per dopo prima casa lavoro bar".split(" "));
+const FILL = new Set("di da in un uno una al allo ai agli il lo la le gli piatto piatti porzione porzioni pezzo pezzi po ho abbiamo mangiato mangiata mangiati bevuto bevuta preso presa fatto fatta oggi ieri stasera stamattina pranzo cena colazione merenda spuntino della delle dello degli dei del alla alle allo agli poco poca tanto tanta normale piccolo piccola grande anche altro altra per dopo prima casa lavoro bar".split(" "));
 const NUMW = { un: 1, uno: 1, una: 1, mezzo: .5, mezza: .5, due: 2, tre: 3, quattro: 4, cinque: 5, sei: 6, sette: 7, otto: 8, nove: 9, dieci: 10, paio: 2, qualche: 3, dozzina: 12 };
 const normT = t => (t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/’/g, "'");
 let KW = null;
 function kwList() {
   if (KW) return KW; KW = [];
-  for (const [id, o] of Object.entries(CB.foods)) for (const k of (o.k || "").split(",")) { const n = normT(k.trim()); if (n.length >= 3) KW.push([new RegExp("(^|[^a-z])" + n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), id, n.length + (o.mine ? 1000 : 0)]); }
-  return KW.sort((a, b) => b[2] - a[2]);
+  // 21/11/2026: gli spazi delle parole chiave valgono anche come "_" (frasi protette, vedi readFood) e l'ultima vocale può
+  // cambiare a fine parola (zucchina/zucchine, polpetta/polpette, biscotto/biscotti)
+  const esc_ = t => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/ /g, "[ _]");
+  for (const [id, o] of Object.entries(CB.foods)) for (const k of (o.k || "").split(",")) { const n = normT(k.trim()); if (n.length < 3) continue; const pr = n.length + (o.mine ? 1000 : 0);
+    KW.push([new RegExp("(^|[^a-z])" + esc_(n)), id, pr, n]);
+    if (n.length >= 4 && /[aeio]$/.test(n)) KW.push([new RegExp("(^|[^a-z])" + esc_(n.slice(0, -1)) + "[aeio](?![a-z])"), id, pr - 1.5, n]); }
+  KW.sort((a, b) => b[2] - a[2]);
+  STEMS = [...new Map(KW.filter(k => !/ /.test(k[3]) && k[3].length >= 5).map(k => [k[3], k[1]])).entries()];
+  return KW;
 }
 const COOKED = { pasta: "pastac", pastai: "pastac", riso: "risoc" };
+let STEMS = [];
+const UNITW = new Set("fetta fette fettina fettine pezzo pezzi piatto piatti porzione porzioni tazza tazzina bicchiere bottiglia lattina vasetto confezione busta pacchetto cucchiaio cucchiaino manciata grammi etto etti litro litri".split(" "));
+// 21/11/2026: in una frase con un piatto pronto ("fusilli al pesto", "tortellini al ragù") pasta, riso e sughi sono già dentro il piatto;
+// nei piatti "contenitore" (insalatona, poke, piadina, panino, burrito) quello che scrivi dopo ("con pollo e mozzarella") è il ripieno:
+// il piatto vale solo la sua base, così non si conta due volte
+const PASTA_DISH = new Set("carbonara amatriciana ppesto ppomodoro paglio pragu ptonno ppanna cacio pmare pfagioli pverdure pfredda".split(" "));
+const DISH_IN = new Set("pasta pastai pastac riso risoc rprec gnocchi cous farro quinoa ragu sugo passata pestosalsa panna burro".split(" "));
+const DISH_BASE = { insalatona: .35, poke: .55, piadinaf: .55, paninof: .5, burrito: .55, tramezzino: .45, wrap: 1, piadina: 1 };
+function dishFix(items, from) {
+  const cl = items.slice(from), isDish = f => /^(piatto|porzione|trancio|ciotola|bowl)/.test((FO(f) || {}).u || "") && !DISH_BASE[f];
+  if (cl.some(i => isDish(i.f))) for (let i = items.length - 1; i >= from; i--) if (DISH_IN.has(items[i].f) && !isDish(items[i].f)) items.splice(i, 1);
+  const c = items.slice(from).find(i => DISH_BASE[i.f] && DISH_BASE[i.f] < 1);
+  if (c && items.length - from > 1 && items.slice(from).some(i => i !== c && !["erbe", "olio", "sale"].includes(i.f))) c.q = Math.round(c.q * DISH_BASE[c.f] * 100) / 100;
+}
+// distanza tra due parole (errori di battitura): "carbonra" ≈ "carbonara", "zuchine" ≈ "zucchine"
+function lev(a, b) { const m = a.length, n = b.length; if (Math.abs(m - n) > 2) return 9; let pr = Array.from({ length: n + 1 }, (_, j) => j);
+  for (let i = 1; i <= m; i++) { const cu = [i]; for (let j = 1; j <= n; j++) cu[j] = Math.min(pr[j] + 1, cu[j - 1] + 1, pr[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); pr = cu; } return pr[n]; }
+function fuzzyHit(p) {
+  kwList(); let best = null;
+  // prudente: una parola sbagliata è meglio di un alimento sbagliato (prima lettera uguale, niente misure né contenitori)
+  for (const w of p.split(/[^a-z]+/)) { if (w.length < 5 || FILL.has(w) || NUMW[w] != null || CB.cont[w] || UNITW.has(w)) continue;
+    for (const [n, id] of STEMS) { if (n[0] !== w[0]) continue; const tol = n.length >= 7 && w.length >= 7 ? 2 : 1, d = Math.min(lev(w, n), lev(w.slice(0, n.length), n), lev(w.slice(0, n.length + 1), n), lev(w.slice(0, n.length - 1), n));
+      if (d <= tol && (!best || d < best.d || (d === best.d && n.length > best.n.length))) best = { d, n, id }; } }
+  return best && best.id;
+}
 function readFood(txt, size, oneEach) {
   const fac = size === "p" ? .7 : size === "t" ? 1.4 : 1, items = [], miss = [];
-  for (let p of normT(txt).split(/,|;|\+|\n|\.(?!\d)|\be\b|\bed\b|\bcon\b|\bcol\b|\bpiu\b|\bpoi\b|\banche\b/)) {
+  // 21/11/2026: i nomi dei piatti con "e"/"con" dentro ("pasta e fagioli", "cacio e pepe", "piadina con…") non si spezzano
+  let src = normT(txt).replace(/\bfettin([ae])\b/g, "fett$1"); for (const k of kwList()) if (/ /.test(k[3]) && src.includes(k[3])) src = src.split(k[3]).join(k[3].replace(/ /g, "_"));
+  for (const clause of src.split(/,|;|\+|\n|\.(?!\d)/)) { const c0 = items.length;
+  for (let p of clause.split(/\be\b|\bed\b|\bcon\b|\bcol\b|\bpiu\b|\bpoi\b|\banche\b/)) {
     p = p.replace(/\bun'/g, "un ").trim(); if (!p) continue;
     // tutti gli alimenti del pezzo ("pasta al sugo" = pasta + sugo); la quantità scritta vale per il primo
     const hits = []; let rest = p;
     for (;;) { const k = kwList().find(([re]) => re.test(rest)); if (!k) break; const m = rest.match(k[0]), at = m.index + m[1].length;
       if (!hits.some(h => h[0] === k[1])) hits.push([k[1], at]); const end = rest.slice(at).search(/[^a-z]|$/); rest = rest.slice(0, at) + " ".repeat(Math.max(k[2], end)) + rest.slice(at + Math.max(k[2], end)); }
-    if (!hits.length) { const left = p.replace(/[^a-z ]/g, " ").split(/\s+/).filter(w => w.length > 2 && !FILL.has(w)); if (left.length) miss.push(p); continue; }
+    if (!hits.length) { const fz = fuzzyHit(p); if (fz) hits.push([fz, 0]); }
+    if (!hits.length) { const left = p.replace(/[^a-z ]/g, " ").split(/\s+/).filter(w => w.length > 2 && !FILL.has(w)); if (left.length) miss.push(p.replace(/_/g, " ")); continue; }
     hits.sort((a, b) => a[1] - b[1]); if (oneEach) hits.length = 1;
     hits.forEach(([hit], hi) => {
-    const o = FO(hit), words = p.split(/[^a-z]+/);
+    const o = FO(hit), words = p.split(/[^a-z]+/);  // "_" separa le parole come lo spazio
     const nm = hi ? null : p.match(/(\d+(?:[.,]\d+)?)/); let n = nm ? parseFloat(nm[1].replace(",", ".")) : null;
     if (n == null && !hi) { const w = words.find(w => NUMW[w] != null); if (w) n = NUMW[w]; }
     const um = hi ? null : p.match(/\d\s*(kg|g|gr|grammi|grammo|ml|cl|l|lt|litr[oi])\b/);
     const own = isW(o) ? [] : o.u.split("|"), cw = hi ? null : words.find(w => !own.includes(w) && ((o.cg && o.cg[w]) || CB.cont[w]));
     let g;
+    // "80 g di pasta al tonno": i grammi sotto i 150 nei piatti di pasta sono della pasta cruda (piatto ≈ 3,3 volte)
+    if (um && PASTA_DISH.has(hit)) { const u = um[1], gg = n * (u === "kg" ? 1000 : 1); if (gg < 150) { items.push({ f: hit, q: Math.round(gg * 3.3 / o.g * 100) / 100, t: p }); return; } }
     if (um) { const u = um[1]; g = n * (u === "kg" ? 1000 : u === "cl" ? 10 : /^l/.test(u) ? 1000 : 1); }
     else if (cw) g = (n ?? 1) * ((o.cg && o.cg[cw]) || CB.cont[cw]);
     else if (isW(o)) g = n != null && n > 12 ? n : (n ?? fac) * o.d;
@@ -151,6 +189,8 @@ function readFood(txt, size, oneEach) {
     if (COOKED[hit] && !/\bcrud/.test(p) && (/\bcott[aoie]\b/.test(p) || (um && g >= 160))) { const c = COOKED[hit]; items.push({ f: c, q: Math.round(g), t: p }); return; }
     items.push({ f: hit, q: isW(o) ? Math.round(g) : Math.round(g / o.g * 100) / 100, t: p });
     });
+  }
+  dishFix(items, c0);
   }
   // i prodotti scansionati prendono il posto di quelli generici anche qui
   const sub = applySubs(items.map(i => [i.f, i.q])); items.forEach((it, i) => { it.f = sub[i][0]; it.q = sub[i][1]; });
@@ -443,7 +483,7 @@ function xParse(f) {
   let miss = f.cmiss || [];
   if (!f.ed) { const r = readFood(f.t || "", f.s); f.it = r.items.map(i => [i.f, i.q]); miss = r.miss; }
   const t = valOfQ(f.it);
-  return `${f.it && f.it.length ? `<p class="plab">Ho capito · se è diverso tocca − / + o il numero</p><div class="xrows">${rowsHTML(f.it)}</div><p class="qtot"><b>~${fmt(t[0])} kcal</b><span>proteine ${t[1]} g · carboidrati ${t[2]} g · grassi ${t[3]} g</span></p>` : ""}${f.cl ? `<p class="note">Claude aveva stimato ~${f.cl.k} kcal in tutto.</p>` : ""}${miss.length ? `<p class="xpno">Non ho capito: «${esc(miss.join("», «"))}». Scrivilo più semplice (es. "80 g di pasta", "2 biscotti") o chiedi a Claude con 📷.</p>` : ""}${f.ed && (f.t || "").trim() ? `<button class="lnk" id="xReread">↺ Rileggi dal testo</button>` : ""}`;
+  return `${f.it && f.it.length ? `<p class="plab">Ho capito · se è diverso tocca − / + o il numero</p><div class="xrows">${rowsHTML(f.it)}</div><p class="qtot"><b>~${fmt(t[0])} kcal</b><span>proteine ${t[1]} g · carboidrati ${t[2]} g · grassi ${t[3]} g</span></p>` : ""}${f.cl ? `<p class="note">Claude aveva stimato ~${f.cl.k} kcal in tutto.</p>` : ""}${miss.length ? `<p class="xpno">Non ho capito: «${esc(miss.join("», «"))}». ${aiOn() ? "" : ` Scrivilo più semplice (es. "80 g di pasta", "2 biscotti") o chiedi a Claude con 📷.`}</p>${aiOn() ? `<button class="btn sm primary" id="xAi">✨ Fallo capire a Claude</button>` : ""}` : ""}${f.ed && (f.t || "").trim() ? `<button class="lnk" id="xReread">↺ Rileggi dal testo</button>` : ""}`;
 }
 function xForm() {
   const f = CS.xform, d = cDay(), sv = f.meal && f.meal !== "fuori" ? (fDay(d).m || {})[f.meal] : null, so = sv && sv !== "skip" ? optOf(mealDef(f.meal), sv, d) : null;
@@ -494,7 +534,12 @@ function bindOggi(box, d) {
   if (CS.xform) {
     const t = $("xT"), k = $("xK"), f = CS.xform;
     const xp = () => { const z = box.querySelector(".xparse"); if (!z) return; z.innerHTML = xParse(f); bindRows(z, f.it || [], () => { f.ed = true; xp(); });
-      const rr = $("xReread"); if (rr) rr.onclick = () => { f.ed = false; f.cl = null; f.cmiss = null; xp(); }; };
+      const rr = $("xReread"); if (rr) rr.onclick = () => { f.ed = false; f.cl = null; f.cmiss = null; xp(); };
+      const ai = $("xAi"); if (ai) ai.onclick = async () => { ai.disabled = true; ai.textContent = "Claude sta leggendo…";
+        try { const j = await aiPost("/food/photo", { mode: "testo", text: (f.t || "").trim(), meal: (SHOTM().find(([k]) => k === f.meal) || [0, ""])[1] }); const r = aiRows(j.items);
+          if (!r.L.length) { toast("Neanche Claude ha capito: scrivilo diversamente"); ai.disabled = false; ai.textContent = "✨ Riprova"; return; }
+          f.it = r.L; f.ed = true; f.cmiss = r.miss; if (j.piatto && !(f.t || "").trim()) f.t = j.piatto; xp(); toast(`✓ ${j.piatto || "Capito"} · ~${valOfQ(f.it)[0]} kcal`); }
+        catch (e) { toast("⚠️ " + (e.message || e)); ai.disabled = false; ai.textContent = "✨ Fallo capire a Claude"; } }; };
     xp();
     t.oninput = () => { f.t = t.value; if (!f.ed) xp(); }; k.oninput = () => f.k = k.value.replace(/\D/g, "");
     $("xR").oninput = ev => { f.r = ev.target.value; const r = readClaudeList(f.r);
@@ -839,7 +884,13 @@ function estBind(sh, mid, oid) {
     if (!t) { pv.innerHTML = ""; use.hidden = true; return; }
     const r = estRead(t);
     pv.innerHTML = (r.items.length ? `<p class="xpok">Ho capito: ${r.items.map(([f, q]) => `<b>${esc(qText(f, q))}</b>`).join(" · ")} → <b>~${valOfQ(r.items)[0]} kcal</b></p>` : "")
-      + (r.miss.length ? `<p class="xpno">Non ho capito: «${esc(r.miss.join("», «"))}». Prova con parole più semplici o con la foto a Claude.</p>` : "");
+      + (r.miss.length ? `<p class="xpno">Non ho capito: «${esc(r.miss.join("», «"))}».${aiOn() ? "" : " Prova con parole più semplici o con la foto a Claude."}</p>${aiOn() ? `<button class="btn sm primary" id="oAi">✨ Fallo capire a Claude</button>` : ""}` : "");
+    const oa = $("oAi"); if (oa) oa.onclick = async () => { oa.disabled = true; oa.textContent = "Claude sta leggendo…";
+      try { const j = await aiPost("/food/photo", { mode: "testo", text: ta.value.trim(), meal: oid === "mensa" ? "pranzo in mensa" : "piatto del ristorante" }); const rr = aiRows(j.items); if (!rr.L.length) throw new Error("non ho riconosciuto alimenti");
+        const oil = e.L.find(([f]) => f === "olio"), keep = !rr.L.some(([f]) => f === "olio");
+        e.L = [...rr.L, ...(keep && oil ? [[...oil]] : [])]; const on = (fDay(e.d).m || {})[mid] === oid; if (on) qPersist(); else logMeal(e.d, mid, oid, false, e.L);
+        renderCibo(); openOpt(mid, oid, true); toast(`✓ Nel piatto: ~${valOfQ(e.L)[0]} kcal`); }
+      catch (err) { toast("⚠️ " + (err.message || err)); oa.disabled = false; oa.textContent = "✨ Fallo capire a Claude"; } };
     use.hidden = !r.items.length; };
   let tmo; ta.oninput = () => { clearTimeout(tmo); tmo = setTimeout(show, 250); };
   show();
@@ -1416,7 +1467,7 @@ function aiRows(items) {
     const cot = it.cotto && /\b(pasta|riso|cous|farro|orzo|quinoa)\b/i.test(it.n) && !/cott|crud/i.test(it.n) ? " cotta" : "";
     const r = readFood(`${it.n}${cot} ${Math.round(it.g)} g`, "n"), one = r.items.length === 1 && !r.miss.length ? [r.items[0].f, r.items[0].q] : null;
     let row = null;
-    if (one) { const k = valOfQ([one])[0]; if (!it.kcal || Math.abs(k - it.kcal) <= Math.max(40, it.kcal * .35)) row = one; }
+    if (one) { const k = valOfQ([one])[0]; if (!it.kcal || Math.abs(k - it.kcal) <= Math.max(30, it.kcal * .25)) row = one; }
     if (!row && it.kcal > 0) { const slug = normT(it.n).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30) || "cibo", per = x => Math.round(x / it.g * 1000) / 10;
       aif()[slug] = { n: it.n.charAt(0).toUpperCase() + it.n.slice(1), v: [per(it.kcal), per(it.p), per(it.c), per(it.f)], at: Date.now() }; syncAif(); row = ["ai_" + slug, Math.round(it.g)]; }
     if (!row && one) row = one;
