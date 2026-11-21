@@ -1602,3 +1602,8 @@ svg.fzi{border-radius:50%}
 .fzdl input{flex:1}
 .fzc .fzrow{align-items:flex-start}.fzc .fzrow .fzi{margin-top:2px}
 .fzid .chip,.fzp .chip,.fzq .chip{border-color:color-mix(in srgb,var(--accent) 45%,transparent);color:var(--text,#eee);background:color-mix(in srgb,var(--accent) 8%,transparent)}
+/* centro del piatto del giorno: il testo resta dentro il cerchio interno (21/11/2026) */
+.pmid{justify-items:center}
+.pmid small{display:block;max-width:34%;margin:0 auto;line-height:1.25;letter-spacing:.04em;font-size:9.5px;overflow-wrap:anywhere}
+.pmid b{text-align:center}
+.pmid small{max-width:none;white-space:nowrap;overflow-wrap:normal;font-size:9px;letter-spacing:.03em}

@@ -292,7 +292,7 @@ function renderOggi(box) {
   let h = `<div class="cdays">${days.map(x => { const s = ddShort(x); return `<button data-cd="${x}" aria-pressed="${x === d}"><small>${x === today ? "oggi" : x > today ? "domani" : s.w}</small>${plateSVG(x, "pmini")}<b>${s.n}</b></button>`; }).join("")}</div>`;
   // 🏋️ la mattina (o la sera prima, per domani): se ti alleni più tardi, il pranzo deve già saperlo (scala 80/40/0)
   if (d >= today && day.gym == null && !auto) h += `<div class="card gask"><div><b>🏋️ ${d === today ? "Oggi" : "Domani"} ti alleni?</b><small>Decide il pranzo: 80 g di carboidrato se sì, ${isGym(addDays(d, -1)) ? "40" : "niente"} se no. Quando registri l'allenamento lo sa da solo.</small></div><div class="seg2"><button data-gym="1">Sì</button><button data-gym="0">No</button></div></div>`;
-  h += `<div class="cplate"><div class="pwrap">${plateSVG(d)}<div class="pmid">${done ? `<b>✓</b><small>giornata fatta</small>` : nm ? `<small>prossimo</small><b>${esc(nm)}</b>` : `<b>👌</b>`}</div></div>
+  h += `<div class="cplate"><div class="pwrap">${plateSVG(d)}<div class="pmid">${done ? `<b>✓</b><small>tutto<br>fatto</small>` : nm ? `<small>prossimo</small><b>${esc(nm)}</b>` : `<b>👌</b>`}</div></div>
     <div class="pside"><div class="pgym"><span>Palestra ${d === today ? "oggi" : "quel giorno"}</span><div class="seg2"><button data-gym="1" aria-pressed="${gym}">Sì</button><button data-gym="0" aria-pressed="${!gym}">No</button></div>${auto && day.gym == null ? `<small>dall'allenamento</small>` : ""}</div>
     <div class="pgym"><span>Turno</span><div class="seg4">${CB.shifts.map(x => `<button data-sh="${x.id}" aria-pressed="${day.turno === x.id}">${esc(x.t)}</button>`).join("")}</div></div>
     <p class="phint">${esc(dayHint(d))}</p></div></div>`;
