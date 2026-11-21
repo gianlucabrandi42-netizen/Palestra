@@ -628,7 +628,7 @@ Object.assign(window.CIBO, {
     ["couscousc", "Cous cous cotto", "g", 25, [112, 3.8, 23, 0.2], "cous cous cotto,couscous cotto", 200],
     ["paella", "Paella / riso con pesce", "piatto|piatti", 350, [160, 9, 20, 5], "paella,risotto alla pescatora,risotto ai frutti di mare", 1],
     // --- pizze, panini, cibo da strada ---
-    ["pizzatag", "Pizza al taglio", "trancio|tranci", 120, [270, 10, 34, 10], "pizza al taglio,pizzetta,pizzette,trancio di pizza", 1],
+    ["pizzatag", "Pizza al taglio", "trancio|tranci", 120, [270, 10, 34, 10], "pizza al taglio,trancio di pizza", 1],
     ["calzone", "Calzone / panzerotto", "pezzo|pezzi", 280, [280, 11, 32, 12], "calzon,panzerott", 1],
     ["piadinaf", "Piadina farcita", "piadina|piadine", 250, [290, 13, 30, 13], "piadina farcita,piadina con,piadina prosciutto,piadina crudo,piadina cotto,crescione,cassone,piadina kebab", 1],
     ["paninof", "Panino imbottito", "panino|panini", 200, [260, 12, 30, 10], "panino con,panino al,panino imbottito,sandwich,club sandwich,panino prosciutto,panino crudo,panino cotto,panino porchetta,panino salame,rosetta con,ciabatta con", 1],
@@ -785,7 +785,7 @@ Object.assign(window.CIBO, {
   // parole in più per alimenti che c'erano già
   const more = { pollo: "petti di pollo,fusi di pollo,sovracosce", polloc: "pollo al curry,pollo al limone,pollo in padella,straccetti di pollo,bocconcini di pollo,spiedini di pollo", carnec: "fiorentina,entrecote,filetto di manzo,controfiletto,hamburger cotto,svizzera",
     pescec: "pesce,filetto di pesce", uovo: "uovo sodo,uova sode,uova al tegamino,uovo al tegamino,uova strapazzate,frittatina,omelette", kebab: "gyros,pita gyros,shawarma,doner", bibita: "coca cola,cocacola,coca,fanta,sprite,aranciata,chinotto,gassosa,pepsi",
-    zero: "coca zero,coca cola zero,pepsi max,light", formaggio: "formaggi,formaggio stagionato,groviera", cornflakes: "fiocchi di mais,corn flakes", pizza: "pizza margherita,pizza marinara,4 formaggi,quattro stagioni,pizza bianca,pizza con", torta: "torte,dolce,dessert,fetta di torta",
+    zero: "coca zero,coca cola zero,pepsi max,light", formaggio: "formaggi,formaggio stagionato,groviera", cornflakes: "fiocchi di mais,corn flakes", pizza: "pizza margherita,pizza marinara,4 formaggi,quattro stagioni,pizza bianca,pizza con", torta: "torte,dolce,dessert",
     biscotto: "biscotti,gocciole,pan di stelle,macine,digestive,abbracci", patatine: "pringles,san carlo,chips", fritte: "patatine fritte,patate fritte,french fries,frites", insalata: "lattuga,insalata verde,valeriana,songino,iceberg,misticanza", acqua: "acqua frizzante,acqua naturale,acqua gassata" };
   for (const [id, k] of Object.entries(more)) if (F[id]) F[id].k = [F[id].k, k].filter(Boolean).join(",");
   // parole tolte dagli alimenti generici: ora hanno un alimento più preciso
@@ -801,4 +801,37 @@ Object.assign(window.CIBO, {
   F.tortellini.k += ",ravioli burro e salvia,tortellini panna e prosciutto,tortellini al ragu";
   F.erbe = { n: "Erbe e spezie", u: "g", s: 1, v: [0, 0, 0, 0], k: "salvia,basilico,rosmarino,prezzemolo,origano,peperoncino,aglio,spezie,erbe aromatiche,pepe nero,paprika,curcuma,zenzero,cannella,timo,menta,erba cipollina", d: 1 };
   Object.assign(window.CIBO.cont, { piatto: 300, piatti: 300, porzione: 250, porzioni: 250, piattino: 150, scodella: 250, vaschetta: 250, busta: 300, confezione: 200, pacchetto: 30, pacchetti: 30, barattolo: 400, brick: 200 });
+})();
+
+// 🎉 BUFFET, EVENTI E STIMA A OCCHIO (21/11/2026, "ho mangiato un tot di rustici a un evento e non li ha riconosciuti").
+(() => {
+  const F = window.CIBO.foods;
+  const L = [
+    ["rustico", "Rustici (sfoglia ripiena)", "rustico|rustici", 40, [360, 8, 28, 24], "rustic,salatini di sfoglia,sfogliatine salate,saccottin", 3],
+    ["tartina", "Tartine / crostini da buffet", "tartina|tartine", 25, [280, 8, 28, 15], "tartin,canape,crostini da buffet,finger food", 4],
+    ["pizzetta", "Pizzette rosse", "pizzetta|pizzette", 25, [290, 8, 38, 11], "pizzett,pizzette rosse,pizzette da buffet", 4],
+    ["minipanino", "Mini panini / tramezzini da buffet", "panino|panini", 35, [270, 10, 30, 12], "mini panin,panini al latte,panino al latte,paninetti,mini tramezzin,tramezzini da buffet", 3],
+    ["ascolane", "Olive ascolane", "oliva|olive", 15, [300, 9, 20, 21], "olive ascolan,ascolan", 6],
+    ["mozzfritte", "Mozzarelline fritte / panzerottini", "pezzo|pezzi", 20, [330, 12, 25, 21], "mozzarelline fritte,mozzarelline,panzerottin,crocchè,crocche,arancinette,mini suppli", 4],
+    ["tortasal", "Torta salata / quiche", "fetta|fette", 120, [270, 8, 20, 18], "torta salata,torte salate,quiche,erbazzone,torta rustica,torta pasqualina,sformato", 1],
+    ["volau", "Vol-au-vent", "pezzo|pezzi", 20, [380, 8, 25, 27], "vol au vent,volauvent,vol-au-vent", 3],
+    ["spiedino", "Spiedini da buffet (formaggio, salumi)", "spiedino|spiedini", 25, [300, 15, 3, 25], "spiedini di formaggio,spiedino caprese,spiedini caprese,spiedini da buffet", 3],
+    ["focaccine", "Focaccine / schiacciatine farcite", "pezzo|pezzi", 50, [300, 9, 38, 12], "focaccin,schiacciatina farcita,pucce,puccia", 2],
+    ["pasticcini", "Pasticcini mignon", "pasticcino|pasticcini", 20, [380, 6, 42, 20], "pasticcini mignon,mignon,bigne,bignè,mini cannoli,mini dolci", 4],
+  ];
+  for (const [id, n, u, g, v, k, d] of L) if (!F[id]) F[id] = { n, u, g, s: 1, v, k, d };
+  // ✋ stima a occhio: quando non si sa cosa fosse, bastano tipo e quantità (porzione tipica in grammi, valori per 100 g)
+  window.CIBO.stima = {
+    tipi: [
+      ["fritto", "🥟 Fritto o sfoglia", 150, [370, 9, 30, 24]],
+      ["pane", "🍕 Pane, pizza, focaccia", 150, [280, 9, 42, 8]],
+      ["dolce", "🍰 Dolce", 100, [380, 5, 50, 18]],
+      ["piatto", "🍝 Piatto cucinato", 300, [170, 8, 18, 7]],
+      ["carne", "🍖 Carne o pesce", 180, [190, 24, 2, 10]],
+      ["leggero", "🥗 Leggero (verdure, insalata)", 250, [60, 2, 8, 2.5]],
+      ["alcol", "🍹 Alcolici", 200, [110, 0, 10, 0]],
+    ],
+    quanti: [[0.4, "un assaggio"], [1, "una porzione"], [1.6, "abbondante"], [2.4, "tanto"]],
+  };
+  for (const [id, n, g, v] of window.CIBO.stima.tipi) F["st_" + id] = { n: "Stima · " + n.replace(/^\S+ /, ""), u: "porzione|porzioni", g, s: 0.5, v, k: "", d: 1 };
 })();

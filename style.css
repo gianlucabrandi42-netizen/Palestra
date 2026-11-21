@@ -1625,3 +1625,12 @@ svg.fzi{border-radius:50%}
 .shre textarea{width:100%;margin:6px 0}
 .aishot .plab input{display:block;width:100%;margin-top:4px}
 .aishot .plab input{padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface,#1b1f22);color:var(--text,#eee);font-size:16px;font-weight:600;text-transform:none;letter-spacing:0}
+/* 🎉 sgarri e ✋ stima a occhio (21/11/2026) */
+.libbox{margin:12px 0;padding:14px;border-radius:16px;border:1px solid color-mix(in srgb,#FFB86B 35%,transparent);background:color-mix(in srgb,#FFB86B 7%,transparent);display:flex;flex-direction:column;gap:8px}
+.libbox h3{margin:0;font-size:15px}.libbox h3 small{font-weight:400;color:var(--muted);font-size:12px}
+.libbox textarea{width:100%}
+.stima{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.stima .rchips{display:flex;flex-wrap:wrap;gap:6px}
+.stima .chip small{opacity:.7;font-size:11px}
+.xlib{align-self:flex-start;margin:6px 0}
+.xlib[aria-pressed="true"]{background:color-mix(in srgb,#FFB86B 25%,transparent);border-color:#FFB86B;color:#FFD6A8}

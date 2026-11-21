@@ -117,7 +117,7 @@ function curQ(d, mid, oid) { const day = fDay(d); if ((day.m || {})[mid] === oid
 // ✎ testo scritto a mano → alimenti (20/11/2026: "se scrivo dei messaggi devi estrapolare quello che ho scritto e integrarlo").
 // "2 biscotti e una birra", "80 g di pasta col tonno", "mezza pizza", "un pugno di noci". Quello che non capisce lo dice.
 const FILL = new Set("di da in un uno una al allo ai agli il lo la le gli piatto piatti porzione porzioni pezzo pezzi po ho abbiamo mangiato mangiata mangiati bevuto bevuta preso presa fatto fatta oggi ieri stasera stamattina pranzo cena colazione merenda spuntino della delle dello degli dei del alla alle allo agli poco poca tanto tanta normale piccolo piccola grande anche altro altra per dopo prima casa lavoro bar".split(" "));
-const NUMW = { un: 1, uno: 1, una: 1, mezzo: .5, mezza: .5, due: 2, tre: 3, quattro: 4, cinque: 5, sei: 6, sette: 7, otto: 8, nove: 9, dieci: 10, paio: 2, qualche: 3, dozzina: 12 };
+const NUMW = { po: .6, tot: 5, parecchi: 6, parecchie: 6, diversi: 4, diverse: 4, alcuni: 3, alcune: 3, pochi: 2, poche: 2, tanti: 6, tante: 6, un: 1, uno: 1, una: 1, mezzo: .5, mezza: .5, due: 2, tre: 3, quattro: 4, cinque: 5, sei: 6, sette: 7, otto: 8, nove: 9, dieci: 10, paio: 2, qualche: 3, dozzina: 12 };
 const normT = t => (t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/’/g, "'");
 let KW = null;
 function kwList() {
@@ -161,7 +161,7 @@ function fuzzyHit(p) {
 function readFood(txt, size, oneEach) {
   const fac = size === "p" ? .7 : size === "t" ? 1.4 : 1, items = [], miss = [];
   // 21/11/2026: i nomi dei piatti con "e"/"con" dentro ("pasta e fagioli", "cacio e pepe", "piadina con…") non si spezzano
-  let src = normT(txt).replace(/\bfettin([ae])\b/g, "fett$1"); for (const k of kwList()) if (/ /.test(k[3]) && src.includes(k[3])) src = src.split(k[3]).join(k[3].replace(/ /g, "_"));
+  let src = normT(txt).replace(/\bfettin([ae])\b/g, "fett$1").replace(/\bun (tot|po|paio)\b/g, "$1"); for (const k of kwList()) if (/ /.test(k[3]) && src.includes(k[3])) src = src.split(k[3]).join(k[3].replace(/ /g, "_"));
   for (const clause of src.split(/,|;|\+|\n|\.(?!\d)/)) { const c0 = items.length;
   for (let p of clause.split(/\be\b|\bed\b|\bcon\b|\bcol\b|\bpiu\b|\bpoi\b|\banche\b/)) {
     p = p.replace(/\bun'/g, "un ").trim(); if (!p) continue;
@@ -351,7 +351,7 @@ function renderOggi(box) {
     h += `<div class="meal${v || xs.length ? " done" : ""}${v === "skip" ? " skipped" : ""}" style="--c:${md.color}"><div class="mh"><i></i><b>${esc(md.name)}</b><span>${v === "skip" ? "saltato" : sel ? "" : xs.length ? "scritto da te" : esc(mealSub(md, d))}</span>${kc ? `<em class="mk${kov}">~${r50(kc)} kcal${kov ? ` · +${r50(kc - kp)}` : ""}</em>` : ""}</div>${WHERE[w] && open ? `<p class="mwhere">${WHERE[w]}</p>` : ""}`;
     if (sel && !open) {
       const pic = (sel.r || sel.dish) && foodPic(sel.r || sel.id), img = sel.free ? `<span class="ti">🍕</span>` : pic ? `<img src="${pic}" alt="">` : dishSVG(sel.p || [], sel.box, sel.id, "dish");
-      h += `<div class="msel"><button class="mselb" data-m="${md.id}" data-o="${sel.id}">${img}<div><b>${esc(sel.t)}</b><small>${(day.note || {})[md.id] ? "✎ " + esc((day.note || {})[md.id].split("\n")[0].slice(0, 60)) : esc(detOf(md, sel, m))}${day.q && day.q[md.id] && !sel.dish ? " · modificato" : ""}</small></div><span class="chev">›</span></button>
+      h += `<div class="msel"><button class="mselb" data-m="${md.id}" data-o="${sel.id}">${img}<div><b>${esc(sel.t)}</b><small>${sel.free && (day.lib || {})[md.id] ? "🎉 " + esc(((day.lib[md.id].t || "") || day.lib[md.id].it.map(([f]) => shortN(f)).join(", ")).slice(0, 50)) + (day.lib[md.id].it.length ? ` · ~${r50(valOfQ(day.lib[md.id].it)[0])} kcal fuori conto` : "") : (day.note || {})[md.id] ? "✎ " + esc((day.note || {})[md.id].split("\n")[0].slice(0, 60)) : esc(detOf(md, sel, m))}${day.q && day.q[md.id] && !sel.dish ? " · modificato" : ""}</small></div><span class="chev">›</span></button>
         <div class="mselx"><button class="lnk" data-mexp="${md.id}">Cambia</button>${sel.r ? `<button class="lnk" data-rec="${sel.r}">Ricetta</button>` : ""}<button class="lnk" data-qm="${md.id}" data-qo="${sel.id}">Togli</button></div></div>
         ${w !== "casa" && w !== "mensa" && sel.porta ? `<p class="mdet porta">🎒 ${esc(sel.porta)}</p>` : ""}`;
     } else if (v === "skip" && !open) {
@@ -415,7 +415,7 @@ function optVal(mid, oid, d) {
 function dayVals(d) {
   const day = fDay(d), m = day.m || {}, t = [0, 0, 0, 0]; let free = 0, nox = 0, any = 0;
   for (const mid of [...RING, "dc"]) { const v = m[mid]; if (v === "libero") { free++; continue; } const x = optVal(mid, v, d); if (x) { any++; x.forEach((n, i) => t[i] += n); } }
-  for (const e of day.x || []) { const v = xVal(e); if (v) { any++; v.forEach((n, i) => t[i] += n); } else nox++; }
+  for (const e of day.x || []) { if (e.lib) { free++; continue; } const v = xVal(e); if (v) { any++; v.forEach((n, i) => t[i] += n); } else if (!e.bar) nox++; }
   return { t, free, nox, any };
 }
 // valori di un cibo scritto a mano: kcal scritte o di Claude, altrimenti letti dal testo
@@ -426,7 +426,7 @@ function balanceCard(d) {
   const T = CB.target[isGym(d) ? "gym" : lunchLvl(d) === 40 ? "rest" : "rest0"], done = dayDone(d), m = fDay(d).m || {};
   const pc = t[0] / T[0], N = [["Proteine", 1], ["Carboidrati", 2], ["Grassi", 3]];
   let msg;
-  if (free) msg = "Con un pasto libero oggi i conti non contano: domani si riparte normale.";
+  if (free) { const lk = libKcal(d)[0]; msg = `Con un pasto libero oggi${lk ? ` (~${r50(lk)} kcal, fuori conto)` : ""} i conti non contano: domani si riparte normale, senza compensare.`; }
   else if (!done) { const left = RING.filter(k => !mealV(fDay(d), k)).map(k => mealDef(k).name.toLowerCase()); msg = left.length ? `Mancano ancora: ${left.join(", ")}.` : "Quasi fatto."; }
   else if (pc > 1.12) msg = `Oggi un po' sopra al piano (circa +${r50(t[0] - T[0])} kcal). Va bene così: domani normale, senza compensare.`;
   else if (pc < .85) msg = "Oggi un po' sotto al piano: se hai fame, il dopo cena è lì apposta.";
@@ -476,14 +476,14 @@ const SIZES = { p: "poco", n: "normale", t: "tanto" };
 const xRow = x => { const r = !x.k && !x.it && readFood(x.t, x.s), v = xVal(x);
   const what = x.it && x.it.length ? x.it.filter(([, q]) => q).map(([f, q]) => qText(f, q)).join(" · ") : "";
   const pp = drawOf(x.it || (r ? r.items.map(i => [i.f, i.q]) : []));
-  return `<div class="xrow">${pp.length ? dishSVG(pp, null, x.id, "xico") : `<span>✎</span>`}<div><b>${esc(x.t)}</b>${what ? `<small>${esc(what)}</small>` : ""}<small>${x.it ? "" : (SIZES[x.s] || "") + " · "}${v ? `~${v[0]} kcal${x.k && x.p != null ? ` · P ${x.p} · C ${x.c} · G ${x.f}` : x.k ? "" : x.it ? "" : " (letto dal testo)"}` : "non ho capito: kcal non contate"}</small>${r && r.miss.length && r.items.length ? `<small class="xmiss">Non ho capito: «${esc(r.miss.join("», «"))}»</small>` : ""}</div><button class="bx" data-xdel="${x.id}" aria-label="Elimina">✕</button></div>`; };
+  return `<div class="xrow">${pp.length ? dishSVG(pp, null, x.id, "xico") : `<span>✎</span>`}<div><b>${esc(x.t)}</b>${what ? `<small>${esc(what)}</small>` : ""}<small>${x.lib ? "🎉 sgarro · fuori conto · " : ""}${x.it ? "" : (SIZES[x.s] || "") + " · "}${v ? `~${v[0]} kcal${x.k && x.p != null ? ` · P ${x.p} · C ${x.c} · G ${x.f}` : x.k ? "" : x.it ? "" : " (letto dal testo)"}` : "non ho capito: kcal non contate"}</small>${r && r.miss.length && r.items.length ? `<small class="xmiss">Non ho capito: «${esc(r.miss.join("», «"))}»</small>` : ""}</div><button class="bx" data-xdel="${x.id}" aria-label="Elimina">✕</button></div>`; };
 // cosa ha capito l'app (dal testo o dalla risposta di Claude): righe modificabili come nelle ricette
 function xParse(f) {
   if (!f) return "";
   let miss = f.cmiss || [];
   if (!f.ed) { const r = readFood(f.t || "", f.s); f.it = r.items.map(i => [i.f, i.q]); miss = r.miss; }
   const t = valOfQ(f.it);
-  return `${f.it && f.it.length ? `<p class="plab">Ho capito · se è diverso tocca − / + o il numero</p><div class="xrows">${rowsHTML(f.it)}</div><p class="qtot"><b>~${fmt(t[0])} kcal</b><span>proteine ${t[1]} g · carboidrati ${t[2]} g · grassi ${t[3]} g</span></p>` : ""}${f.cl ? `<p class="note">Claude aveva stimato ~${f.cl.k} kcal in tutto.</p>` : ""}${miss.length ? `<p class="xpno">Non ho capito: «${esc(miss.join("», «"))}». ${aiOn() ? "" : ` Scrivilo più semplice (es. "80 g di pasta", "2 biscotti") o chiedi a Claude con 📷.`}</p>${aiOn() ? `<button class="btn sm primary" id="xAi">✨ Fallo capire a Claude</button>` : ""}` : ""}${f.ed && (f.t || "").trim() ? `<button class="lnk" id="xReread">↺ Rileggi dal testo</button>` : ""}`;
+  return `${f.it && f.it.length ? `<p class="plab">Ho capito · se è diverso tocca − / + o il numero</p><div class="xrows">${rowsHTML(f.it)}</div><p class="qtot"><b>~${fmt(t[0])} kcal</b><span>proteine ${t[1]} g · carboidrati ${t[2]} g · grassi ${t[3]} g</span></p>` : ""}${f.cl ? `<p class="note">Claude aveva stimato ~${f.cl.k} kcal in tutto.</p>` : ""}${miss.length ? `<p class="xpno">Non ho capito: «${esc(miss.join("», «"))}». ${aiOn() ? "" : ` Scrivilo più semplice (es. "80 g di pasta", "2 biscotti") o chiedi a Claude con 📷.`}</p>${aiOn() ? `<button class="btn sm primary" id="xAi">✨ Fallo capire a Claude</button>` : ""}${stimaBox()}` : ""}${f.ed && (f.t || "").trim() ? `<button class="lnk" id="xReread">↺ Rileggi dal testo</button>` : ""}`;
 }
 function xForm() {
   const f = CS.xform, d = cDay(), sv = f.meal && f.meal !== "fuori" ? (fDay(d).m || {})[f.meal] : null, so = sv && sv !== "skip" ? optOf(mealDef(f.meal), sv, d) : null;
@@ -491,6 +491,7 @@ function xForm() {
   if (so && f.rep == null) f.rep = true;
   return `<div class="xform">${so ? `<div class="seg2 xrep"><button data-xrep="1" aria-pressed="${!!f.rep}">Al posto di «${esc(so.t)}»</button><button data-xrep="0" aria-pressed="${!f.rep}">In più</button></div>` : ""}<input id="xT" placeholder="Cosa hai mangiato? (es. 2 biscotti e una birra)" value="${esc(f.t || "")}" autocomplete="off">
     <div class="seg3">${Object.entries(SIZES).map(([k, n]) => `<button data-xs="${k}" aria-pressed="${f.s === k}">${n}</button>`).join("")}</div>
+    <button class="chip xlib" id="xLib" aria-pressed="${!!f.lib}">🎉 È uno sgarro · fuori conto</button>
     <div class="xparse">${xParse(f)}</div>
     ${scaleGuide()}
     <p class="note">Scrivi cosa e quanto ("mezza pizza", "4 noci", "80 g di pasta"). Se non sai quanto o com'era condito: 📷 foto a Claude, poi incolla qui sotto la risposta e le righe si riempiono da sole.</p>
@@ -509,7 +510,7 @@ function weekCard(d) {
     <div class="wkq">${Q.map(([k, n, o]) => `<div><span>${n}</span><div class="seg3">${o.map((t, i) => `<button data-wq="${k}" data-wv="${i}" aria-pressed="${wk[k] === i}">${t}</button>`).join("")}</div></div>`).join("")}</div>
     <p class="note">${avg != null ? `Peso medio (2 settimane): <b>${fmt(Math.round(avg * 10) / 10)} kg</b>. Ricomposizione: stabile mentre i carichi salgono.` : "Il peso si segna in Progressi → Corpo, 1-2 volte a settimana."}</p></div>`;
 }
-function freeInWeek(d) { const mon = weekStart(d); let n = 0; for (let i = 0; i < 7; i++) { const m = fDay(addDays(mon, i)).m || {}; for (const k of ["pr", "ce"]) if (m[k] === "libero") n++; } return n; }
+function freeInWeek(d) { const mon = weekStart(d); let n = 0; for (let i = 0; i < 7; i++) { const day = fDay(addDays(mon, i)), m = day.m || {}; for (const k of ["pr", "ce"]) if (m[k] === "libero") n++; n += (day.x || []).filter(e => e.lib).length; } return n; }
 
 function bindOggi(box, d) {
   box.querySelectorAll("[data-cd]").forEach(b => b.onclick = () => { CS.day = b.dataset.cd === todayISO() ? null : b.dataset.cd; CS.xform = null; renderCibo(); });
@@ -535,13 +536,15 @@ function bindOggi(box, d) {
     const t = $("xT"), k = $("xK"), f = CS.xform;
     const xp = () => { const z = box.querySelector(".xparse"); if (!z) return; z.innerHTML = xParse(f); bindRows(z, f.it || [], () => { f.ed = true; xp(); });
       const rr = $("xReread"); if (rr) rr.onclick = () => { f.ed = false; f.cl = null; f.cmiss = null; xp(); };
+      stimaBind(z, row => { f.it = [...(f.it || []), row]; f.ed = true; f.cmiss = []; xp(); }, xp);
       const ai = $("xAi"); if (ai) ai.onclick = async () => { ai.disabled = true; ai.textContent = "Claude sta leggendo…";
         try { const j = await aiPost("/food/photo", { mode: "testo", text: (f.t || "").trim(), meal: (SHOTM().find(([k]) => k === f.meal) || [0, ""])[1] }); const r = aiRows(j.items);
           if (!r.L.length) { toast("Neanche Claude ha capito: scrivilo diversamente"); ai.disabled = false; ai.textContent = "✨ Riprova"; return; }
           f.it = r.L; f.ed = true; f.cmiss = r.miss; if (j.piatto && !(f.t || "").trim()) f.t = j.piatto; xp(); toast(`✓ ${j.piatto || "Capito"} · ~${valOfQ(f.it)[0]} kcal`); }
         catch (e) { toast("⚠️ " + (e.message || e)); ai.disabled = false; ai.textContent = "✨ Fallo capire a Claude"; } }; };
     xp();
-    t.oninput = () => { f.t = t.value; if (!f.ed) xp(); }; k.oninput = () => f.k = k.value.replace(/\D/g, "");
+    t.oninput = () => { f.t = t.value; if (!f.ed) xp(); };
+    const xl = $("xLib"); if (xl) xl.onclick = () => { f.lib = !f.lib; xl.setAttribute("aria-pressed", f.lib); }; k.oninput = () => f.k = k.value.replace(/\D/g, "");
     $("xR").oninput = ev => { f.r = ev.target.value; const r = readClaudeList(f.r);
       if (r.items.length) { f.it = r.items; f.ed = true; f.cl = r.tot; f.cmiss = r.miss; xp(); toast(`Letto: ${r.items.length} alimenti, ~${valOfQ(f.it)[0]} kcal`); }
       else if (r.tot) { f.k = String(r.tot.k); f.p = r.tot.p; f.c = r.tot.c; f.f = r.tot.f; k.value = f.k; toast(`Letto: ${r.tot.k} kcal`); } };
@@ -551,12 +554,13 @@ function bindOggi(box, d) {
     $("xSave").onclick = () => {
       const it = (f.it || []).filter(([, q]) => q), txt = (f.t || "").trim() || it.slice(0, 3).map(([x]) => FO(x).n.replace(/ \(.*\)$/, "")).join(", ");
       if (!txt) return toast("Scrivi cosa hai mangiato");
-      const e = { id: "x" + Date.now().toString(36), meal: f.meal, t: txt.slice(0, 80), s: f.s, at: Date.now() };
+      const e = { id: "x" + Date.now().toString(36), meal: f.meal, t: txt.slice(0, 80), s: f.s, at: Date.now() }; if (f.lib) e.lib = 1;
       if (+f.k > 0) { e.k = Math.min(5000, +f.k); if (f.p != null) { e.p = f.p; e.c = f.c; e.f = f.f; } } else if (it.length) e.it = it.map(r => [...r]);
       CS.xform = null;
       if (f.rep && f.meal !== "fuori") setFDay(d, x => { if (x.m) delete x.m[f.meal]; if (x.q) delete x.q[f.meal]; if (x.dn) delete x.dn[f.meal]; });
-      if (e.it && f.meal !== "fuori" && !(fDay(d).m || {})[f.meal]) { const id = rememberDish(f.meal, txt, e.it); logMeal(d, f.meal, "d_" + id, false, e.it); toast(`✓ ${dishName(txt)} · ~${valOfQ(e.it)[0]} kcal · lo ritrovi tra le caselle`); renderCibo(); return; }
-      setFDay(d, x => x.x = [...(x.x || []), e]); if (e.it) rememberDish(f.meal, txt, e.it);
+      if (e.it && !e.lib && f.meal !== "fuori" && !(fDay(d).m || {})[f.meal]) { const id = rememberDish(f.meal, txt, e.it); logMeal(d, f.meal, "d_" + id, false, e.it); toast(`✓ ${dishName(txt)} · ~${valOfQ(e.it)[0]} kcal · lo ritrovi tra le caselle`); renderCibo(); return; }
+      setFDay(d, x => x.x = [...(x.x || []), e]); if (e.it && !e.lib) rememberDish(f.meal, txt, e.it);
+      if (e.lib) { const v = xVal(e); toast(`🎉 Segnato come sgarro${v ? ` · ~${v[0]} kcal fuori conto` : ""}`); renderCibo(); return; }
       const v = xVal(e); toast(v ? `Aggiunto: ~${v[0]} kcal` : "Aggiunto, ma non ho capito le kcal: scrivilo diversamente o chiedi a Claude"); renderCibo(); };
     $("xPic").onchange = e => { const file = e.target.files[0]; e.target.value = ""; if (!file) return; if (aiOn()) { const meal = f.meal, note = (f.t || "").trim(); CS.xform = null; renderCibo(); openShot(file, { d, meal, note }); } else askClaude(file, (f.t || "").trim(), SIZES[f.s], ""); };
   }
@@ -588,13 +592,15 @@ function openOpt(mid, oid, keep) {
     ${o.porta ? `<p class="rgo ${o.go}">${o.go === "p" ? "🎒 Si porta al lavoro, niente attrezzi" : o.go === "m" ? "🎒 Al lavoro col microonde" : "🏠 Solo a casa"}<small>${esc(o.porta)}</small></p>` : ""}
     ${w !== "casa" && !fits(o, w) ? `<p class="note">Oggi questo pasto lo fai ${w === "zero" ? "al lavoro senza attrezzi" : w === "micro" ? "al lavoro col solo microonde" : "in mensa"}: questa idea va meglio a casa.</p>` : ""}
     ${rist ? ristBox(oid) : ""}${oid === "sala" ? salaBox() : ""}${rist || oid === "mensa" || oid === "sala" ? estBox(oid) : ""}${qBox()}${condBox(rist ? "rist" : oid === "mensa" || oid === "sala" ? oid : "")}
+    ${o.free ? libBox(d, mid) : ""}
     ${o.dish ? `<div class="rlog"><button class="btn" id="dishDel">🗑 Togli dai miei piatti</button></div>` : ""}
     <div class="rlog"><button class="btn ${on ? "" : "primary"}" id="ideaOk">${on ? "Togli: non l'ho mangiato" : `✓ Fatto: mangiato ${MEALN[mid] || ""}`}</button></div>`;
   if (sh.hidden || !keep) showSheet(sh); else sh.querySelector(".is-c").scrollTop = y;
   qBind(sh); if (rist) ristBind(sh, oid); estBind(sh, mid, oid);
   sh.querySelectorAll("[data-sala]").forEach(b => b.onclick = () => { const v = CB.sala[+b.dataset.sala]; CS.qe.L = parseQ(v[1]); CS.qe.sv = +b.dataset.sala; qPersist(); openOpt(mid, oid, true); });
   const dd = $("dishDel"); if (dd) dd.onclick = () => { if (!dd.dataset.sure) { dd.dataset.sure = 1; dd.textContent = "Tocca di nuovo per toglierlo"; return; } delete myDish()[oid.slice(2)]; save(); closeRecipe(); renderCibo(); toast("Tolto dai tuoi piatti"); };
-  $("ideaOk").onclick = () => { logMeal(d, mid, oid, on, CS.qe && CS.qe.L); closeRecipe(); renderCibo(); };
+  $("ideaOk").onclick = () => { if (o.free) { if (on) setFDay(d, x => { if (x.lib) delete x.lib[mid]; }); else libSave(); CS.lib = null; } logMeal(d, mid, oid, on, CS.qe && CS.qe.L); closeRecipe(); renderCibo(); };
+  if (o.free) libBind(sh, mid, oid);
 }
 // 🍽 Il tuo piatto: grammi per UN pasto, col carboidrato giusto per quel pasto (scala 80/40/0 a pranzo, cena fissa)
 
@@ -1505,6 +1511,7 @@ function drawShot() {
       ${S.miss && S.miss.length ? `<p class="xpno">Non conteggiato: ${esc(S.miss.join(", "))}</p>` : ""}` : ""}
     ${S.st !== "off" ? `<details class="shre"${S.note ? " open" : ""}><summary>✎ Aggiungi un dettaglio e rianalizza</summary><textarea id="shNote" rows="2" placeholder="es. era pasta integrale; il condimento era pesto; ne ho mangiato metà">${esc(S.note)}</textarea><button class="btn sm" id="shAgain">↻ Rianalizza</button></details>` : ""}
     ${S.st === "ok" ? `<p class="plab">Quando l'hai mangiato?</p><div class="shmeal">${SHOTM().map(([k, t]) => `<button class="chip" data-shm="${k}" aria-pressed="${S.meal === k}">${esc(t)}</button>`).join("")}</div>
+      <button class="chip xlib" id="shLib" aria-pressed="${!!S.lib}">🎉 È uno sgarro · fuori conto</button>
       ${cur ? `<div class="seg2 xrep"><button data-shr="1" aria-pressed="${!!S.rep}">Al posto di «${esc(curT)}»</button><button data-shr="0" aria-pressed="${!S.rep}">In più</button></div>` : ""}
       <div class="rlog"><button class="btn primary" id="shOk">✓ Segna ${S.meal === "fuori" ? "fuori pasto" : esc(MEALN[S.meal] || "a " + mn.toLowerCase())}</button></div>
       <p class="note">Diventa un tuo piatto con questa foto: la prossima volta lo ritrovi tra le caselle di ${esc(mn.toLowerCase())}.</p>` : ""}</div>`;
@@ -1518,9 +1525,16 @@ function drawShot() {
   const ch = $("shChat"); if (ch) ch.onclick = () => askClaude(S.file, S.note || "", "", S.meal === "pr" || S.meal === "ce" ? "un piatto" : "");
   const st = $("shSet"); if (st) st.onclick = () => { closeRecipe(); CS.shot = null; const b = document.querySelector('[data-view="backup"],[data-view="imp"],[data-view="set"]'); if (b) b.click(); setTimeout(() => { const c = $("aiSet"); if (c) c.scrollIntoView({ block: "start" }); }, 120); };
   const ok = $("shOk"); if (ok) ok.onclick = () => shotSave();
+  const sl = $("shLib"); if (sl) sl.onclick = () => { S.lib = !S.lib; drawShot(); };
 }
 function shotSave() {
   const S = CS.shot; if (!S || !S.L.length) return; const d = S.d, L = S.L.map(r => [...r]), name = (S.name || "Il mio piatto").trim().slice(0, 60), day = fDay(d);
+  if (S.lib) { // sgarro: pranzo/cena = pasto libero descritto; altrimenti voce fuori conto
+    const cv = (day.m || {})[S.meal];
+    if ((S.meal === "pr" || S.meal === "ce") && (!cv || S.rep)) { setFDay(d, x => { if (x.q) delete x.q[S.meal]; if (x.dn) delete x.dn[S.meal]; x.lib = { ...(x.lib || {}), [S.meal]: { t: name, it: L } }; if (cv) delete x.m[S.meal]; }); logMeal(d, S.meal, "libero", false); }
+    else setFDay(d, x => x.x = [...(x.x || []), { id: "x" + Date.now().toString(36), meal: S.meal, t: name, s: "n", it: L, ai: 1, lib: 1, at: Date.now() }]);
+    toast(`🎉 ${name} · ~${valOfQ(L)[0]} kcal fuori conto`); CS.shot = null; closeRecipe(); renderCibo(); return;
+  }
   if (S.meal === "fuori" || ((day.m || {})[S.meal] && !S.rep)) { // fuori pasto o "in più": una voce scritta con le sue righe
     const e = { id: "x" + Date.now().toString(36), meal: S.meal, t: name, s: "n", it: L, ai: 1, at: Date.now() };
     setFDay(d, x => x.x = [...(x.x || []), e]); if (S.meal !== "fuori") { const id = rememberDish(S.meal, name, L); if (id) picPut("food:d_" + id, S.data).catch(() => {}); }
@@ -1562,6 +1576,55 @@ function aiSettings() {
     try { const j = await aiPost("/food/status", {}); aiSet({ ok: true, today: j.today, month: j.month }); m.innerHTML = `<b class="okc">● Attivo</b> · oggi ${j.today} foto, questo mese ${j.month} (limite ${j.maxDay} al giorno)`; renderCibo(); }
     catch (e) { aiSet({ ok: false }); m.innerHTML = `<span class="warnc">${esc(e.message || e)}</span>`; } };
   const off = $("aiOff"); if (off) off.onclick = () => { try { localStorage.removeItem(AIK); } catch (_) {} aiSettings(); renderCibo(); };
+}
+
+
+// ---------- 🎉 SGARRI (PASTI LIBERI) E STIMA A OCCHIO (21/11/2026, richiesta dell'utente: "ho mangiato rustici a un evento,
+// non li ha riconosciuti; ci sono migliaia di combinazioni; è uno sgarro ma voglio segnarlo"). Il pasto libero ora si descrive
+// (testo, foto, stima a occhio): le kcal si vedono ma restano FUORI dal conto del giorno (regola del piano: non si compensa).
+// Dati: day.lib[pasto] = { t, it } per pranzo/cena "libero"; le voci scritte con lib: 1 sono sgarri fuori pasto o in più.
+function libKcal(d) { const day = fDay(d), t = [0, 0, 0, 0];
+  for (const [k, v] of Object.entries(day.lib || {})) if ((day.m || {})[k] === "libero" && v.it && v.it.length) valOfQ(v.it).forEach((n, i) => t[i] += n);
+  for (const e of day.x || []) if (e.lib) { const v = xVal(e); if (v) v.forEach((n, i) => t[i] += n); }
+  return t; }
+function stimaBox() {
+  const s = CS.stima || {}, T = CB.stima.tipi;
+  return `<div class="stima"><p class="plab">✋ Stima a occhio · che tipo era?</p><div class="rchips">${T.map(([id, n]) => `<button class="chip" data-stt="${id}" aria-pressed="${s.t === id}">${esc(n)}</button>`).join("")}</div>
+    ${s.t ? `<p class="plab">Quanto?</p><div class="rchips">${CB.stima.quanti.map(([k, n]) => `<button class="chip" data-sta="${k}">${esc(n)} <small>~${Math.round(valOfQ([["st_" + s.t, k]])[0] / 10) * 10} kcal</small></button>`).join("")}</div>` : ""}</div>`;
+}
+function stimaBind(box, add, redraw) {
+  box.querySelectorAll("[data-stt]").forEach(b => b.onclick = () => { CS.stima = { t: b.dataset.stt }; redraw(); });
+  box.querySelectorAll("[data-sta]").forEach(b => b.onclick = () => { const t = CS.stima && CS.stima.t; CS.stima = null; if (t) add(["st_" + t, +b.dataset.sta]); });
+}
+// riquadro "Cosa hai mangiato?" del pasto libero (pranzo o cena)
+function libBox(d, mid) {
+  const f = CS.lib && CS.lib.d === d && CS.lib.mid === mid ? CS.lib : (CS.lib = { d, mid, ...JSON.parse(JSON.stringify((fDay(d).lib || {})[mid] || { t: "", it: [] })), ed: !!((fDay(d).lib || {})[mid] || {}).it });
+  let miss = f.miss || []; if (!f.ed) { const r = readFood(f.t || "", "n"); f.it = r.items.map(i => [i.f, i.q]); miss = r.miss; }
+  const t = valOfQ(f.it || []);
+  return `<div class="libbox"><h3>🎉 Cosa hai mangiato? <small>facoltativo · fuori conto</small></h3>
+    <textarea id="lbT" rows="2" placeholder="es. 6 rustici e 2 pizzette al buffet">${esc(f.t || "")}</textarea>
+    <div id="lbP">${f.it && f.it.length ? `<div class="qbox">${rowsHTML(f.it)}<p class="qtot"><b>~${fmt(t[0])} kcal</b> · fuori dal conto del giorno</p></div>` : ""}
+    ${miss.length ? `<p class="xpno">Non ho capito: «${esc(miss.join("», «"))}»</p>${aiOn() ? `<button class="btn sm primary" id="lbAi">✨ Fallo capire a Claude</button>` : ""}` : ""}
+    ${stimaBox()}</div>
+    <div class="row"><label class="btn sm" for="lbPic">📷 ${aiOn() ? "Foto: stima Claude" : "Foto a Claude"}</label><input type="file" id="lbPic" accept="image/*" capture="environment" hidden>${f.ed && (f.t || "").trim() ? `<button class="lnk" id="lbRe">↺ Rileggi dal testo</button>` : ""}</div>
+    <p class="note">Fa parte del piano (2 a settimana): le kcal le vedi ma non entrano nel conto e non si compensano.</p></div>`;
+}
+function libSave() { const f = CS.lib; if (!f) return; setFDay(f.d, x => { x.lib = { ...(x.lib || {}) }; if ((f.t || "").trim() || (f.it || []).length) x.lib[f.mid] = { t: (f.t || "").trim(), it: (f.it || []).map(r => [...r]) }; else delete x.lib[f.mid]; }); }
+function libBind(sh, mid, oid) {
+  const f = CS.lib, box = sh.querySelector(".libbox"); if (!f || !box) return;
+  const on = (fDay(f.d).m || {})[mid] === "libero", redraw = () => { if (on) libSave(); const y = sh.querySelector(".is-c").scrollTop; openOpt(mid, oid, true); sh.querySelector(".is-c").scrollTop = y; };
+  let tmo; $("lbT").oninput = e => { f.t = e.target.value; clearTimeout(tmo); tmo = setTimeout(() => { if (!f.ed) { f.miss = null; redraw(); const t = $("lbT"); t.focus(); t.setSelectionRange(t.value.length, t.value.length); } else if (on) libSave(); }, 700); };
+  const q = box.querySelector(".qbox"); if (q) bindRows(q, f.it, () => { f.ed = true; f.it = f.it.filter(([, n]) => n > 0); redraw(); });
+  stimaBind(box, row => { f.it = [...(f.it || []), row]; f.ed = true; f.miss = []; redraw(); }, redraw);
+  const re = $("lbRe"); if (re) re.onclick = () => { f.ed = false; f.miss = null; redraw(); };
+  const ai = $("lbAi"); if (ai) ai.onclick = async () => { ai.disabled = true; ai.textContent = "Claude sta leggendo…";
+    try { const j = await aiPost("/food/photo", { mode: "testo", text: (f.t || "").trim(), meal: "pasto libero" }); const r = aiRows(j.items); if (!r.L.length) throw new Error("non ho riconosciuto alimenti");
+      f.it = r.L; f.ed = true; f.miss = r.miss; redraw(); toast(`✓ ~${valOfQ(f.it)[0]} kcal (fuori conto)`); } catch (e) { toast("⚠️ " + (e.message || e)); ai.disabled = false; ai.textContent = "✨ Fallo capire a Claude"; } };
+  $("lbPic").onchange = async e => { const file = e.target.files[0]; e.target.value = ""; if (!file) return;
+    if (!aiOn()) return askClaude(file, (f.t || "").trim(), "", "");
+    let p; try { p = await shrinkPic(file); } catch (_) { return toast("Foto non leggibile"); } toast("📷 Claude sta guardando…");
+    try { const j = await aiPost("/food/photo", { img: p.b64, mime: p.mime, mode: "piatto", meal: "pasto libero", note: (f.t || "").trim() }); const r = aiRows(j.items); if (!r.L.length) throw new Error("non ho riconosciuto alimenti");
+      f.it = r.L; f.ed = true; f.miss = r.miss; if (!(f.t || "").trim()) f.t = j.piatto || ""; redraw(); toast(`✓ ${j.piatto || "Fatto"} · ~${valOfQ(f.it)[0]} kcal (fuori conto)`); } catch (err) { toast("⚠️ " + (err.message || err)); } };
 }
 
 function renderSpesa(box) {
