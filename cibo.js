@@ -1048,7 +1048,8 @@ function hvGrams(meal, d) {
 }
 function hvPrompt() {
   const H = CS.hv, d = cDay(), mn = { pr: "pranzo", ce: "cena", col: "colazione", s1: "uno spuntino" }[H.meal], w = whereOf(d, H.meal === "s1" ? "s1" : H.meal);
-  return `Inventami una ricetta per ${mn} con quello che ho in casa: ${(H.t || "").trim() || "guarda la foto"}.${H.pic ? " Nella foto vedi frigo o dispensa." : ""}
+  const have = [(H.t || "").trim(), pantryOn().map(f => (FO(f).n || shortN(f)).toLowerCase()).join(", ")].filter(Boolean).join("; ");
+  return `Inventami una ricetta per ${mn} con quello che ho in casa: ${have || "guarda la foto"}.${H.pic ? " Nella foto vedi frigo o dispensa." : ""}
 Vincoli:
 - So cucinare solo cose base ma voglio imparare: passaggi semplici e spiegati (fuoco, temperatura, tempi, come capire quando è pronto), massimo 20-25 minuti, sporcare poco.
 - Attrezzi: padella antiaderente, pentola, friggitrice ad aria, forno, microonde, cuociriso.${w === "zero" ? " Lo porto al lavoro e lì non ho attrezzi: deve essere buono freddo." : w === "micro" ? " Lo porto al lavoro e lì ho solo il microonde." : ""}
@@ -1070,21 +1071,31 @@ PASSI:
 1. cosa fare (5 min)
 2. cosa fare`;
 }
+// 21/11/2026 ("non funziona la creazione di nuove ricette"): leggeva solo il formato esatto; Claude in chat scrive spesso con
+// titoli markdown (## Ingredienti), grassetti (**1.**), elenchi puntati, "Passo 1:", "Procedimento", "Nome – 100 g", "mezzo avocado".
 function parseRecipe(txt) {
-  const T = (txt || "").replace(/\*\*/g, ""), g = re => { const m = T.match(re); return m ? m[1].trim() : ""; };
-  const name = g(/ricetta\s*:\s*(.+)/i); if (!name) return null;
-  const lines = T.split(/\n/).map(l => l.trim()), iI = lines.findIndex(l => /^ingredienti/i.test(l)), iP = lines.findIndex(l => /^(passi|procedimento|preparazione)/i.test(l));
-  if (iI < 0 || iP < 0) return null;
-  const ing = lines.slice(iI + 1, iP).filter(Boolean).map(l => l.replace(/^[-•*·]\s*/, ""));
+  const clean = l => l.replace(/^#{1,6}\s*/, "").replace(/\*\*|__|`/g, "").replace(/^\s*[-•*·–—]\s+/, "").trim();
+  const lines = (txt || "").split(/\n/).map(clean), T = lines.join("\n"), g = re => { const m = T.match(re); return m ? m[1].trim() : ""; };
+  const head = (l, re) => re.test(l.replace(/[:：].*$/, "").replace(/\(.*\)/, "").trim());
+  const ING = /^(ingredienti|ingredients|cosa serve|occorrente)\b/i, STEP = /^(passi|passaggi|procedimento|preparazione|istruzioni|come si fa|metodo|steps)\b/i;
+  const iI = lines.findIndex(l => head(l, ING)), iP = lines.findIndex((l, i) => i > iI && head(l, STEP));
+  let name = g(/^(?:ricetta|nome)\s*[:：]\s*(.+)$/im) || (lines.find(l => l && !/^(ecco|certo|ok|perfetto)\b/i.test(l) && !/[:：]\s*\S/.test(l) && !head(l, ING) && !head(l, STEP)) || "");
+  name = name.replace(/^ricetta\s*[:：]?\s*/i, "").replace(/[!.]+$/, "").trim();
+  if (!name || iI < 0) return null;
+  const end = iP > iI ? iP : lines.findIndex((l, i) => i > iI && /^\s*$/.test(l) && i > iI + 1);
+  const ing = lines.slice(iI + 1, end > iI ? end : undefined).map(l => l.replace(/^\d+[.)]\s+/, "").trim()).filter(l => l && !head(l, STEP) && !/^(tempo|attrezzi|pasti)\b/i.test(l));
   const q = [], extra = [];
-  for (const l of ing) { const r = readFood(l, "n", true); if (r.items.length && /\d/.test(l)) q.push([r.items[0].f, r.items[0].q]); else extra.push(l); }
-  const steps = lines.slice(iP + 1).filter(l => /^\d+[.)]/.test(l)).map(l => { const t = l.replace(/^\d+[.)]\s*/, ""), m = t.match(/(\d+)\s*(?:-\s*\d+\s*)?(?:min|minuti|′)/i); return { t, min: m ? +m[1] : undefined }; });
+  for (const l of ing) { const r = readFood(l.replace(/\s[–—-]\s/g, " "), "n", true);
+    if (r.items.length) { const it = r.items[0], i = q.findIndex(([f]) => f === it.f); if (i >= 0) q[i][1] += it.q; else q.push([it.f, it.q]); if (r.items.length > 1 && r.miss.length) extra.push(l); }
+    else extra.push(l); }
+  const stepLines = iP > 0 ? lines.slice(iP + 1).filter(Boolean).filter(l => !/^(buon appetito|valori|kcal|note?\b|consiglio)/i.test(l)) : [];
+  const steps = stepLines.map(l => { const t = l.replace(/^(passo|step)\s*\d+\s*[:.)-]?\s*/i, "").replace(/^\d+\s*[.):-]\s*/, "").trim(), m = t.match(/(\d+)\s*(?:-\s*\d+\s*)?(?:min|minuti|′|')/i); return { t, min: m ? +m[1] : undefined }; }).filter(x => x.t.length > 2).slice(0, 15);
   if (!q.length || !steps.length) return null;
-  return { name: name.slice(0, 60), min: +(g(/tempo\s*:\s*(\d+)/i)) || 20, tools: g(/attrezzi\s*:\s*(.+)/i).slice(0, 40), pasti: Math.min(4, +(g(/pasti\s*:\s*(\d)/i)) || 1), q, steps, extra };
+  return { name: name.slice(0, 60), min: +(g(/tempo\s*[:：]?\s*(?:circa\s*)?(\d+)/i)) || 20, tools: g(/attrezzi\s*[:：]\s*([^·|\n]+)/i).slice(0, 40), pasti: Math.min(4, +(g(/pasti\s*[:：]?\s*(\d)/i)) || 1), q, steps, extra };
 }
 function hvPrev() {
   const H = CS.hv; if (!(H.r || "").trim()) return "";
-  const x = parseRecipe(H.r); if (!x) return `<p class="xpno">Non riesco a leggerla: deve avere "RICETTA:", "INGREDIENTI" e "PASSI" come nel formato chiesto. Chiedi a Claude di riscriverla in quel formato.</p>`;
+  const x = parseRecipe(H.r); if (!x) return `<p class="xpno">Non riesco a leggerla: servono il nome, una parte "Ingredienti" con le quantità e una parte "Passi" (o "Procedimento"). Se manca qualcosa, chiedi a Claude di riscriverla con quei titoli.</p>`;
   const v = valOfQ(x.q);
   return `<div class="hvok"><b>✓ ${esc(x.name)}</b><small>${x.min} min · ${x.steps.length} passi · ~${v[0]} kcal a pasto · P ${v[1]} · C ${v[2]} · G ${v[3]}</small>${x.extra.length ? `<small class="xmiss">Non contati: ${esc(x.extra.join(", "))}</small>` : ""}<button class="btn primary" id="hvSave">Salva tra le mie ricette</button></div>`;
 }
@@ -1102,7 +1113,7 @@ function hvBind(box) {
   $("cpOpen").onclick = () => openCompose();
   box.querySelectorAll("[data-hm]").forEach(b => b.onclick = () => { H.meal = b.dataset.hm; box.querySelectorAll("[data-hm]").forEach(x => x.setAttribute("aria-pressed", x === b)); res(); });
   $("hvPic").onchange = e => { H.pic = e.target.files[0] || null; e.target.value = ""; renderCibo(); };
-  $("hvAsk").onclick = async () => { if (!(H.t || "").trim() && !H.pic) return toast("Scrivi cosa hai o fai una foto");
+  $("hvAsk").onclick = async () => { if (!(H.t || "").trim() && !H.pic && !pantryOn().length) return toast("Tocca quello che hai, scrivilo o fai una foto");
     const txt = hvPrompt();
     try { if (H.pic) { const f = new File([H.pic], "ingredienti.jpg", { type: H.pic.type || "image/jpeg" }); if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], text: txt }); return; } }
       else if (navigator.share) { await navigator.share({ text: txt }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
