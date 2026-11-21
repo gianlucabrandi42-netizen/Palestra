@@ -1607,3 +1607,21 @@ svg.fzi{border-radius:50%}
 .pmid small{display:block;max-width:34%;margin:0 auto;line-height:1.25;letter-spacing:.04em;font-size:9.5px;overflow-wrap:anywhere}
 .pmid b{text-align:center}
 .pmid small{max-width:none;white-space:nowrap;overflow-wrap:normal;font-size:9px;letter-spacing:.03em}
+/* 📷 foto del piatto analizzata da Claude (21/11/2026) */
+.shotbtn{display:flex;align-items:center;gap:14px;margin:12px 0;padding:14px 16px;border-radius:20px;background:var(--grad,linear-gradient(135deg,#D2F7E4,#1C7048));color:#0b1a12;box-shadow:0 6px 22px color-mix(in srgb,var(--accent,#33A26F) 30%,transparent);cursor:pointer}
+.shotbtn .shic{font-size:30px;width:54px;height:54px;border-radius:16px;background:rgba(255,255,255,.35);display:grid;place-items:center;flex:none}
+.shotbtn span:nth-child(2){flex:1;display:flex;flex-direction:column;gap:2px}
+.shotbtn b{font-size:17px}.shotbtn small{font-size:12.5px;opacity:.8}.shotbtn i{font-style:normal;font-size:26px;opacity:.7}
+.aishot{display:flex;flex-direction:column;gap:12px}
+.shotimg{width:100%;max-height:260px;object-fit:cover;border-radius:18px}
+.shotrun{display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 0;text-align:center}
+.shotrun small{color:var(--muted)}
+.spin{width:30px;height:30px;border-radius:50%;border:3px solid color-mix(in srgb,var(--accent,#33A26F) 25%,transparent);border-top-color:var(--accent,#33A26F);animation:spin .9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.shotoff{display:flex;flex-direction:column;gap:8px}
+.shnote{margin:0}
+.shmeal{display:flex;flex-wrap:wrap;gap:6px}
+.shre summary{cursor:pointer;color:var(--accent);font-size:14px;padding:4px 0}
+.shre textarea{width:100%;margin:6px 0}
+.aishot .plab input{display:block;width:100%;margin-top:4px}
+.aishot .plab input{padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface,#1b1f22);color:var(--text,#eee);font-size:16px;font-weight:600;text-transform:none;letter-spacing:0}

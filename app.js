@@ -1962,7 +1962,7 @@ function renderStorage() {
   el.innerHTML = `Dati dell'app: <b>${mb(ls)} MB</b> su circa 5 MB${pct > .7 ? ` · <span class="warnc">quasi pieno: fai un backup e dimmelo</span>` : ""} · Foto: <b>${PICM.size}</b> (${mb(pb)} MB, in un archivio a parte, senza limite stretto)`;
 }
 function renderCloud() {
-  renderStorage(); const box = $("cloudSet"); if (!box) return; const c = cloud();
+  renderStorage(); if (typeof aiSettings === "function") aiSettings(); const box = $("cloudSet"); if (!box) return; const c = cloud();
   const when = t => { if (!t) return "mai"; const d = new Date(t), today = new Date().toDateString() === d.toDateString(); return (today ? "oggi" : d.toLocaleDateString("it-IT", { day: "numeric", month: "short" })) + " alle " + d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" }); };
   box.innerHTML = c.code ? `<p><b class="okc">● Attivo</b> · ultimo backup online: <b>${when(c.last)}</b>${c.err ? ` · <span class="warnc">${esc(c.err)}</span>` : ""}</p>
       <p class="note">Si salva da solo a fine allenamento e quando modifichi i dati. È cifrato: si apre solo col tuo codice di recupero.</p>

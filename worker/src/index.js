@@ -10,6 +10,11 @@
 //                                    la chiave nasce dal codice di recupero che ha solo l'utente; tiene l'ultimo e il precedente
 //   POST /vault/get {id, prev?}      → { data, at }
 //
+//   POST /food/photo {code, img, mime, mode, meal?, note?}  (21/11/2026) foto del cibo analizzata da Claude (API Anthropic):
+//        → { piatto, items:[{n, g, cotto, kcal, p, c, f}], note, sicurezza, used }  — serve il codice dell'app (segreto FOTO_CODICE)
+//   POST /food/status {code}  → { ok, configured, today, month }
+// Segreti del Worker (messi dal workflow se presenti tra i segreti del repository): ANTHROPIC_API_KEY, FOTO_CODICE.
+//
 // Le chiavi VAPID si generano da sole al primo uso e restano salvate nel Durable Object "Keys".
 import { DurableObject } from "cloudflare:workers";
 import { newVapidKeys, sendPush } from "./webpush.js";
@@ -29,6 +34,15 @@ async function getKeys(env) {
 }
 
 export class Keys extends DurableObject {
+  // contatore delle analisi foto (per giorno e per mese) con tetto: anche se il codice finisse in mani sbagliate,
+  // la spesa resta limitata (FOTO_MAX_DAY al giorno, FOTO_MAX_MONTH al mese)
+  async useFoto(day, month, maxDay, maxMonth, peek) {
+    const d = (await this.ctx.storage.get("d:" + day)) || 0, m = (await this.ctx.storage.get("m:" + month)) || 0;
+    if (peek) return { today: d, month: m };
+    if (d >= maxDay || m >= maxMonth) return { ok: false, today: d, month: m };
+    await this.ctx.storage.put({ ["d:" + day]: d + 1, ["m:" + month]: m + 1 });
+    return { ok: true, today: d + 1, month: m + 1 };
+  }
   async keys() {
     let k = await this.ctx.storage.get("vapid");
     if (!k) { k = await newVapidKeys(); await this.ctx.storage.put("vapid", k); }
@@ -89,6 +103,40 @@ export class Timer extends DurableObject {
   }
 }
 
+// ---------- 📷 analisi delle foto del cibo (21/11/2026) ----------
+const FOTO_MODEL = "claude-sonnet-5-5", FOTO_MAX_DAY = 40, FOTO_MAX_MONTH = 400;
+const FOTO_PROMPT = {
+  piatto: `Sei un nutrizionista esperto di cucina italiana. Guarda la foto e stima cosa c'è nel piatto o nel pasto.
+Per ogni alimento dai il peso in grammi COME SI VEDE (pasta, riso, carne e verdure già cotti se sono cotti) e i valori di quella quantità.
+Includi sempre i condimenti nascosti che si intuiscono (olio, burro, sughi, formaggio grattugiato, panature): l'olio come voce "olio" a parte.
+Usa nomi semplici in italiano (es. "pasta cotta", "petto di pollo", "patate al forno", "zucchine", "parmigiano", "olio").
+Se ci sono una forchetta, un piatto o una mano, usali per capire le dimensioni.`,
+  congelatore: `Guarda la foto del congelatore o della spesa da congelare ed elenca gli alimenti che riconosci.
+Per ogni alimento il peso in grammi (usa quello scritto sulla confezione se si legge, altrimenti una stima) e i valori di quella quantità.
+Nomi semplici in italiano (es. "petto di pollo", "merluzzo", "verdure miste", "pane di segale"). Niente condimenti.`,
+};
+const FOTO_FORMAT = `Rispondi SOLO con un oggetto JSON valido, senza testo prima o dopo, in questo formato:
+{"piatto":"nome breve del piatto","items":[{"n":"alimento","g":grammi,"cotto":true,"kcal":0,"p":0,"c":0,"f":0}],"note":"una frase su cosa è incerto","sicurezza":"alta|media|bassa"}
+p, c, f = grammi di proteine, carboidrati, grassi della quantità indicata. Massimo 12 alimenti.`;
+async function fotoAnalyze(env, b) {
+  const mode = b.mode === "congelatore" ? "congelatore" : "piatto";
+  const text = FOTO_PROMPT[mode] + (b.meal ? `\nPasto: ${clip(b.meal, 40)}.` : "") + (b.note ? `\nNota di chi mangia: ${clip(b.note, 300)}` : "") + "\n\n" + FOTO_FORMAT;
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+    body: JSON.stringify({ model: FOTO_MODEL, max_tokens: 1200, messages: [{ role: "user", content: [
+      { type: "image", source: { type: "base64", media_type: b.mime, data: b.img } }, { type: "text", text }] }] }),
+  });
+  const out = await r.json().catch(() => null);
+  if (!r.ok || !out) return { error: (out && out.error && out.error.message) || "errore " + r.status, status: r.status };
+  const t = (out.content || []).filter(x => x.type === "text").map(x => x.text).join("").trim().replace(/^```(json)?/i, "").replace(/```$/, "").trim();
+  let j; try { j = JSON.parse(t.slice(t.indexOf("{"), t.lastIndexOf("}") + 1)); } catch (_) { return { error: "risposta non leggibile", raw: clip(t, 500) }; }
+  const num = x => { const v = Number(x); return isFinite(v) && v >= 0 ? Math.round(v * 10) / 10 : 0; };
+  const items = (Array.isArray(j.items) ? j.items : []).slice(0, 12).map(x => ({ n: clip(x.n, 60), g: num(x.g), cotto: !!x.cotto, kcal: num(x.kcal), p: num(x.p), c: num(x.c), f: num(x.f) })).filter(x => x.n && x.g > 0);
+  return { piatto: clip(j.piatto, 60), items, note: clip(j.note, 300), sicurezza: ["alta", "media", "bassa"].includes(j.sicurezza) ? j.sicurezza : "media", usage: out.usage || null };
+}
+const sameCode = (a, b) => typeof a === "string" && typeof b === "string" && a.length > 5 && a.trim().toUpperCase() === b.trim().toUpperCase();
+
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
@@ -117,6 +165,18 @@ export default {
         if (url.pathname === "/vault/get") { const r = await v.get(!!b.prev); return r ? json(r) : json({ error: "not found" }, 404); }
         if (typeof b.data !== "string" || !b.data.length || b.data.length > MAXLEN || !/^[\x20-\x7e]+$/.test(b.data.slice(0, 200))) return json({ error: "bad data" }, 400);
         return json({ ok: true, ...(await v.put(b.data, Number(b.at) || Date.now())) });
+      }
+      if (url.pathname === "/food/status" || url.pathname === "/food/photo") {
+        const configured = !!(env.ANTHROPIC_API_KEY && env.FOTO_CODICE);
+        if (!configured) return json({ ok: false, configured: false, error: "analisi non configurata" }, 503);
+        if (!sameCode(b.code, env.FOTO_CODICE)) return json({ ok: false, configured: true, error: "codice sbagliato" }, 403);
+        const now = new Date(), day = now.toISOString().slice(0, 10), month = day.slice(0, 7), ks = env.KEYS.get(env.KEYS.idFromName("foto-uso"));
+        if (url.pathname === "/food/status") return json({ ok: true, configured: true, ...(await ks.useFoto(day, month, FOTO_MAX_DAY, FOTO_MAX_MONTH, true)), maxDay: FOTO_MAX_DAY, maxMonth: FOTO_MAX_MONTH });
+        if (typeof b.img !== "string" || b.img.length < 100 || b.img.length > 7 * 1024 * 1024 || !/^image\/(jpeg|png|webp)$/.test(b.mime || "")) return json({ error: "foto non valida" }, 400);
+        const u = await ks.useFoto(day, month, FOTO_MAX_DAY, FOTO_MAX_MONTH);
+        if (!u.ok) return json({ error: `limite raggiunto (${FOTO_MAX_DAY} foto al giorno, ${FOTO_MAX_MONTH} al mese)` }, 429);
+        const res = await fotoAnalyze(env, b);
+        return json({ ...res, used: { today: u.today, month: u.month } }, res.error ? 502 : 200);
       }
       if (url.pathname === "/test") {
         if (!validSub(b.sub)) return json({ error: "bad request" }, 400);

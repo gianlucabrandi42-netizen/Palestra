@@ -275,7 +275,7 @@ const nextMeal = d => { const day = fDay(d); const id = RING.find(k => !mealV(da
 
 // ---------- vista ----------
 function renderCibo() {
-  FOOD(); syncProds(); syncRecipes(); const box = $("cbody"); if (!box) return;
+  FOOD(); syncProds(); syncAif(); syncRecipes(); const box = $("cbody"); if (!box) return;
   document.querySelectorAll("#cseg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.ct === CS.tab));
   if (CS.tab === "oggi") renderOggi(box); else if (CS.tab === "ricette") renderRicette(box); else if (CS.tab === "scambi") renderScambi(box); else renderSpesa(box);
 }
@@ -296,7 +296,7 @@ function renderOggi(box) {
     <div class="pside"><div class="pgym"><span>Palestra ${d === today ? "oggi" : "quel giorno"}</span><div class="seg2"><button data-gym="1" aria-pressed="${gym}">Sì</button><button data-gym="0" aria-pressed="${!gym}">No</button></div>${auto && day.gym == null ? `<small>dall'allenamento</small>` : ""}</div>
     <div class="pgym"><span>Turno</span><div class="seg4">${CB.shifts.map(x => `<button data-sh="${x.id}" aria-pressed="${day.turno === x.id}">${esc(x.t)}</button>`).join("")}</div></div>
     <p class="phint">${esc(dayHint(d))}</p></div></div>`;
-  h += balanceCard(d) + bagCard(d);
+  h += shotBtn() + balanceCard(d) + bagCard(d);
   h += barCard(day) + frzCard(d);
   // 20/11/2026 ("ci sono tanti piatti da scegliere, migliora il layout"): per ogni pasto le 3 idee più adatte (già segnata, frigo,
   // pasto 2 della ricetta del pranzo, compatibili col turno, quelle che usi di più, i tuoi piatti) + "Altre idee" con ricerca;
@@ -310,7 +310,7 @@ function renderOggi(box) {
     const open = !(sel || v === "skip") || (CS.mexp || {})[md.id];
     h += `<div class="meal${v || xs.length ? " done" : ""}${v === "skip" ? " skipped" : ""}" style="--c:${md.color}"><div class="mh"><i></i><b>${esc(md.name)}</b><span>${v === "skip" ? "saltato" : sel ? "" : xs.length ? "scritto da te" : esc(mealSub(md, d))}</span>${kc ? `<em class="mk${kov}">~${r50(kc)} kcal${kov ? ` · +${r50(kc - kp)}` : ""}</em>` : ""}</div>${WHERE[w] && open ? `<p class="mwhere">${WHERE[w]}</p>` : ""}`;
     if (sel && !open) {
-      const pic = sel.r && foodPic(sel.r), img = sel.free ? `<span class="ti">🍕</span>` : pic ? `<img src="${pic}" alt="">` : dishSVG(sel.p || [], sel.box, sel.id, "dish");
+      const pic = (sel.r || sel.dish) && foodPic(sel.r || sel.id), img = sel.free ? `<span class="ti">🍕</span>` : pic ? `<img src="${pic}" alt="">` : dishSVG(sel.p || [], sel.box, sel.id, "dish");
       h += `<div class="msel"><button class="mselb" data-m="${md.id}" data-o="${sel.id}">${img}<div><b>${esc(sel.t)}</b><small>${(day.note || {})[md.id] ? "✎ " + esc((day.note || {})[md.id].split("\n")[0].slice(0, 60)) : esc(detOf(md, sel, m))}${day.q && day.q[md.id] && !sel.dish ? " · modificato" : ""}</small></div><span class="chev">›</span></button>
         <div class="mselx"><button class="lnk" data-mexp="${md.id}">Cambia</button>${sel.r ? `<button class="lnk" data-rec="${sel.r}">Ricetta</button>` : ""}<button class="lnk" data-qm="${md.id}" data-qo="${sel.id}">Togli</button></div></div>
         ${w !== "casa" && w !== "mensa" && sel.porta ? `<p class="mdet porta">🎒 ${esc(sel.porta)}</p>` : ""}`;
@@ -328,7 +328,7 @@ function renderOggi(box) {
   h += weekCard(d);
   box.innerHTML = h;
   box.querySelectorAll(".tiles").forEach(t => { const x = t.querySelector(".tile.on"), on = x && (x.closest(".tilew") || x); if (on && on.offsetLeft + on.offsetWidth > t.clientWidth) t.scrollLeft = on.offsetLeft - 14; });
-  bindOggi(box, d); frzBind(box);
+  bindOggi(box, d); frzBind(box); shotBind();
 }
 // quante volte hai scelto ogni casella di quel pasto nelle ultime 4 settimane
 function useCounts(mid, d) { const c = {}; for (let i = 1; i <= 28; i++) { const v = (fDay(addDays(d, -i)).m || {})[mid]; if (v) c[v] = (c[v] || 0) + 1; } return c; }
@@ -428,7 +428,7 @@ function dayHint(d) {
   return "Tocca la casella di quello che hai mangiato.";
 }
 function tile(md, o, on, p2, off) {
-  const pic = o.r && foodPic(o.r);
+  const pic = (o.r || o.dish) && foodPic(o.r || o.id);
   const img = o.free ? `<span class="ti">🍕</span>` : pic ? `<img src="${pic}" alt="">` : o.p ? dishSVG(o.p, o.box, o.id, "dish") : `<span class="ti">🍽</span>`;
   return `<div class="tilew"><button class="tile${on ? " on" : ""}${o.free ? " free" : ""}${off && !on ? " off" : ""}" data-m="${md.id}" data-o="${o.id}">${img}<b>${esc(o.t)}</b>${p2 ? `<em>pasto 2</em>` : ""}${off ? `<i class="tw">${o.go === "m" ? "serve microonde" : "a casa"}</i>` : o.easy ? `<i class="tw ez">pronto · 2 cose</i>` : o.r ? `<i class="tw">ricetta</i>` : ""}</button><button class="qk${on ? " on" : ""}" data-qm="${md.id}" data-qo="${o.id}" aria-label="${on ? "Togli" : "Segna come mangiato"}">✓</button></div>`;
 }
@@ -513,7 +513,7 @@ function bindOggi(box, d) {
       if (e.it && f.meal !== "fuori" && !(fDay(d).m || {})[f.meal]) { const id = rememberDish(f.meal, txt, e.it); logMeal(d, f.meal, "d_" + id, false, e.it); toast(`✓ ${dishName(txt)} · ~${valOfQ(e.it)[0]} kcal · lo ritrovi tra le caselle`); renderCibo(); return; }
       setFDay(d, x => x.x = [...(x.x || []), e]); if (e.it) rememberDish(f.meal, txt, e.it);
       const v = xVal(e); toast(v ? `Aggiunto: ~${v[0]} kcal` : "Aggiunto, ma non ho capito le kcal: scrivilo diversamente o chiedi a Claude"); renderCibo(); };
-    $("xPic").onchange = e => { const file = e.target.files[0]; if (file) askClaude(file, (f.t || "").trim(), SIZES[f.s], f.meal === "pr" || f.meal === "ce" ? "" : ""); e.target.value = ""; };
+    $("xPic").onchange = e => { const file = e.target.files[0]; e.target.value = ""; if (!file) return; if (aiOn()) { const meal = f.meal, note = (f.t || "").trim(); CS.xform = null; renderCibo(); openShot(file, { d, meal, note }); } else askClaude(file, (f.t || "").trim(), SIZES[f.s], ""); };
   }
 }
 // segna (o toglie) un pasto: frase incoraggiante e festa a giornata completa
@@ -834,7 +834,7 @@ function estBox(oid) {
 function estBind(sh, mid, oid) {
   const e = CS.qe; if (!e || !$("oR")) return; const ctx = oid === "mensa" ? "un piatto della mensa del lavoro" : "un piatto del ristorante";
   const ta = $("oR"), pv = $("oP"), use = $("oUse");
-  $("oPic").onchange = ev => { const f = ev.target.files[0]; if (f) askClaude(f, ta.value.trim(), "", ctx); ev.target.value = ""; };
+  $("oPic").onchange = ev => { const f = ev.target.files[0]; ev.target.value = ""; if (!f) return; if (aiOn()) aiInto(f, e, mid, oid); else askClaude(f, ta.value.trim(), "", ctx); };
   const show = () => { const t = ta.value.trim(); setFDay(e.d, x => { x.note = { ...(x.note || {}) }; if (t) x.note[mid] = t; else delete x.note[mid]; });
     if (!t) { pv.innerHTML = ""; use.hidden = true; return; }
     const r = estRead(t);
@@ -1375,12 +1375,142 @@ function openFrzAdd(keep) {
   $("fzD").onchange = e => { A.d = e.target.value || todayISO(); };
   $("fzPic").onchange = e => { A.pic = e.target.files[0] || null; redraw(); };
   $("fzCl").onchange = async e => { const f = e.target.files[0]; if (!f) return; A.pic = A.pic || f; e.target.value = "";
+    if (aiOn()) return aiFreezer(f, add, redraw);
     try { const fl = new File([f], "congelatore.jpg", { type: f.type || "image/jpeg" }); if (navigator.canShare && navigator.canShare({ files: [fl] })) { await navigator.share({ files: [fl], text: frzPrompt() }); return; } } catch (err) { if (err && err.name === "AbortError") return; }
     try { await navigator.clipboard.writeText(frzPrompt()); toast("Testo copiato: apri Claude, incolla e allega la foto"); } catch (_) { toast("Apri Claude e mandagli la foto"); } };
   $("fzScan").onclick = () => scanOpen(f => { const o = FO(f); add(f, o.d || 400); redraw(); });
   $("fzOk").onclick = () => { if (!A.L.length) return; const now = Date.now(), items = A.L.map(([f, n], i) => ({ id: (now + i).toString(36), f, q: n, d: A.d, at: now }));
     frz().push(...items); save(); const pic = A.pic; CS.fza = null; closeRecipe(); renderCibo(); toast(`🧊 In congelatore: ${items.length === 1 ? qText(items[0].f, items[0].q) : items.length + " cose"}`);
     if (pic) frzPhoto(pic, items); };
+}
+
+
+// ---------- 📷 FOTO DEL PIATTO ANALIZZATA DA CLAUDE (21/11/2026, richiesta dell'utente: "un bel pulsante per scattare foto
+// che Claude analizza e stima ingredienti e kcal; quando non so cosa sto mangiando o mi è più comodo, crea la sua scheda pasto").
+// La foto (ridotta a 1280 px) va al servizio worker/ (/food/photo), che la manda all'API di Anthropic con la chiave segreta
+// (ANTHROPIC_API_KEY, mai nel sito). Per usarlo serve il codice dell'app (FOTO_CODICE), scritto una volta in Impostazioni e
+// tenuto solo sul telefono (localStorage "palestra-ai", mai nel backup). Gli alimenti che l'app conosce usano i suoi valori;
+// gli altri diventano alimenti "di Claude" (D.food.aif, nel backup) coi valori stimati per 100 g.
+const AIK = "palestra-ai";
+const aiCfg = () => { try { return JSON.parse(localStorage.getItem(AIK) || "{}"); } catch (_) { return {}; } };
+const aiSet = o => { try { localStorage.setItem(AIK, JSON.stringify({ ...aiCfg(), ...o })); } catch (_) {} };
+const aiOn = () => !!aiCfg().code;
+async function aiPost(path, body) {
+  const r = await fetch(PUSH_URL + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: aiCfg().code, ...body }) });
+  const j = await r.json().catch(() => ({ error: "risposta non valida" }));
+  if (!r.ok) { const e = new Error(r.status === 403 ? "codice dell'app sbagliato (Impostazioni → Foto del cibo)" : r.status === 503 ? "analisi non ancora attiva sul servizio" : j.error || "errore " + r.status); e.status = r.status; throw e; }
+  return j;
+}
+function shrinkPic(file, max = 1280, q = .8) {
+  return new Promise((ok, ko) => { const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => { const k = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement("canvas"); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); const data = c.toDataURL("image/jpeg", q); ok({ data, b64: data.split(",")[1], mime: "image/jpeg" }); };
+    img.onerror = () => { URL.revokeObjectURL(url); ko(new Error("foto non leggibile")); }; img.src = url; });
+}
+const aif = () => { const f = FOOD(); return (f.aif = f.aif || {}); };
+function syncAif() { for (const [k, x] of Object.entries(aif())) CB.foods["ai_" + k] = { n: x.n, u: "g", s: 10, d: 100, v: x.v, k: [], ai: 1 }; }
+// dagli alimenti di Claude alle righe dell'app
+function aiRows(items) {
+  const L = [], miss = [];
+  for (const it of items || []) {
+    const cot = it.cotto && /\b(pasta|riso|cous|farro|orzo|quinoa)\b/i.test(it.n) && !/cott|crud/i.test(it.n) ? " cotta" : "";
+    const r = readFood(`${it.n}${cot} ${Math.round(it.g)} g`, "n"), one = r.items.length === 1 && !r.miss.length ? [r.items[0].f, r.items[0].q] : null;
+    let row = null;
+    if (one) { const k = valOfQ([one])[0]; if (!it.kcal || Math.abs(k - it.kcal) <= Math.max(40, it.kcal * .35)) row = one; }
+    if (!row && it.kcal > 0) { const slug = normT(it.n).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30) || "cibo", per = x => Math.round(x / it.g * 1000) / 10;
+      aif()[slug] = { n: it.n.charAt(0).toUpperCase() + it.n.slice(1), v: [per(it.kcal), per(it.p), per(it.c), per(it.f)], at: Date.now() }; syncAif(); row = ["ai_" + slug, Math.round(it.g)]; }
+    if (!row && one) row = one;
+    if (!row) { miss.push(it.n); continue; }
+    const i = L.findIndex(([f]) => f === row[0]); if (i >= 0) L[i][1] = Math.round((L[i][1] + row[1]) * 100) / 100; else L.push(row);
+  }
+  save(); return { L, miss };
+}
+const mealNow = () => { const h = new Date().getHours() + new Date().getMinutes() / 60; return h < 10.5 ? "col" : h < 12 ? "s1" : h < 15.5 ? "pr" : h < 18.5 ? "s2" : h < 22 ? "ce" : "dc"; };
+const SHOTM = () => [...CB.meals.map(m => [m.id, m.name]), ["fuori", "Fuori pasto"]];
+async function aiRun() {
+  const S = CS.shot; if (!S) return; S.st = "run"; S.err = ""; drawShot();
+  try { const j = await aiPost("/food/photo", { img: S.b64, mime: S.mime, mode: "piatto", meal: (SHOTM().find(([k]) => k === S.meal) || [0, ""])[1], note: S.note || "" });
+    if (CS.shot !== S) return; const r = aiRows(j.items); S.res = j; S.L = r.L; S.miss = r.miss; S.name = j.piatto || "Il mio piatto"; S.st = r.L.length ? "ok" : "err"; if (!r.L.length) S.err = "Non ho riconosciuto alimenti: prova una foto più vicina o aggiungi un dettaglio.";
+    aiSet({ today: j.used && j.used.today, month: j.used && j.used.month, last: Date.now() });
+  } catch (e) { if (CS.shot !== S) return; S.st = "err"; S.err = String(e.message || e); }
+  if (CS.shot === S) drawShot();
+}
+async function openShot(file, o = {}) {
+  let p; try { p = await shrinkPic(file); } catch (e) { return toast("Foto non leggibile"); }
+  const d = o.d || cDay(); CS.shot = { d, meal: o.meal || (d === todayISO() ? mealNow() : "pr"), note: o.note || "", data: p.data, b64: p.b64, mime: p.mime, file, st: aiOn() ? "run" : "off", L: [], rep: true };
+  const sh = $("fsheet"); drawShot(); if (sh.hidden) showSheet(sh); if (aiOn()) aiRun();
+}
+function drawShot() {
+  const S = CS.shot, sh = $("fsheet"); if (!S) return; const day = fDay(S.d), cv = S.meal !== "fuori" && (day.m || {})[S.meal], cur = cv && cv !== "skip" ? cv : null, co = cur && optOf(mealDef(S.meal), cur, S.d), curT = co ? co.t : cur ? "quello segnato" : "";
+  const tot = valOfQ(S.L), mn = (SHOTM().find(([k]) => k === S.meal) || [0, ""])[1];
+  sh.querySelector(".is-h").innerHTML = `<b>📷 Il tuo piatto</b><span class="rmeta">${S.st === "off" ? "analisi automatica da attivare" : "analisi di Claude · stima ±20%"}</span>`;
+  sh.querySelector(".is-c").innerHTML = `<div class="aishot"><img class="shotimg" src="${S.data}" alt="">
+    ${S.st === "run" ? `<div class="shotrun"><i class="spin"></i><b>Claude sta guardando il piatto…</b><small>di solito 5-10 secondi</small></div>` : ""}
+    ${S.st === "off" ? `<div class="card shotoff"><b>L'analisi automatica non è ancora attiva su questo telefono.</b><p class="note">Scrivi il codice dell'app in Impostazioni → Foto del cibo. Intanto puoi mandare la foto a Claude in chat e incollare la risposta in «Scrivo io».</p><div class="row"><button class="btn primary" id="shChat">Manda a Claude in chat</button><button class="btn" id="shSet">Vai alle Impostazioni</button></div></div>` : ""}
+    ${S.st === "err" ? `<div class="card shotoff"><b>⚠️ ${esc(S.err)}</b><div class="row"><button class="btn primary" id="shRetry">↻ Riprova</button><button class="btn" id="shChat">Manda a Claude in chat</button></div></div>` : ""}
+    ${S.st === "ok" ? `<label class="plab">Nome del piatto<input id="shN" value="${esc(S.name)}" autocomplete="off"></label>
+      ${S.res && S.res.note ? `<p class="note shnote">🤖 ${esc(S.res.note)}${S.res.sicurezza === "bassa" ? " · <b>stima incerta</b>: controlla le quantità" : ""}</p>` : ""}
+      <div class="qbox"><h3>Cosa c'è · correggi se serve</h3>${rowsHTML(S.L)}<p class="qtot"><b>~${fmt(tot[0])} kcal</b> · proteine ${fmt(tot[1])} g · carboidrati ${fmt(tot[2])} g · grassi ${fmt(tot[3])} g</p></div>
+      ${S.miss && S.miss.length ? `<p class="xpno">Non conteggiato: ${esc(S.miss.join(", "))}</p>` : ""}` : ""}
+    ${S.st !== "off" ? `<details class="shre"${S.note ? " open" : ""}><summary>✎ Aggiungi un dettaglio e rianalizza</summary><textarea id="shNote" rows="2" placeholder="es. era pasta integrale; il condimento era pesto; ne ho mangiato metà">${esc(S.note)}</textarea><button class="btn sm" id="shAgain">↻ Rianalizza</button></details>` : ""}
+    ${S.st === "ok" ? `<p class="plab">Quando l'hai mangiato?</p><div class="shmeal">${SHOTM().map(([k, t]) => `<button class="chip" data-shm="${k}" aria-pressed="${S.meal === k}">${esc(t)}</button>`).join("")}</div>
+      ${cur ? `<div class="seg2 xrep"><button data-shr="1" aria-pressed="${!!S.rep}">Al posto di «${esc(curT)}»</button><button data-shr="0" aria-pressed="${!S.rep}">In più</button></div>` : ""}
+      <div class="rlog"><button class="btn primary" id="shOk">✓ Segna ${S.meal === "fuori" ? "fuori pasto" : esc(MEALN[S.meal] || "a " + mn.toLowerCase())}</button></div>
+      <p class="note">Diventa un tuo piatto con questa foto: la prossima volta lo ritrovi tra le caselle di ${esc(mn.toLowerCase())}.</p>` : ""}</div>`;
+  const q = sh.querySelector(".aishot .qbox"); if (q) bindRows(q, S.L, () => { S.L = S.L.filter(([, n]) => n > 0); drawShot(); });
+  const n = $("shN"); if (n) n.oninput = e => { S.name = e.target.value; };
+  sh.querySelectorAll("[data-shm]").forEach(b => b.onclick = () => { S.meal = b.dataset.shm; drawShot(); });
+  sh.querySelectorAll("[data-shr]").forEach(b => b.onclick = () => { S.rep = b.dataset.shr === "1"; drawShot(); });
+  const nt = $("shNote"); if (nt) nt.oninput = e => { S.note = e.target.value; };
+  const ag = $("shAgain"); if (ag) ag.onclick = () => { if (!aiOn()) return; aiRun(); };
+  const rt = $("shRetry"); if (rt) rt.onclick = () => aiRun();
+  const ch = $("shChat"); if (ch) ch.onclick = () => askClaude(S.file, S.note || "", "", S.meal === "pr" || S.meal === "ce" ? "un piatto" : "");
+  const st = $("shSet"); if (st) st.onclick = () => { closeRecipe(); CS.shot = null; const b = document.querySelector('[data-view="backup"],[data-view="imp"],[data-view="set"]'); if (b) b.click(); setTimeout(() => { const c = $("aiSet"); if (c) c.scrollIntoView({ block: "start" }); }, 120); };
+  const ok = $("shOk"); if (ok) ok.onclick = () => shotSave();
+}
+function shotSave() {
+  const S = CS.shot; if (!S || !S.L.length) return; const d = S.d, L = S.L.map(r => [...r]), name = (S.name || "Il mio piatto").trim().slice(0, 60), day = fDay(d);
+  if (S.meal === "fuori" || ((day.m || {})[S.meal] && !S.rep)) { // fuori pasto o "in più": una voce scritta con le sue righe
+    const e = { id: "x" + Date.now().toString(36), meal: S.meal, t: name, s: "n", it: L, ai: 1, at: Date.now() };
+    setFDay(d, x => x.x = [...(x.x || []), e]); if (S.meal !== "fuori") { const id = rememberDish(S.meal, name, L); if (id) picPut("food:d_" + id, S.data).catch(() => {}); }
+    toast(`✓ ${name} · ~${valOfQ(L)[0]} kcal`);
+  } else {
+    if ((day.m || {})[S.meal]) setFDay(d, x => { if (x.m) delete x.m[S.meal]; if (x.q) delete x.q[S.meal]; if (x.dn) delete x.dn[S.meal]; });
+    const id = rememberDish(S.meal, name, L); picPut("food:d_" + id, S.data).catch(() => {}); logMeal(d, S.meal, "d_" + id, false, L);
+    toast(`✓ ${name} · ~${valOfQ(L)[0]} kcal · lo ritrovi tra le caselle`);
+  }
+  CS.shot = null; closeRecipe(); renderCibo();
+}
+// pulsante grande in Oggi
+const shotBtn = () => `<label class="shotbtn" for="shotIn"><span class="shic">📷</span><span><b>Fotografa il piatto</b><small>${aiOn() ? "Claude riconosce ingredienti, grammi e kcal" : "Claude stima ingredienti e kcal · da attivare"}</small></span><i>›</i></label><input type="file" id="shotIn" accept="image/*" capture="environment" hidden>`;
+function shotBind() { const i = $("shotIn"); if (i) i.onchange = e => { const f = e.target.files[0]; e.target.value = ""; if (f) openShot(f); }; }
+// stessa analisi per mensa, ristorante e sala colazione: le righe del piatto si sostituiscono con quelle stimate
+async function aiInto(file, e, mid, oid) {
+  let p; try { p = await shrinkPic(file); } catch (_) { return toast("Foto non leggibile"); }
+  toast("📷 Claude sta guardando il piatto…");
+  try { const j = await aiPost("/food/photo", { img: p.b64, mime: p.mime, mode: "piatto", meal: oid === "mensa" ? "pranzo in mensa" : oid === "sala" ? "pranzo della sala colazione" : "piatto del ristorante" });
+    const r = aiRows(j.items); if (!r.L.length) return toast("Non ho riconosciuto alimenti: riprova più vicino");
+    if (CS.qe !== e) return; e.L = r.L; qPersist(); openOpt(mid, oid, true); toast(`✓ ${j.piatto || "Piatto"} · ~${valOfQ(e.L)[0]} kcal${j.note ? " · " + j.note : ""}`);
+  } catch (err) { toast("⚠️ " + (err.message || err)); }
+}
+// congelatore: la foto diventa l'elenco
+async function aiFreezer(file, add, done) {
+  let p; try { p = await shrinkPic(file); } catch (_) { return toast("Foto non leggibile"); }
+  toast("📷 Claude sta guardando…");
+  try { const j = await aiPost("/food/photo", { img: p.b64, mime: p.mime, mode: "congelatore" }); const r = aiRows(j.items);
+    for (const [f, q] of r.L) add(f, q); done(); toast(r.L.length ? `✓ ${r.L.length} cose riconosciute: controlla le quantità` : "Non ho riconosciuto alimenti");
+  } catch (err) { toast("⚠️ " + (err.message || err)); }
+}
+// Impostazioni → Foto del cibo
+function aiSettings() {
+  const box = $("aiSet"); if (!box) return; const c = aiCfg();
+  box.innerHTML = `<p>Fotografi il piatto e <b>Claude</b> stima ingredienti, grammi e kcal. Costa circa <b>1 centesimo a foto</b>, pagato col credito Anthropic.${c.month != null ? ` Questo mese: <b>${c.month}</b> foto.` : ""}</p>
+    <label class="plab">Codice dell'app<input id="aiCode" value="${esc(c.code || "")}" placeholder="FOTO-XXXX-XXXX-XXXX" autocomplete="off" autocapitalize="characters"></label>
+    <div class="row"><button class="btn primary" id="aiSave">Salva e prova</button>${c.code ? `<button class="btn" id="aiOff">Disattiva</button>` : ""}</div><p class="note" id="aiMsg">${c.code ? (c.ok ? "● Attivo" : "") : "Il codice resta solo su questo telefono (non va nel backup)."}</p>`;
+  $("aiSave").onclick = async () => { const code = $("aiCode").value.trim().toUpperCase(); if (!code) return; aiSet({ code }); const m = $("aiMsg"); m.textContent = "Provo il collegamento…";
+    try { const j = await aiPost("/food/status", {}); aiSet({ ok: true, today: j.today, month: j.month }); m.innerHTML = `<b class="okc">● Attivo</b> · oggi ${j.today} foto, questo mese ${j.month} (limite ${j.maxDay} al giorno)`; renderCibo(); }
+    catch (e) { aiSet({ ok: false }); m.innerHTML = `<span class="warnc">${esc(e.message || e)}</span>`; } };
+  const off = $("aiOff"); if (off) off.onclick = () => { try { localStorage.removeItem(AIK); } catch (_) {} aiSettings(); renderCibo(); };
 }
 
 function renderSpesa(box) {
@@ -1413,6 +1543,7 @@ function mergeFood(inc) {
   if (g.myrec) { const R = myRec(); for (const [id, x] of Object.entries(g.myrec)) if (!R[id] || (x.at || 0) > (R[id].at || 0)) R[id] = x; syncRecipes(); }
   if (g.prods) { const P = prods(); for (const [id, x] of Object.entries(g.prods)) if (!P[id] || (x.at || 0) > (P[id].at || 0)) P[id] = x; syncProds(); }
   if (g.frz) { const L = frz(), M = new Map(L.map(x => [x.id, x])); for (const x of g.frz) { const l = M.get(x.id); if (!l) L.push(x); else if ((x.at || 0) > (l.at || 0)) Object.assign(l, x); } }
+  if (g.aif) { const A = aif(); for (const [k, x] of Object.entries(g.aif)) if (!A[k] || (x.at || 0) > (A[k].at || 0)) A[k] = x; syncAif(); }
   if (g.nobrand) f.nobrand = { ...g.nobrand, ...(f.nobrand || {}) };
   if (g.fridge) { const have = new Set(frList().map(x => x.id)); for (const x of g.fridge) if (!have.has(x.id)) f.fridge.push(x); }
   for (const [w, x] of Object.entries(g.week || {})) { const l = f.week[w]; if (!l || (x.at || 0) > (l.at || 0)) f.week[w] = x; }
