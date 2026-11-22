@@ -1,5 +1,5 @@
 /* Palestra — Ripresa all'apertura, visore foto, Progressi, Corpo, andamento della scheda, schede.
-   Parte di app.js diviso il 22/11/2026: i file js/01…09 si caricano in ordine (index.html) e condividono le stesse funzioni globali. */
+   Parte di app.js diviso il 22/11/2026: i file js/01…10 si caricano in ordine (index.html) e condividono le stesse funzioni globali. */
 "use strict";
 // ---------- ripresa: all'apertura torna all'ultima serie compilata oggi ----------
 const LKEY = "palestra-last";
@@ -158,6 +158,7 @@ function renderBody() {
 }
 function renderProg() {
   const p = plan(); S.pday = S.pday || S.day;
+  renderReview(); // il punto della settimana, in cima (22/11/2026)
   { // traguardi
     const st = streakInfo(), all = Object.values(D.sessions).filter(hasData), p0 = plan();
     let recs = 0; const ps = gymSessions(S.gym).filter(x => home(x) && !isOffDay(x));

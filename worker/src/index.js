@@ -12,6 +12,7 @@
 //
 //   POST /food/photo {code, img, mime, mode, meal?, note?}  (21/11/2026) foto del cibo analizzata da Claude (API Anthropic):
 //        → { piatto, items:[{n, g, cotto, kcal, p, c, f}], note, sicurezza, used }  — serve il codice dell'app (segreto FOTO_CODICE)
+//   POST /coach {code?, data}  (22/11/2026) commento dell'allenatore sul punto della settimana → { commento, via }
 //   POST /food/status {code}  → { ok, configured, needCode, via, today, month }
 // 22/11/2026: di base GRATIS con Cloudflare Workers AI (binding AI in wrangler.toml), nessun codice richiesto.
 // Segreti facoltativi (messi dal workflow se presenti nel repository): GEMINI_API_KEY (gratis, più precisa), ANTHROPIC_API_KEY (a pagamento), FOTO_CODICE (se c'è, l'app deve mandarlo).
@@ -193,6 +194,24 @@ async function fotoAnalyze(env, b) {
   if (!items.length) return { error: "nessun alimento riconosciuto: riprova con più luce o scrivilo" };
   return { piatto: clip(j.piatto, 60), items, note: clip(j.note, 300), sicurezza: ["alta", "media", "bassa"].includes(j.sicurezza) ? j.sicurezza : "media", via: pv };
 }
+// Il punto della settimana (22/11/2026): commento dell'allenatore sui numeri della settimana (solo dati di allenamento,
+// cibo e peso medio già riassunti dall'app, nessun dato personale). Stesso modello e stesso tetto delle foto.
+const COACH_PROMPT = `Sei l'allenatore di un uomo adulto che si allena in palestra (2 palestre, scheda mensile del suo personal trainer: è il PT a decidere esercizi e schema).
+Ricevi i numeri della sua ultima settimana, già calcolati dall'app, e le azioni che l'app gli propone.
+Scrivi un commento in italiano, diretto e concreto, da amico esperto: massimo 4 frasi, niente elenchi, niente saluti, niente emoji in eccesso (al massimo una).
+Regole: parti da cosa è andato bene; poi la cosa più importante da fare la prossima settimana, coerente con le azioni dell'app (non contraddirle);
+non inventare numeri che non ci sono; non dare consigli medici né diete: per fastidi o dolori dì di sentire il PT; sul cibo e sul peso niente colpe e niente ossessione.
+Rispondi SOLO con JSON: {"commento":"..."}`;
+async function coachComment(env, data) {
+  const text = COACH_PROMPT + "\n\nDati della settimana (JSON):\n" + clip(JSON.stringify(data), 3500), pv = provider(env);
+  let t;
+  try { t = pv === "claude" ? await askClaude(env, text, {}) : pv === "gemini" ? await askGemini(env, text, {}) : await askCloudflare(env, text, {}); }
+  catch (e) { return { error: String(e && e.message || e).slice(0, 200) }; }
+  t = (t || "").trim().replace(/^```(json)?/i, "").replace(/```$/, "").trim();
+  let j; try { j = JSON.parse(t.slice(t.indexOf("{"), t.lastIndexOf("}") + 1)); } catch (_) { j = { commento: t.replace(/[{}"]/g, "").replace(/^commento\s*:\s*/i, "") }; }
+  const c = clip(String(j.commento || "").trim(), 700);
+  return c ? { commento: c, via: pv } : { error: "risposta vuota" };
+}
 const sameCode = (a, b) => typeof a === "string" && typeof b === "string" && a.length > 5 && a.trim().toUpperCase() === b.trim().toUpperCase();
 
 export default {
@@ -243,6 +262,16 @@ export default {
         if (!Array.isArray(b.e)) return json({ error: "bad request" }, 400);
         const meta = { v: clip(b.v, 20), view: clip(b.view, 12), ua: clip(b.ua, 30), sa: !!b.standalone };
         return json({ ok: true, n: await st.addErr(b.e, meta) });
+      }
+      if (url.pathname === "/coach") {
+        const pv = provider(env);
+        if (!pv) return json({ error: "analisi non configurata" }, 503);
+        if (env.FOTO_CODICE && !sameCode(b.code, env.FOTO_CODICE)) return json({ error: "codice sbagliato" }, 403);
+        if (!b.data || typeof b.data !== "object" || JSON.stringify(b.data).length > 8000) return json({ error: "dati non validi" }, 400);
+        const now = new Date(), day = now.toISOString().slice(0, 10), u = await env.KEYS.get(env.KEYS.idFromName("foto-uso")).useFoto(day, day.slice(0, 7), FOTO_MAX_DAY, FOTO_MAX_MONTH);
+        if (!u.ok) return json({ error: "limite di oggi raggiunto" }, 429);
+        const res = await coachComment(env, b.data);
+        return json(res, res.error ? 502 : 200);
       }
       if (url.pathname === "/test") {
         if (!validSub(b.sub)) return json({ error: "bad request" }, 400);

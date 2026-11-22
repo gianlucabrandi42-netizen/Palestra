@@ -1,5 +1,5 @@
 /* Palestra — Recap di fine allenamento e scheda dell'esercizio (renderLog).
-   Parte di app.js diviso il 22/11/2026: i file js/01…09 si caricano in ordine (index.html) e condividono le stesse funzioni globali. */
+   Parte di app.js diviso il 22/11/2026: i file js/01…10 si caricano in ordine (index.html) e condividono le stesse funzioni globali. */
 "use strict";
 // ---------- recap a fine allenamento (tutti gli esercizi fatti, oppure "Fine allenamento") ----------
 const e1 = (r, bw) => !r || r.reps == null ? 0 : bw || !r.kg ? r.reps : r.kg * (1 + r.reps / 30);
@@ -103,11 +103,13 @@ function renderLog0() {
     ? `<div class="nag info"><span><b>Rientro dopo ${pi.days} giorni.</b> Oggi rifai i carichi dell'ultima volta, senza aumenti. Se una serie viene 3 reps o più sotto il target, scendi di un salto nella serie dopo.${pi.days >= 35 ? " Dopo più di 5 settimane usa la prima serie come prova." : ""} Non conta per i progressi.</span><button class="btn sm" id="noPause">Non è un rientro</button></div>`
     : sess.ignorePause && pi.back ? `<div class="nag info"><span>Pausa di ${pi.days} giorni ignorata.</span><button class="btn sm" id="noPause">Riattiva</button></div>` : "";
   if ($("noPause")) $("noPause").onclick = () => setSess({ ignorePause: !sess.ignorePause });
+  if (applyPlannedDeload()) save();
   { const wk = weekStart(todayISO()), stalls = plan().days.flatMap(dd => dd.ex.filter(e => !e.nolog && stallInfo(e, S.gym)).map(e => e.name));
     let h = "";
     if (D.prefs.deload === wk) h = `<div class="nag info"><span><b>Settimana di scarico.</b> Carichi −35% e una serie in meno per esercizio (2 invece di 3). Non conta per i progressi: serve a recuperare e ripartire più forte.</span><button class="btn sm" id="dlOff">Annulla</button></div>`;
     else if (stalls.length >= 3 && D.prefs.deloadAsk !== wk && ![...deloadWeeks()].some(w => w < wk && (new Date(wk) - new Date(w)) / 864e5 <= 28)) h = `<div class="nag"><span>⏸ <b>${stalls.length} esercizi fermi da 3 sedute.</b> Valuta una settimana di scarico (meglio sentire il PT).</span><button class="btn sm" id="dlOn">Scarico</button><button class="btn sm ghost" id="dlNo">Non ora</button></div>`;
-    $("pauseNag").insertAdjacentHTML("beforeend", h);
+    $("pauseNag").insertAdjacentHTML("beforeend", h + reviewNag());
+    if ($("rvGo")) $("rvGo").onclick = openReview;
     if ($("dlOff")) $("dlOff").onclick = () => { delete D.prefs.deload; D.prefs.deloads = (D.prefs.deloads || []).filter(w => w !== wk); save(); renderLog(); };
     if ($("dlOn")) $("dlOn").onclick = () => { D.prefs.deload = wk; D.prefs.deloads = [...new Set([...(D.prefs.deloads || []), wk])]; save(); renderLog(); toast("Settimana di scarico attiva"); };
     if ($("dlNo")) $("dlNo").onclick = () => { D.prefs.deloadAsk = wk; save(); renderLog(); }; }

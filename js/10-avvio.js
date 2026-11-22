@@ -1,5 +1,5 @@
 /* Palestra — Avvio dell'app: prima schermata, ritorno nell'app, aggiornamenti, versione.
-   Parte di app.js diviso il 22/11/2026: i file js/01…09 si caricano in ordine (index.html) e condividono le stesse funzioni globali. */
+   Parte di app.js diviso il 22/11/2026: i file js/01…10 si caricano in ordine (index.html) e condividono le stesse funzioni globali. */
 "use strict";
 // caricamento delle foto salvate (IndexedDB): spostato qui dal blocco ARCHIVIO FOTO, così parte quando tutti i file sono caricati
 if (window.indexedDB) picLoadAll().then(migratePics).then(() => render()).catch(() => {});
@@ -14,6 +14,7 @@ function trainingActive() {
   if (!s || s.tEnd || sessDone(s)) return false;
   return Date.now() - (s.t1 || s.updatedAt || 0) < 45 * 60000;
 }
+if (applyPlannedDeload()) save(); // scarico pianificato nel punto della settimana
 if (!trainingActive()) S.view = "cibo";
 render();
 resumeLast();

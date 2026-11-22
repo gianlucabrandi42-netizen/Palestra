@@ -1,5 +1,5 @@
 /* Palestra — Serie dimenticate, circuiti, tastierino compatto, scrittura di kg e reps.
-   Parte di app.js diviso il 22/11/2026: i file js/01…09 si caricano in ordine (index.html) e condividono le stesse funzioni globali. */
+   Parte di app.js diviso il 22/11/2026: i file js/01…10 si caricano in ordine (index.html) e condividono le stesse funzioni globali. */
 "use strict";
 // ---------- campi dimenticati ----------
 // Se hai già compilato una serie più avanti nella giornata, le serie precedenti senza reps (o con reps ma senza kg)

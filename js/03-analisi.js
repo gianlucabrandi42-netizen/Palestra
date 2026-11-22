@@ -1,5 +1,5 @@
 /* Palestra — Confronto tra le serie, gratificazioni, report per il PT, Solo per oggi (sostituisci/occupato/fastidio/salta), database macchinari, scheda del sostituto, Com'era?, recupero reale, durata.
-   Parte di app.js diviso il 22/11/2026: i file js/01…09 si caricano in ordine (index.html) e condividono le stesse funzioni globali. */
+   Parte di app.js diviso il 22/11/2026: i file js/01…10 si caricano in ordine (index.html) e condividono le stesse funzioni globali. */
 "use strict";
 // ---------- Confronto tra le serie dello stesso esercizio nella stessa seduta (18/11/2026) ----------
 // Forza stimata (Epley) di ogni serie valida (pulita, non aiutata, con kg e reps). Casi: "light" (S1 leggera: le serie dopo

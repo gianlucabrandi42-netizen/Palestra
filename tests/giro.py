@@ -8,7 +8,7 @@ SEED = r"""
   const p = plan(), day = (iso, n) => { const d = new Date(iso); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); };
   const today = todayISO(); let t = Date.now() - 864e5 * 20;
   [["PA", 0, 14], ["PB", 0, 10], ["PA", 1, 9], ["PA", 0, 7], ["PB", 2, 6], ["PA", 0, 3], ["PA", 1, 2]].forEach(([g, di, ago], k) => {
-    const d = p.days[di], date = day(today, ago), s = { id: `${g}_${p.id}_${di}_${date}`, gym: g, plan: p.id, day: di, date, ex: {}, note: "", updatedAt: t };
+    const d = p.days[di], date = day(today, ago), s = { id: `${g}_${p.id}_${d.id}_${date}`, gym: g, plan: p.id, day: d.id, date, ex: {}, note: "", updatedAt: t };
     d.ex.forEach(e => { if (e.nolog) { s.circ = s.circ || {}; s.circ[e.circ] = 3; return; }
       s.ex[e.key] = e.sets.map((x, i) => ({ kg: e.bw ? null : 20 + k * 2.5 + i * 2.5, reps: (parseInt(x.t) || 10) - (i === 2 && k % 2 ? 2 : 0), at: (t += 120000), ...(i === 1 && k === 3 ? { dirty: 1 } : {}), ...(i === 0 && k === 5 ? { eff: "easy" } : {}) })); });
     s.t0 = t - 3600e3; s.t1 = t; D.sessions[s.id] = s; t += 864e5;
@@ -25,7 +25,7 @@ async def main():
         for g in ["PA", "PB"]:
             ndays = await a.js("plan().days.length")
             for di in range(ndays):
-                await a.js(f"S.gym='{g}'; S.day={di}; S.view='log'; render()"); await a.wait(150)
+                await a.js(f"S.gym='{g}'; S.day=plan().days[{di}].id; S.view='log'; render()"); await a.wait(150)
                 keys = await a.js("[...document.querySelectorAll('#list .ex[data-ex], #list .exmini[data-mini]')].map(e => e.dataset.ex || e.dataset.mini).filter(k => dayObj().ex.some(x => x.key === k && !x.nolog))")
                 c.ok(len(keys) > 0, f"{g} G{di+1}: esercizi in lista")
                 for k in keys:
@@ -34,7 +34,7 @@ async def main():
                     c.ok(opened is True, f"{g} G{di+1} {k}: Info si apre ({opened})")
                     await a.js("closeSheet()"); await a.wait(240)
         # una seduta di oggi compilata col tastierino
-        await a.js("S.gym='PA'; S.day=0; S.date=todayISO(); S.view='log'; render()"); await a.wait(200)
+        await a.js("S.gym='PA'; S.day=plan().days[0].id; S.date=todayISO(); S.view='log'; render()"); await a.wait(200)
         k = await a.js("dayObj().ex.find(e => !e.nolog).key")
         await a.pg.tap(f"#kg-{k}-0"); await a.wait(300)
         c.ok(await a.js("!document.getElementById('pad').hidden"), "tastierino aperto sui kg")

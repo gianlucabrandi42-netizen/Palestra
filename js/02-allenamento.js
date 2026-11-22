@@ -1,5 +1,5 @@
 /* Palestra — Schermata Allenamento: barra in alto, unità del giorno, Questa settimana, archivio foto (IndexedDB), riquadro Info ed esecuzione.
-   Parte di app.js diviso il 22/11/2026: i file js/01…09 si caricano in ordine (index.html) e condividono le stesse funzioni globali. */
+   Parte di app.js diviso il 22/11/2026: i file js/01…10 si caricano in ordine (index.html) e condividono le stesse funzioni globali. */
 "use strict";
 // ---------- render: allenamento ----------
 function renderConsole() {

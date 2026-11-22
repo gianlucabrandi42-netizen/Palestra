@@ -1,5 +1,5 @@
 /* Palestra — Backup su file, backup online cifrato, navigazione.
-   Parte di app.js diviso il 22/11/2026: i file js/01…09 si caricano in ordine (index.html) e condividono le stesse funzioni globali. */
+   Parte di app.js diviso il 22/11/2026: i file js/01…10 si caricano in ordine (index.html) e condividono le stesse funzioni globali. */
 "use strict";
 // ---------- backup ----------
 function backupData() { return JSON.stringify({ app: "palestra", v: 1, exportedAt: new Date().toISOString(), data: D, pics: Object.fromEntries(PICM) }, null, 1); }
@@ -143,5 +143,5 @@ function render() {
   if (S.view !== "cibo" && typeof closeRecipe === "function") closeRecipe();
   setTheme(); // 20/11/2026: aprendo direttamente sul Cibo il tema non veniva mai impostato (festa "Giornata completa" trasparente)
   if (S.view === "log") renderLog(); else if (S.view === "prog") renderProg(); else if (S.view === "plan") renderPlans(); else if (S.view === "cibo") { if (typeof renderCibo === "function") renderCibo(); } else renderMore();
-  drawTimer(); drawMissing();
+  drawTimer(); drawMissing(); markReviewDot();
 }

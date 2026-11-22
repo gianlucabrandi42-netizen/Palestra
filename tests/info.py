@@ -6,7 +6,7 @@ from common import App, Check
 async def main():
     c = Check("Info ed esecuzione")
     async with App() as a:
-        await a.js("S.view='log'; S.day=0; render()"); await a.wait(200)
+        await a.js("S.view='log'; S.day=plan().days[0].id; render()"); await a.wait(200)
         k = await a.js("dayObj().ex[3].key")
         await a.js(f"S.exOpen.add('{k}'); renderLog()"); await a.wait(200)
         await a.js(f"document.querySelector('.ex[data-ex=\"{k}\"] [data-more]').click()"); await a.wait(450)

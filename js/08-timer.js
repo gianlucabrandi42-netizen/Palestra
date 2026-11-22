@@ -1,5 +1,5 @@
 /* Palestra — Timer di recupero, suoni, notifiche push, impostazioni del timer.
-   Parte di app.js diviso il 22/11/2026: i file js/01…09 si caricano in ordine (index.html) e condividono le stesse funzioni globali. */
+   Parte di app.js diviso il 22/11/2026: i file js/01…10 si caricano in ordine (index.html) e condividono le stesse funzioni globali. */
 "use strict";
 // ---------- timer di recupero ----------
 // Recupero di base 1:30 (regolabile); se l'esercizio ha "rest" nella scheda, vale quello.

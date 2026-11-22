@@ -1,5 +1,5 @@
 /* Palestra — Utilità, archivio locale, scheda attiva, forma del giorno e rientro, esercizi fuori ordine, salto pesi, immagini, mappa muscoli.
-   Parte di app.js diviso il 22/11/2026: i file js/01…09 si caricano in ordine (index.html) e condividono le stesse funzioni globali. */
+   Parte di app.js diviso il 22/11/2026: i file js/01…10 si caricano in ordine (index.html) e condividono le stesse funzioni globali. */
 "use strict";
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -119,6 +119,12 @@ const isOffDay = s => { const c = condition(s); return c.f < 1 || c.hold; };
 const DELOAD_F = 0.65;
 const deloadWeeks = () => new Set([...((D.prefs && D.prefs.deloads) || []), D.prefs && D.prefs.deload].filter(Boolean));
 const isDeload = s => !!(s && D.prefs && deloadWeeks().has(weekStart(s.date)));
+// scarico pianificato in anticipo dal punto della settimana (22/11/2026): quando arriva quella settimana diventa lo scarico in corso
+function applyPlannedDeload() {
+  const P = D.prefs, wk = weekStart(todayISO()); if (!P || !P.deloadPlan || P.deloadPlan > wk) return false;
+  if (P.deloadPlan === wk) { P.deload = wk; P.deloads = [...new Set([...(P.deloads || []), wk])]; }
+  delete P.deloadPlan; return true;
+}
 // serie da fare: in scarico una serie in meno ogni 3 (3 → 2, 4 → 3); circuiti invariati
 const need = (e, s) => isDeload(s) && !e.circ && !e.nolog ? e.sets.length - Math.floor(e.sets.length / 3) : e.sets.length;
 // Stallo: sedute normali (palestra, sede abituale, niente giornate no/fuori ordine/sostituzioni) in cui la serie migliore
