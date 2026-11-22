@@ -1634,3 +1634,16 @@ svg.fzi{border-radius:50%}
 .stima .chip small{opacity:.7;font-size:11px}
 .xlib{align-self:flex-start;margin:6px 0}
 .xlib[aria-pressed="true"]{background:color-mix(in srgb,#FFB86B 25%,transparent);border-color:#FFB86B;color:#FFD6A8}
+
+/* 22/11/2026: trascinare giù per chiudere senza scatti anche nel riquadro "Info ed esecuzione" e nel visore foto */
+.isheet .is-box{will-change:transform;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.isheet.drag .is-box,.isheet.drag .is-box *{box-shadow:none!important}
+.isheet.drag .is-bg{will-change:opacity}
+#lbtrack{will-change:transform}
+
+/* 22/11/2026: sostituzioni e varianti nelle ricette */
+.swp{margin:8px 0}.swp .swrow{margin:8px 0 4px}.swp .swrow p{margin:0 0 4px;font-size:14px}.swp .rchips{display:flex;flex-wrap:wrap;gap:6px}
+details.vars{margin:10px 0;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:var(--raised)}
+details.vars summary{display:flex;flex-direction:column;gap:2px;cursor:pointer;list-style:none}details.vars summary span{font-size:13px;color:var(--muted)}
+details.vars ul{margin:8px 0 4px;padding-left:18px}details.vars li{margin:4px 0;font-size:14px}
+.swp .chip{font-size:13px;padding:5px 10px;min-height:0}

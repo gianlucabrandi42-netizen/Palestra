@@ -24,5 +24,8 @@ new_sqlite_classes = ["Timer", "Keys"]
 tag = "v2"
 new_sqlite_classes = ["Vault"]
 
+[ai]
+binding = "AI"
+
 [observability]
 enabled = true

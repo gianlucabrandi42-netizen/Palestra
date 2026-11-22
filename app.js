@@ -454,9 +454,12 @@ function closeSheet(keep) {
     if (lock !== "y") return;
     dy = Math.max(0, t.clientY - y0); const now = Date.now(); vel = (t.clientY - lastY) / Math.max(1, now - lastT); lastY = t.clientY; lastT = now;
     if (e.cancelable) e.preventDefault();
-    box.style.transition = "none"; box.style.transform = `translateY(${dy}px)`; bg.style.transition = "none"; bg.style.opacity = String(Math.max(0.15, 1 - dy / (box.offsetHeight || 600)));
+    // 22/11/2026 ("quando trascino per chiudere lagga"): prima a ogni movimento del dito leggeva l'altezza (ricalcolo della pagina)
+    // e ridisegnava; ora l'altezza si legge una volta e si aggiorna un solo fotogramma alla volta, su un livello a parte
+    if (!sh._raf) { box.style.transition = "none"; bg.style.transition = "none"; sh.classList.add("drag"); sh._h = box.offsetHeight || 600; }
+    cancelAnimationFrame(sh._raf); sh._raf = requestAnimationFrame(() => { box.style.transform = `translate3d(0,${dy}px,0)`; bg.style.opacity = String(Math.max(0.15, 1 - dy / sh._h)); });
   };
-  const end = () => { if (y0 == null) return; const h = box.offsetHeight || 600;
+  const end = () => { if (y0 == null) return; cancelAnimationFrame(sh._raf); sh._raf = 0; sh.classList.remove("drag"); const h = sh._h || box.offsetHeight || 600;
     box.style.transition = ""; bg.style.transition = ""; bg.style.opacity = "";
     const avg = dy / Math.max(1, Date.now() - t0); // scatto: veloce nell'ultimo tratto o in media
     if (lock === "y" && (dy > h * 0.25 || (dy > 40 && Math.max(vel, avg) > 0.5))) closeSheet(); else box.style.transform = "";
@@ -1622,8 +1625,9 @@ function openLB(ex, i) {
   tr.addEventListener("touchstart", e => { if (e.touches.length !== 1 || tr.classList.contains("zoomed")) { y0 = null; return; } y0 = e.touches[0].clientY; x0 = e.touches[0].clientX; dy = 0; lock = null; }, { passive: true });
   tr.addEventListener("touchmove", e => { if (y0 == null || e.touches.length !== 1 || tr.classList.contains("zoomed")) { y0 = null; tr.style.transform = ""; lb.style.background = ""; return; }
     const t = e.touches[0]; if (!lock) { const ax = Math.abs(t.clientX - x0), ay = Math.abs(t.clientY - y0); if (ax < 6 && ay < 6) return; lock = ay > ax ? "y" : "x"; }
-    if (lock !== "y") return; dy = Math.max(0, t.clientY - y0); tr.style.transition = "none"; tr.style.transform = `translateY(${dy}px)`; lb.style.background = `rgba(5,7,9,${Math.max(0.35, 0.97 - dy / 500)})`; }, { passive: true });
-  tr.addEventListener("touchend", () => { if (y0 == null) return; tr.style.transition = ""; if (lock === "y" && dy > 110) closeLB(); tr.style.transform = ""; lb.style.background = ""; y0 = null; });
+    if (lock !== "y") return; dy = Math.max(0, t.clientY - y0); tr.style.transition = "none";
+    cancelAnimationFrame(tr._raf); tr._raf = requestAnimationFrame(() => { tr.style.transform = `translate3d(0,${dy}px,0)`; lb.style.background = `rgba(5,7,9,${Math.max(0.35, 0.97 - dy / 500)})`; }); }, { passive: true });
+  tr.addEventListener("touchend", () => { if (y0 == null) return; cancelAnimationFrame(tr._raf); tr.style.transition = ""; if (lock === "y" && dy > 110) closeLB(); tr.style.transform = ""; lb.style.background = ""; y0 = null; });
 })();
 function closeLB() { $("lbtrack").style.transform = ""; $("lb").style.background = ""; $("lb").hidden = true; document.body.style.overflow = ""; $("lbtrack").classList.remove("zoomed"); }
 $("lbclose").onclick = closeLB;

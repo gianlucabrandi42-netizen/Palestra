@@ -12,8 +12,9 @@
 //
 //   POST /food/photo {code, img, mime, mode, meal?, note?}  (21/11/2026) foto del cibo analizzata da Claude (API Anthropic):
 //        → { piatto, items:[{n, g, cotto, kcal, p, c, f}], note, sicurezza, used }  — serve il codice dell'app (segreto FOTO_CODICE)
-//   POST /food/status {code}  → { ok, configured, today, month }
-// Segreti del Worker (messi dal workflow se presenti tra i segreti del repository): ANTHROPIC_API_KEY, FOTO_CODICE.
+//   POST /food/status {code}  → { ok, configured, needCode, via, today, month }
+// 22/11/2026: di base GRATIS con Cloudflare Workers AI (binding AI in wrangler.toml), nessun codice richiesto.
+// Segreti facoltativi (messi dal workflow se presenti nel repository): GEMINI_API_KEY (gratis, più precisa), ANTHROPIC_API_KEY (a pagamento), FOTO_CODICE (se c'è, l'app deve mandarlo).
 //
 // Le chiavi VAPID si generano da sole al primo uso e restano salvate nel Durable Object "Keys".
 import { DurableObject } from "cloudflare:workers";
@@ -104,7 +105,7 @@ export class Timer extends DurableObject {
 }
 
 // ---------- 📷 analisi delle foto del cibo (21/11/2026) ----------
-const FOTO_MODEL = "claude-sonnet-5-5", FOTO_MAX_DAY = 40, FOTO_MAX_MONTH = 400;
+const FOTO_MODEL = "claude-sonnet-5-5", FOTO_MAX_DAY = 40, FOTO_MAX_MONTH = 1000; // 40 foto ≈ 5.000 neuroni: sempre dentro i 10.000 gratuiti
 const FOTO_PROMPT = {
   piatto: `Sei un nutrizionista esperto di cucina italiana. Guarda la foto e stima cosa c'è nel piatto o nel pasto.
 Per ogni alimento dai il peso in grammi COME SI VEDE (pasta, riso, carne e verdure già cotti se sono cotti) e i valori di quella quantità.
@@ -121,22 +122,57 @@ Nomi semplici in italiano (es. "petto di pollo", "merluzzo", "verdure miste", "p
 const FOTO_FORMAT = `Rispondi SOLO con un oggetto JSON valido, senza testo prima o dopo, in questo formato:
 {"piatto":"nome breve del piatto","items":[{"n":"alimento","g":grammi,"cotto":true,"kcal":0,"p":0,"c":0,"f":0}],"note":"una frase su cosa è incerto","sicurezza":"alta|media|bassa"}
 p, c, f = grammi di proteine, carboidrati, grassi della quantità indicata. Massimo 12 alimenti.`;
+// 22/11/2026: l'utente non vuole pagare → di base l'analisi gira GRATIS su Cloudflare Workers AI (10.000 "neuroni" al giorno
+// inclusi nell'account, niente carta; col tetto di foto al giorno qui sotto non si arriva mai a pagamento). Se un giorno ci sono
+// i segreti, prima Gemini (chiave gratuita di Google AI Studio, più precisa) o Anthropic (a pagamento).
+const CF_MODELS = ["@cf/meta/llama-4-scout-17b-16e-instruct", "@cf/mistralai/mistral-small-3.1-24b-instruct", "@cf/google/gemma-3-12b-it"];
+const provider = env => env.ANTHROPIC_API_KEY ? "claude" : env.GEMINI_API_KEY ? "gemini" : env.AI ? "cloudflare" : "";
+async function askClaude(env, text, b) {
+  const content = b.img ? [{ type: "image", source: { type: "base64", media_type: b.mime, data: b.img } }, { type: "text", text }] : [{ type: "text", text }];
+  const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" }, body: JSON.stringify({ model: FOTO_MODEL, max_tokens: 1200, messages: [{ role: "user", content }] }) });
+  const out = await r.json().catch(() => null);
+  if (!r.ok || !out) throw new Error((out && out.error && out.error.message) || "errore " + r.status);
+  return (out.content || []).filter(x => x.type === "text").map(x => x.text).join("");
+}
+async function askGemini(env, text, b) {
+  const parts = b.img ? [{ inline_data: { mime_type: b.mime, data: b.img } }, { text }] : [{ text }];
+  let last = "";
+  for (const m of ["gemini-flash-latest", "gemini-flash-lite-latest"]) {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(env.GEMINI_API_KEY)}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ contents: [{ parts }], generationConfig: { responseMimeType: "application/json", temperature: 0.2 } }) });
+    const out = await r.json().catch(() => null);
+    if (r.ok && out) return ((((out.candidates || [])[0] || {}).content || {}).parts || []).map(x => x.text || "").join("");
+    last = (out && out.error && out.error.message) || "errore " + r.status; console.log("gemini", m, last);
+  }
+  throw new Error(last);
+}
+async function askCloudflare(env, text, b) {
+  const content = b.img ? [{ type: "text", text }, { type: "image_url", image_url: { url: `data:${b.mime};base64,${b.img}` } }] : text;
+  let last = "";
+  for (const m of CF_MODELS) {
+    try {
+      const out = await env.AI.run(m, { messages: [{ role: "system", content: "Rispondi solo con JSON valido." }, { role: "user", content }], max_tokens: 900, temperature: 0.2 });
+      const t = out && (typeof out.response === "string" ? out.response : out.response ? JSON.stringify(out.response) : ((out.choices || [])[0] || {}).message?.content || "");
+      if (t && t.includes("{")) return t;
+      last = "risposta vuota";
+    } catch (e) { last = String(e && e.message || e); console.log("workers-ai", m, last); }
+  }
+  throw new Error(last);
+}
 async function fotoAnalyze(env, b) {
   const mode = b.mode === "congelatore" ? "congelatore" : b.mode === "testo" ? "testo" : "piatto";
   const text = FOTO_PROMPT[mode] + (b.meal ? `\nPasto: ${clip(b.meal, 40)}.` : "") + (mode === "testo" ? `\nHa scritto: «${clip(b.text, 500)}»` : b.note ? `\nNota di chi mangia: ${clip(b.note, 300)}` : "") + "\n\n" + FOTO_FORMAT;
-  const content = mode === "testo" ? [{ type: "text", text }] : [{ type: "image", source: { type: "base64", media_type: b.mime, data: b.img } }, { type: "text", text }];
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model: FOTO_MODEL, max_tokens: 1200, messages: [{ role: "user", content }] }),
-  });
-  const out = await r.json().catch(() => null);
-  if (!r.ok || !out) return { error: (out && out.error && out.error.message) || "errore " + r.status, status: r.status };
-  const t = (out.content || []).filter(x => x.type === "text").map(x => x.text).join("").trim().replace(/^```(json)?/i, "").replace(/```$/, "").trim();
+  const img = mode === "testo" ? null : b.img, pv = provider(env);
+  let t;
+  try { t = pv === "claude" ? await askClaude(env, text, { ...b, img }) : pv === "gemini" ? await askGemini(env, text, { ...b, img }) : await askCloudflare(env, text, { ...b, img }); }
+  catch (e) { return { error: String(e && e.message || e).slice(0, 200) }; }
+  t = (t || "").trim().replace(/^```(json)?/i, "").replace(/```$/, "").trim();
   let j; try { j = JSON.parse(t.slice(t.indexOf("{"), t.lastIndexOf("}") + 1)); } catch (_) { return { error: "risposta non leggibile", raw: clip(t, 500) }; }
-  const num = x => { const v = Number(x); return isFinite(v) && v >= 0 ? Math.round(v * 10) / 10 : 0; };
-  const items = (Array.isArray(j.items) ? j.items : []).slice(0, 12).map(x => ({ n: clip(x.n, 60), g: num(x.g), cotto: !!x.cotto, kcal: num(x.kcal), p: num(x.p), c: num(x.c), f: num(x.f) })).filter(x => x.n && x.g > 0);
-  return { piatto: clip(j.piatto, 60), items, note: clip(j.note, 300), sicurezza: ["alta", "media", "bassa"].includes(j.sicurezza) ? j.sicurezza : "media", usage: out.usage || null };
+  const num = x => { const v = Number(String(x).replace(",", ".")); return isFinite(v) && v >= 0 ? Math.round(v * 10) / 10 : 0; };
+  // controllo dei conti: se le kcal non tornano con proteine, carboidrati e grassi (4/4/9) si usano quelle calcolate
+  const fix = x => { const at = 4 * x.p + 4 * x.c + 9 * x.f; if (at > 0 && (!x.kcal || Math.abs(x.kcal - at) / at > 0.2)) x.kcal = Math.round(at); return x; };
+  const items = (Array.isArray(j.items) ? j.items : []).slice(0, 12).map(x => fix({ n: clip(x.n || x.nome, 60), g: num(x.g ?? x.grammi), cotto: !!x.cotto, kcal: num(x.kcal), p: num(x.p), c: num(x.c), f: num(x.f) })).filter(x => x.n && x.g > 0);
+  if (!items.length) return { error: "nessun alimento riconosciuto: riprova con più luce o scrivilo" };
+  return { piatto: clip(j.piatto, 60), items, note: clip(j.note, 300), sicurezza: ["alta", "media", "bassa"].includes(j.sicurezza) ? j.sicurezza : "media", via: pv };
 }
 const sameCode = (a, b) => typeof a === "string" && typeof b === "string" && a.length > 5 && a.trim().toUpperCase() === b.trim().toUpperCase();
 
@@ -170,11 +206,11 @@ export default {
         return json({ ok: true, ...(await v.put(b.data, Number(b.at) || Date.now())) });
       }
       if (url.pathname === "/food/status" || url.pathname === "/food/photo") {
-        const configured = !!(env.ANTHROPIC_API_KEY && env.FOTO_CODICE);
-        if (!configured) return json({ ok: false, configured: false, error: "analisi non configurata" }, 503);
-        if (!sameCode(b.code, env.FOTO_CODICE)) return json({ ok: false, configured: true, error: "codice sbagliato" }, 403);
+        const pv = provider(env), needCode = !!env.FOTO_CODICE;
+        if (!pv) return json({ ok: false, configured: false, error: "analisi non configurata" }, 503);
+        if (needCode && !sameCode(b.code, env.FOTO_CODICE)) return json({ ok: false, configured: true, needCode, error: "codice sbagliato" }, 403);
         const now = new Date(), day = now.toISOString().slice(0, 10), month = day.slice(0, 7), ks = env.KEYS.get(env.KEYS.idFromName("foto-uso"));
-        if (url.pathname === "/food/status") return json({ ok: true, configured: true, ...(await ks.useFoto(day, month, FOTO_MAX_DAY, FOTO_MAX_MONTH, true)), maxDay: FOTO_MAX_DAY, maxMonth: FOTO_MAX_MONTH });
+        if (url.pathname === "/food/status") return json({ ok: true, configured: true, needCode, via: pv, ...(await ks.useFoto(day, month, FOTO_MAX_DAY, FOTO_MAX_MONTH, true)), maxDay: FOTO_MAX_DAY, maxMonth: FOTO_MAX_MONTH });
         if (b.mode === "testo") { if (typeof b.text !== "string" || !b.text.trim() || b.text.length > 600) return json({ error: "testo non valido" }, 400); }
         else if (typeof b.img !== "string" || b.img.length < 100 || b.img.length > 7 * 1024 * 1024 || !/^image\/(jpeg|png|webp)$/.test(b.mime || "")) return json({ error: "foto non valida" }, 400);
         const u = await ks.useFoto(day, month, FOTO_MAX_DAY, FOTO_MAX_MONTH);

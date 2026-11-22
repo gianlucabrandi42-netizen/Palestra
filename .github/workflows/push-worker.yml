@@ -51,13 +51,14 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ steps.acc.outputs.id }}
           K: ${{ secrets.ANTHROPIC_API_KEY }}
+          G: ${{ secrets.GEMINI_API_KEY }}
           C: ${{ secrets.FOTO_CODICE }}
         run: |
-          if [ -n "$K" ] && [ -n "$C" ]; then
-            printf '%s' "$K" | npx -y wrangler@4 secret put ANTHROPIC_API_KEY
-            printf '%s' "$C" | npx -y wrangler@4 secret put FOTO_CODICE
-            echo "Segreti dell'analisi foto aggiornati."
-          else echo "ANTHROPIC_API_KEY o FOTO_CODICE mancanti: analisi foto non attiva."; fi
+          # 22/11/2026: senza segreti l'analisi usa Cloudflare Workers AI (gratis). Segreti facoltativi.
+          if [ -n "$G" ]; then printf '%s' "$G" | npx -y wrangler@4 secret put GEMINI_API_KEY; echo "Gemini attivo."; fi
+          if [ -n "$K" ]; then printf '%s' "$K" | npx -y wrangler@4 secret put ANTHROPIC_API_KEY; echo "Anthropic attivo."; fi
+          if [ -n "$C" ]; then printf '%s' "$C" | npx -y wrangler@4 secret put FOTO_CODICE; echo "Codice dell'app richiesto."; fi
+          echo "Analisi foto: Cloudflare Workers AI gratis, salvo segreti sopra."
       - name: Prova del servizio
         if: steps.chk.outputs.ok == '1'
         run: |
@@ -73,4 +74,5 @@ jobs:
           echo "vault put   → $(curl -s -X POST -H 'Content-Type: application/json' -d "{\"id\":\"$VID\",\"data\":\"PROVA-$(date +%s)\",\"at\":1}" $U/vault/put)"
           echo "vault get   → $(curl -s -X POST -H 'Content-Type: application/json' -d "{\"id\":\"$VID\"}" $U/vault/get | jq -c '{at, data}')"
           curl -s -X POST -H 'Content-Type: application/json' -d "{\"id\":\"$VID\"}" $U/vault/get | jq -e '.data | startswith("PROVA-")' > /dev/null
-          echo "analisi foto → $(curl -s -X POST -H 'Content-Type: application/json' -d '{"code":"prova-sbagliata"}' $U/food/status | jq -c '{configured, error}') (configured true = segreti presenti)"
+          echo "analisi foto → $(curl -s -X POST -H 'Content-Type: application/json' -d '{}' $U/food/status | jq -c '{configured, needCode, via, error}')"
+          echo "prova testo  → $(curl -s -m 60 -X POST -H 'Content-Type: application/json' -d '{"mode":"testo","text":"un piatto di pasta al pomodoro con parmigiano"}' $U/food/photo | jq -c '{piatto, via, error, items: [.items[]? | {n, g, kcal}]}')"

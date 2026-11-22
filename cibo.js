@@ -116,7 +116,7 @@ function curQ(d, mid, oid) { const day = fDay(d); if ((day.m || {})[mid] === oid
 
 // ✎ testo scritto a mano → alimenti (20/11/2026: "se scrivo dei messaggi devi estrapolare quello che ho scritto e integrarlo").
 // "2 biscotti e una birra", "80 g di pasta col tonno", "mezza pizza", "un pugno di noci". Quello che non capisce lo dice.
-const FILL = new Set("di da in un uno una al allo ai agli il lo la le gli piatto piatti porzione porzioni pezzo pezzi po ho abbiamo mangiato mangiata mangiati bevuto bevuta preso presa fatto fatta oggi ieri stasera stamattina pranzo cena colazione merenda spuntino della delle dello degli dei del alla alle allo agli poco poca tanto tanta normale piccolo piccola grande anche altro altra per dopo prima casa lavoro bar".split(" "));
+const FILL = new Set("di da in un uno una al allo ai agli il lo la le gli piatto piatti porzione porzioni pezzo pezzi po ho abbiamo mangiato mangiata mangiati bevuto bevuta preso presa fatto fatta oggi ieri stasera stamattina pranzo cena colazione merenda spuntino della delle dello degli dei del alla alle allo agli poco poca tanto tanta normale piccolo piccola grande anche altro altra per dopo prima casa lavoro bar croccante croccanti friggitrice forno padella microonde piastra griglia cottura cotte crudi piccante piccanti arrotolata arrotolato arrotolati ripieno ripiena ripieni salato salati salata salate dolce gradi minuti secondi tostato tostata tostati sbattuti sbattute bagnate bagnati scaldato scaldata riscaldato condito condita fresco fresca freddo fredda caldo calda tiepido light magro magra intero intera".split(" "));
 const NUMW = { po: .6, tot: 5, parecchi: 6, parecchie: 6, diversi: 4, diverse: 4, alcuni: 3, alcune: 3, pochi: 2, poche: 2, tanti: 6, tante: 6, un: 1, uno: 1, una: 1, mezzo: .5, mezza: .5, due: 2, tre: 3, quattro: 4, cinque: 5, sei: 6, sette: 7, otto: 8, nove: 9, dieci: 10, paio: 2, qualche: 3, dozzina: 12 };
 const normT = t => (t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/’/g, "'");
 let KW = null;
@@ -161,6 +161,11 @@ function fuzzyHit(p) {
 function readFood(txt, size, oneEach) {
   const fac = size === "p" ? .7 : size === "t" ? 1.4 : 1, items = [], miss = [];
   // 21/11/2026: i nomi dei piatti con "e"/"con" dentro ("pasta e fagioli", "cacio e pepe", "piadina con…") non si spezzano
+  // 22/11/2026: tolti tempi e temperature ("90 secondi al microonde", "200 gradi"), le alternative ("3 gallette o 1 yogurt",
+  // "(o 8 gallette)": vale la prima) e gli aggettivi di preparazione ("avena frullata" non è un frullato)
+  txt = normT(txt).replace(/\((?:o|oppure)\b[^)]*\)/g, " ").replace(/\b(?:o|oppure|altrimenti)\b[^,;+\n.()]*/g, " ")
+    .replace(/\d+(?:[.,]\d+)?\s*(?:secondi|second|sec|minuti|minuto|min|ore|ora|gradi|°c?)\b/g, " ").replace(/\d+\s*°/g, " ")
+    .replace(/([a-z])\s+(?:frullat|tritat|sbriciolat|grattugiat|sminuzzat)[aeio]\b/g, "$1");
   let src = normT(txt).replace(/(\d+(?:[.,]\d+)?)\s*[-–]\s*(\d+(?:[.,]\d+)?)/g, (m, a, b) => String((parseFloat(a.replace(",", ".")) + parseFloat(b.replace(",", "."))) / 2)).replace(/\bfettin([ae])\b/g, "fett$1").replace(/\bun (tot|po|paio)\b/g, "$1"); for (const k of kwList()) if (/ /.test(k[3]) && src.includes(k[3])) src = src.split(k[3]).join(k[3].replace(/ /g, "_"));
   for (const clause of src.split(/,|;|\+|\n|\.(?!\d)/)) { const c0 = items.length;
   for (let p of clause.split(/\be\b|\bed\b|\bcon\b|\bcol\b|\bpiu\b|\bpoi\b|\banche\b/)) {
@@ -168,16 +173,25 @@ function readFood(txt, size, oneEach) {
     // tutti gli alimenti del pezzo ("pasta al sugo" = pasta + sugo); la quantità scritta vale per il primo
     const hits = []; let rest = p;
     for (;;) { const k = kwList().find(([re]) => re.test(rest)); if (!k) break; const m = rest.match(k[0]), at = m.index + m[1].length;
-      if (!hits.some(h => h[0] === k[1])) hits.push([k[1], at]); const end = rest.slice(at).search(/[^a-z]|$/); rest = rest.slice(0, at) + " ".repeat(Math.max(k[2], end)) + rest.slice(at + Math.max(k[2], end)); }
-    if (!hits.length) { const fz = fuzzyHit(p); if (fz) hits.push([fz, 0]); }
+      const end = rest.slice(at).search(/[^a-z]|$/); if (!hits.some(h => h[0] === k[1])) hits.push([k[1], at, Math.max(k[2], end)]); rest = rest.slice(0, at) + " ".repeat(Math.max(k[2], end)) + rest.slice(at + Math.max(k[2], end)); }
+    if (!hits.length) { const fz = fuzzyHit(p); if (fz) hits.push([fz, 0, 0]); }
     if (!hits.length) { const left = p.replace(/[^a-z ]/g, " ").split(/\s+/).filter(w => w.length > 2 && !FILL.has(w)); if (left.length) miss.push(p.replace(/_/g, " ")); continue; }
     hits.sort((a, b) => a[1] - b[1]); if (oneEach) hits.length = 1;
-    hits.forEach(([hit], hi) => {
-    const o = FO(hit), words = p.split(/[^a-z]+/);  // "_" separa le parole come lo spazio
-    const nm = hi ? null : p.match(/(\d+(?:[.,]\d+)?)/); let n = nm ? parseFloat(nm[1].replace(",", ".")) : null;
-    if (n == null && !hi) { const w = words.find(w => NUMW[w] != null); if (w) n = NUMW[w]; }
-    const um = hi ? null : p.match(/\d\s*(kg|g|gr|grammi|grammo|ml|cl|l|lt|litr[oi])\b/);
-    const own = isW(o) ? [] : o.u.split("|"), cw = hi ? null : words.find(w => !own.includes(w) && ((o.cg && o.cg[w]) || CB.cont[w]));
+    // 22/11/2026: ogni numero va all'alimento giusto. "50 g di bresaola" → bresaola (c'è "di"); "pollo 200 g" → pollo (subito dopo);
+    // altrimenti al primo alimento che segue ("2 fette di pane bagnate in 1 uovo" = 2 fette + 1 uovo). Prima valeva solo per il primo.
+    const asg = hits.map(() => null), toks = [...p.matchAll(/(\d+(?:[.,]\d+)?)|\b([a-z]+)\b/g)].filter(t => t[1] || NUMW[t[2]] != null);
+    for (const t of toks) { const i0 = t.index, e0 = i0 + t[0].length, nx = hits.findIndex(h => h[1] >= e0), pv = (() => { let r = -1; hits.forEach((h, k) => { if (h[1] + h[2] <= i0) r = k; }); return r; })();
+      if (pv < 0 && nx < 0) continue; let to;
+      const between = nx >= 0 ? p.slice(e0, hits[nx][1]) : null;
+      if (nx >= 0 && /^\s*(?:(?:kg|g|gr|grammi|grammo|ml|cl|l|lt|litri|litro)\s*)?(?:[a-z]+\s+){0,2}(?:di|d)\s*$/.test(between)) to = nx;
+      else if (pv >= 0 && /^\s*$/.test(p.slice(hits[pv][1] + hits[pv][2], i0)) && !/_con$|_col$/.test(p.slice(hits[pv][1], hits[pv][1] + hits[pv][2]))) to = pv;
+      else to = nx >= 0 ? nx : pv;
+      if (asg[to] == null) asg[to] = t; }
+    hits.forEach(([hit, at], hi) => {
+    const o = FO(hit), t = asg[hi], segA = t ? p.slice(t.index, t.index + 40) : p, words = segA.split(/[^a-z]+/);  // "_" separa le parole come lo spazio
+    let n = t ? (t[1] ? parseFloat(t[1].replace(",", ".")) : NUMW[t[2]]) : null;
+    const um = t && t[1] ? p.slice(t.index).match(/^\d+(?:[.,]\d+)?\s*(kg|g|gr|grammi|grammo|ml|cl|l|lt|litr[oi])\b/) : null;
+    const cwin = t ? p.slice(t.index + t[0].length, Math.max(at, t.index + t[0].length + 1)).split(/[^a-z]+/) : words, own = isW(o) ? [] : o.u.split("|"), cw = (t ? p.slice(t.index + t[0].length, t.index + t[0].length + 25).split(/[^a-z]+/).slice(0, 3) : words).concat(cwin).find(w => w && !own.includes(w) && ((o.cg && o.cg[w]) || CB.cont[w]));
     let g;
     // "80 g di pasta al tonno": i grammi sotto i 150 nei piatti di pasta sono della pasta cruda (piatto ≈ 3,3 volte)
     if (um && PASTA_DISH.has(hit)) { const u = um[1], gg = n * (u === "kg" ? 1000 : 1); if (gg < 150) { items.push({ f: hit, q: Math.round(gg * 3.3 / o.g * 100) / 100, t: p }); return; } }
@@ -190,6 +204,9 @@ function readFood(txt, size, oneEach) {
     items.push({ f: hit, q: isW(o) ? Math.round(g) : Math.round(g / o.g * 100) / 100, t: p });
     });
   }
+  // stesso alimento due volte nella stessa frase ("shaker con 30 g di proteine"): vale quello con la quantità scritta
+  for (let i = items.length - 1; i >= c0; i--) { const dup = items.some((x, k) => k >= c0 && k !== i && x.f === items[i].f && /\d/.test(x.t));
+    if (dup && !/\d/.test(items[i].t)) items.splice(i, 1); }
   dishFix(items, c0);
   }
   // i prodotti scansionati prendono il posto di quelli generici anche qui
@@ -483,7 +500,7 @@ function xParse(f) {
   let miss = f.cmiss || [];
   if (!f.ed) { const r = readFood(f.t || "", f.s); f.it = r.items.map(i => [i.f, i.q]); miss = r.miss; }
   const t = valOfQ(f.it);
-  return `${f.it && f.it.length ? `<p class="plab">Ho capito · se è diverso tocca − / + o il numero</p><div class="xrows">${rowsHTML(f.it)}</div><p class="qtot"><b>~${fmt(t[0])} kcal</b><span>proteine ${t[1]} g · carboidrati ${t[2]} g · grassi ${t[3]} g</span></p>` : ""}${f.cl ? `<p class="note">Claude aveva stimato ~${f.cl.k} kcal in tutto.</p>` : ""}${miss.length ? `<p class="xpno">Non ho capito: «${esc(miss.join("», «"))}». ${aiOn() ? "" : ` Scrivilo più semplice (es. "80 g di pasta", "2 biscotti") o chiedi a Claude con 📷.`}</p>${aiOn() ? `<button class="btn sm primary" id="xAi">✨ Fallo capire a Claude</button>` : ""}${stimaBox()}` : ""}${f.ed && (f.t || "").trim() ? `<button class="lnk" id="xReread">↺ Rileggi dal testo</button>` : ""}`;
+  return `${f.it && f.it.length ? `<p class="plab">Ho capito · se è diverso tocca − / + o il numero</p><div class="xrows">${rowsHTML(f.it)}</div><p class="qtot"><b>~${fmt(t[0])} kcal</b><span>proteine ${t[1]} g · carboidrati ${t[2]} g · grassi ${t[3]} g</span></p>` : ""}${f.cl ? `<p class="note">Claude aveva stimato ~${f.cl.k} kcal in tutto.</p>` : ""}${miss.length ? `<p class="xpno">Non ho capito: «${esc(miss.join("», «"))}». ${aiOn() ? "" : ` Scrivilo più semplice (es. "80 g di pasta", "2 biscotti") o chiedi a Claude con 📷.`}</p>${aiOn() ? `<button class="btn sm primary" id="xAi">✨ Fallo capire all'IA</button>` : ""}${stimaBox()}` : ""}${f.ed && (f.t || "").trim() ? `<button class="lnk" id="xReread">↺ Rileggi dal testo</button>` : ""}`;
 }
 function xForm() {
   const f = CS.xform, d = cDay(), sv = f.meal && f.meal !== "fuori" ? (fDay(d).m || {})[f.meal] : null, so = sv && sv !== "skip" ? optOf(mealDef(f.meal), sv, d) : null;
@@ -537,11 +554,11 @@ function bindOggi(box, d) {
     const xp = () => { const z = box.querySelector(".xparse"); if (!z) return; z.innerHTML = xParse(f); bindRows(z, f.it || [], () => { f.ed = true; xp(); });
       const rr = $("xReread"); if (rr) rr.onclick = () => { f.ed = false; f.cl = null; f.cmiss = null; xp(); };
       stimaBind(z, row => { f.it = [...(f.it || []), row]; f.ed = true; f.cmiss = []; xp(); }, xp);
-      const ai = $("xAi"); if (ai) ai.onclick = async () => { ai.disabled = true; ai.textContent = "Claude sta leggendo…";
+      const ai = $("xAi"); if (ai) ai.onclick = async () => { ai.disabled = true; ai.textContent = "Sto leggendo…";
         try { const j = await aiPost("/food/photo", { mode: "testo", text: (f.t || "").trim(), meal: (SHOTM().find(([k]) => k === f.meal) || [0, ""])[1] }); const r = aiRows(j.items);
           if (!r.L.length) { toast("Neanche Claude ha capito: scrivilo diversamente"); ai.disabled = false; ai.textContent = "✨ Riprova"; return; }
           f.it = r.L; f.ed = true; f.cmiss = r.miss; if (j.piatto && !(f.t || "").trim()) f.t = j.piatto; xp(); toast(`✓ ${j.piatto || "Capito"} · ~${valOfQ(f.it)[0]} kcal`); }
-        catch (e) { toast("⚠️ " + (e.message || e)); ai.disabled = false; ai.textContent = "✨ Fallo capire a Claude"; } }; };
+        catch (e) { toast("⚠️ " + (e.message || e)); ai.disabled = false; ai.textContent = "✨ Fallo capire all'IA"; } }; };
     xp();
     t.oninput = () => { f.t = t.value; if (!f.ed) xp(); };
     const xl = $("xLib"); if (xl) xl.onclick = () => { f.lib = !f.lib; xl.setAttribute("aria-pressed", f.lib); }; k.oninput = () => f.k = k.value.replace(/\D/g, "");
@@ -787,6 +804,7 @@ function qBox() {
   const t = valOfQ(e.L), base = baseQ(e.mid, e.oid, e.d), on = (fDay(e.d).m || {})[e.mid] === e.oid;
   return `<div class="qbox"><h3>Quanto ne hai mangiato${e.mid ? ` · ${esc(mealDef(e.mid).name.toLowerCase())}` : ""}</h3><p class="note">Le quantità sono quelle del piano. Se è diverso tocca − o +, oppure tocca il numero e scrivi i grammi: le kcal si ricalcolano${on ? " e si salvano subito" : ""}.</p>
     ${rowsHTML(e.L, base)}
+    ${swapBox(e.L)}
     <div class="qadd">${CS.qAdd ? `<input id="qAddI" placeholder="Cerca (es. parmigiano, noci, pane)" autocomplete="off" value="${esc(CS.qAddT || "")}"><div class="qhits">${hitBtns(CS.qAddT)}</div>` : `<button class="lnk" id="qAddB">+ Aggiungi un ingrediente</button>`}${!sameQ(e.L, base) ? `<button class="lnk" id="qReset">↺ Come da piano</button>` : ""}</div>
     ${scaleGuide()}<p class="qbrand">🏷 Tocca «marca?» accanto a un ingrediente confezionato: la marca resta per le prossime volte. Per i valori esatti <button class="lnk" data-qscan="1">scansiona la confezione</button>.</p>
     <p class="qtot${base && t[0] > valOfQ(base)[0] * 1.1 ? (t[0] > valOfQ(base)[0] * 1.25 ? " hi2" : " hi") : ""}"><b>~${fmt(t[0])} kcal${base && t[0] > valOfQ(base)[0] * 1.1 ? ` <i class="ovr">+${t[0] - valOfQ(base)[0]} sul piano</i>` : ""}</b><span>proteine ${t[1]} g · carboidrati ${t[2]} g · grassi ${t[3]} g</span></p></div>`;
@@ -806,7 +824,30 @@ function qBind(sh) {
   const ai = $("qAddI"); if (ai) ai.oninput = () => { CS.qAddT = ai.value; box.querySelector(".qhits").innerHTML = hitBtns(ai.value); bindAdd(); box.querySelectorAll(".qhits [data-qscan]").forEach(b => b.onclick = () => scanOpen(f => { if (CS.qe === e) add(f); })); };
   bindAdd();
   const rs = $("qReset"); if (rs) rs.onclick = () => { e.L = baseQ(e.mid, e.oid, e.d).map(r => [...r]); qPersist(); redraw(); };
+  const st = box.querySelector("[data-swt]"); if (st) st.onclick = () => { CS.qSw = !CS.qSw; redraw(); };
+  box.querySelectorAll("[data-sw]").forEach(b => b.onclick = () => { const [i, f, q] = b.dataset.sw.split("|"), old = e.L[+i]; if (!old) return;
+    e.L[+i] = [f, +q]; qPersist(); redraw(); toast(`🔄 ${FO(old[0]).n} → ${FO(f).n}`); });
 }
+// 🔄 SOSTITUZIONI EQUIVALENTI (22/11/2026): pollo 200 g = merluzzo ~270 g (stesse proteine), riso 80 g = pane ~110 g (stesse kcal),
+// verdure stessi grammi. I gruppi stanno in CB.swaps (nutrizione.js).
+function swapAlts(f, q) {
+  const ids0 = g => Array.isArray(g[2]) ? g[2] : Object.keys(g[2]);
+  const grp = (CB.swaps || []).find(g => ids0(g).includes(f)); if (!grp || !q) return [];
+  const mode = grp[0], ids = ids0(grp), o = FO(f), G = gramsOf(f, q), ref = mode === "p" ? 1 : mode === "k" ? 0 : -1;
+  return ids.filter(x => x !== f && CB.foods[x]).map(x => { const ox = FO(x); let g2 = G;
+    if (mode === "t") g2 = G * grp[2][x] / grp[2][f];
+    else if (ref >= 0) { const a = o.v[ref], b = ox.v[ref]; if (!a || !b) return null; g2 = G * a / b; }
+    let qq; if (isW(ox)) qq = Math.round(g2 / (g2 > 100 ? 10 : 5)) * (g2 > 100 ? 10 : 5); else { const st = ox.s && ox.s < 1 ? ox.s : 0.5; qq = Math.max(st, Math.round(g2 / ox.g / st) * st); }
+    return qq > 0 ? [x, qq] : null; }).filter(Boolean).slice(0, 7);
+}
+function swapBox(L) {
+  const rows = L.map(([f, q], i) => [i, f, q, swapAlts(f, q)]).filter(r => r[3].length); if (!rows.length) return "";
+  return `<div class="swp"><button class="lnk" data-swt="1">🔄 ${CS.qSw ? "Chiudi le sostituzioni" : "Sostituisci un ingrediente (grammi già calcolati)"}</button>
+    ${CS.qSw ? rows.map(([i, f, q, al]) => `<div class="swrow"><p><b>${esc(qText(f, q))}</b> → </p><div class="rchips">${al.map(([x, qq]) => `<button class="chip" data-sw="${i}|${x}|${qq}">${esc(qText(x, qq))}</button>`).join("")}</div></div>`).join("") + `<p class="note">Carne e pesce: tabella scambi del PT (col macinato e l'orata metà olio, col salmone niente olio) · affettati e latticini: stesse proteine · pane, pasta, riso: stesse kcal · verdure: stessi grammi.</p>` : ""}</div>`;
+}
+// 🍳 varianti di gusto per ricetta (CB.vars)
+function varBox(id) { const v = (CB.vars || {})[id]; if (!v || !v.length) return "";
+  return `<details class="vars"><summary><b>✨ Varianti</b><span>${v.length} modi per cambiare gusto con la stessa ricetta</span></summary><ul>${v.map(x => `<li>${esc(x)}</li>`).join("")}</ul><p class="note">Per cambiare un ingrediente con i grammi giusti: «🔄 Sostituisci un ingrediente» nel riquadro delle quantità.</p></details>`; }
 // 🧊 ristorante: scegli la proteina, completa il piatto, porta a casa per dopo
 const RPROT = [["polloc", "Pollo alla griglia"], ["carnec", "Carne alla griglia"], ["pescec", "Pesce cotto"], ["fritto", "Impanato o fritto"]];
 function ristBox(oid) {
@@ -898,13 +939,13 @@ function estBind(sh, mid, oid) {
     if (!t) { pv.innerHTML = ""; use.hidden = true; return; }
     const r = estRead(t);
     pv.innerHTML = (r.items.length ? `<p class="xpok">Ho capito: ${r.items.map(([f, q]) => `<b>${esc(qText(f, q))}</b>`).join(" · ")} → <b>~${valOfQ(r.items)[0]} kcal</b></p>` : "")
-      + (r.miss.length ? `<p class="xpno">Non ho capito: «${esc(r.miss.join("», «"))}».${aiOn() ? "" : " Prova con parole più semplici o con la foto a Claude."}</p>${aiOn() ? `<button class="btn sm primary" id="oAi">✨ Fallo capire a Claude</button>` : ""}` : "");
-    const oa = $("oAi"); if (oa) oa.onclick = async () => { oa.disabled = true; oa.textContent = "Claude sta leggendo…";
+      + (r.miss.length ? `<p class="xpno">Non ho capito: «${esc(r.miss.join("», «"))}».${aiOn() ? "" : " Prova con parole più semplici o con la foto a Claude."}</p>${aiOn() ? `<button class="btn sm primary" id="oAi">✨ Fallo capire all'IA</button>` : ""}` : "");
+    const oa = $("oAi"); if (oa) oa.onclick = async () => { oa.disabled = true; oa.textContent = "Sto leggendo…";
       try { const j = await aiPost("/food/photo", { mode: "testo", text: ta.value.trim(), meal: oid === "mensa" ? "pranzo in mensa" : "piatto del ristorante" }); const rr = aiRows(j.items); if (!rr.L.length) throw new Error("non ho riconosciuto alimenti");
         const oil = e.L.find(([f]) => f === "olio"), keep = !rr.L.some(([f]) => f === "olio");
         e.L = [...rr.L, ...(keep && oil ? [[...oil]] : [])]; const on = (fDay(e.d).m || {})[mid] === oid; if (on) qPersist(); else logMeal(e.d, mid, oid, false, e.L);
         renderCibo(); openOpt(mid, oid, true); toast(`✓ Nel piatto: ~${valOfQ(e.L)[0]} kcal`); }
-      catch (err) { toast("⚠️ " + (err.message || err)); oa.disabled = false; oa.textContent = "✨ Fallo capire a Claude"; } };
+      catch (err) { toast("⚠️ " + (err.message || err)); oa.disabled = false; oa.textContent = "✨ Fallo capire all'IA"; } };
     use.hidden = !r.items.length; };
   let tmo; ta.oninput = () => { clearTimeout(tmo); tmo = setTimeout(show, 250); };
   show();
@@ -1158,7 +1199,7 @@ function openRecipe(id, ctx, keep) {
     <div class="rlog"><button class="btn primary cookb" id="cookGo">▶ Cucina passo passo</button></div>
     ${all.length > 1 ? `<div class="qfor"><span>È per</span>${all.map(m => `<button class="chip" data-qf="${m}" aria-pressed="${m === qm}">${esc(mealDef(m).name)}</button>`).join("")}</div>` : ""}${qBox()}
     ${logs.length ? `<div class="rlog">${logs.map(m => isOn(m) ? `<button class="btn" data-rl="${m}" data-un="1">Togli: non l'ho mangiato ${MEALN[m]}</button>` : `<button class="btn${ctx ? " primary" : ""}" data-rl="${m}">✓ Fatto: mangiato ${MEALN[m]}</button>`).join("")}</div><p class="note rlday">${d === todayISO() ? "Si segna su oggi" : "Si segna sul " + fmtDate(d)}</p>` : ""}
-    ${condBox(id)}
+    ${condBox(id)}${varBox(id)}
     ${r.porta ? `<p class="rgo ${r.go}">${r.go === "p" ? "🎒 Si porta al lavoro, niente attrezzi" : r.go === "m" ? "🎒 Al lavoro col microonde" : "🏠 Solo a casa"}<small>${esc(r.porta)}</small></p>` : ""}
     <h3>Ingredienti${r.main && !r.one ? " (per 2 pasti)" : ""}</h3><ul class="ringr">${r.ingr.map(i => `<li>${esc(i)}</li>`).join("")}</ul>
     <h3>Passo passo</h3><ol class="rsteps">${r.steps.map((st, i) => `<li>${toolSVG(st.tool, st.p, r.id + i)}<div><small>${i + 1} · ${esc(TOOLN[st.tool] || st.tool)}</small><p>${esc(st.t)}</p>
@@ -1470,14 +1511,20 @@ function openFrzAdd(keep) {
 const AIK = "palestra-ai";
 const aiCfg = () => { try { return JSON.parse(localStorage.getItem(AIK) || "{}"); } catch (_) { return {}; } };
 const aiSet = o => { try { localStorage.setItem(AIK, JSON.stringify({ ...aiCfg(), ...o })); } catch (_) {} };
-const aiOn = () => !!aiCfg().code;
+// 22/11/2026: di base l'analisi è GRATIS (Cloudflare Workers AI) e senza codice: l'app lo scopre chiedendo /food/status
+const aiOn = () => { const c = aiCfg(); return !!c.code || (!!c.free && c.ok !== false); };
+async function aiProbe(force) { const c = aiCfg(); if (!force && c.chk && Date.now() - c.chk < 6 * 3600e3) return;
+  try { const j = await aiPost("/food/status", {}); aiSet({ chk: Date.now(), free: !j.needCode, ok: true, via: j.via, today: j.today, month: j.month }); }
+  catch (e) { aiSet({ chk: Date.now(), ok: e.status === 403 ? false : c.ok, free: e.status === 403 ? false : c.free }); }
+  try { if (typeof renderCibo === "function" && S.view === "cibo") renderCibo(); } catch (_) {} }
+setTimeout(() => aiProbe(), 1500);
 async function aiPost(path, body) {
   const r = await fetch(PUSH_URL + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: aiCfg().code, ...body }) });
   const j = await r.json().catch(() => ({ error: "risposta non valida" }));
   if (!r.ok) { const e = new Error(r.status === 403 ? "codice dell'app sbagliato (Impostazioni → Foto del cibo)" : r.status === 503 ? "analisi non ancora attiva sul servizio" : j.error || "errore " + r.status); e.status = r.status; throw e; }
   return j;
 }
-function shrinkPic(file, max = 1280, q = .8) {
+function shrinkPic(file, max = 1024, q = .8) {
   return new Promise((ok, ko) => { const img = new Image(), url = URL.createObjectURL(file);
     img.onload = () => { const k = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement("canvas"); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
       c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); const data = c.toDataURL("image/jpeg", q); ok({ data, b64: data.split(",")[1], mime: "image/jpeg" }); };
@@ -1513,15 +1560,16 @@ async function aiRun() {
 }
 async function openShot(file, o = {}) {
   let p; try { p = await shrinkPic(file); } catch (e) { return toast("Foto non leggibile"); }
+  if (!aiOn()) await aiProbe(true); // il servizio gratuito potrebbe essere appena diventato attivo
   const d = o.d || cDay(); CS.shot = { d, meal: o.meal || (d === todayISO() ? mealNow() : "pr"), note: o.note || "", data: p.data, b64: p.b64, mime: p.mime, file, st: aiOn() ? "run" : "off", L: [], rep: true };
   const sh = $("fsheet"); drawShot(); if (sh.hidden) showSheet(sh); if (aiOn()) aiRun();
 }
 function drawShot() {
   const S = CS.shot, sh = $("fsheet"); if (!S) return; const day = fDay(S.d), cv = S.meal !== "fuori" && (day.m || {})[S.meal], cur = cv && cv !== "skip" ? cv : null, co = cur && optOf(mealDef(S.meal), cur, S.d), curT = co ? co.t : cur ? "quello segnato" : "";
   const tot = valOfQ(S.L), mn = (SHOTM().find(([k]) => k === S.meal) || [0, ""])[1];
-  sh.querySelector(".is-h").innerHTML = `<b>📷 Il tuo piatto</b><span class="rmeta">${S.st === "off" ? "analisi automatica da attivare" : "analisi di Claude · stima ±20%"}</span>`;
+  sh.querySelector(".is-h").innerHTML = `<b>📷 Il tuo piatto</b><span class="rmeta">${S.st === "off" ? "analisi automatica da attivare" : "analisi automatica · stima ±20%"}</span>`;
   sh.querySelector(".is-c").innerHTML = `<div class="aishot"><img class="shotimg" src="${S.data}" alt="">
-    ${S.st === "run" ? `<div class="shotrun"><i class="spin"></i><b>Claude sta guardando il piatto…</b><small>di solito 5-10 secondi</small></div>` : ""}
+    ${S.st === "run" ? `<div class="shotrun"><i class="spin"></i><b>Sto guardando il piatto…</b><small>di solito 5-10 secondi</small></div>` : ""}
     ${S.st === "off" ? `<div class="card shotoff"><b>L'analisi automatica non è ancora attiva su questo telefono.</b><p class="note">Intanto fai così: <b>1.</b> «Manda a Claude» (foto + richiesta già scritta) · <b>2.</b> copia la sua risposta · <b>3.</b> incollala qui sotto e segna il pasto.</p><div class="row"><button class="btn primary" id="shChat">1 · Manda a Claude</button><button class="btn" id="shSet">Attiva l'analisi automatica</button></div><textarea id="shPaste" rows="3" placeholder="3 · Incolla qui la risposta di Claude">${esc(S.paste || "")}</textarea>${S.pasteErr ? `<p class="xpno">${esc(S.pasteErr)}</p>` : ""}</div>` : ""}
     ${S.st === "err" ? `<div class="card shotoff"><b>⚠️ ${esc(S.err)}</b><div class="row"><button class="btn primary" id="shRetry">↻ Riprova</button><button class="btn" id="shChat">Manda a Claude in chat</button></div></div>` : ""}
     ${S.st === "ok" ? `<label class="plab">Nome del piatto<input id="shN" value="${esc(S.name)}" autocomplete="off"></label>
@@ -1574,7 +1622,7 @@ function shotBind() { const i = $("shotIn"); if (i) i.onchange = e => { const f 
 // stessa analisi per mensa, ristorante e sala colazione: le righe del piatto si sostituiscono con quelle stimate
 async function aiInto(file, e, mid, oid) {
   let p; try { p = await shrinkPic(file); } catch (_) { return toast("Foto non leggibile"); }
-  toast("📷 Claude sta guardando il piatto…");
+  toast("📷 Sto guardando il piatto…");
   try { const j = await aiPost("/food/photo", { img: p.b64, mime: p.mime, mode: "piatto", meal: oid === "mensa" ? "pranzo in mensa" : oid === "sala" ? "pranzo della sala colazione" : "piatto del ristorante" });
     const r = aiRows(j.items); if (!r.L.length) return toast("Non ho riconosciuto alimenti: riprova più vicino");
     if (CS.qe !== e) return; e.L = r.L; qPersist(); openOpt(mid, oid, true); toast(`✓ ${j.piatto || "Piatto"} · ~${valOfQ(e.L)[0]} kcal${j.note ? " · " + j.note : ""}`);
@@ -1583,21 +1631,20 @@ async function aiInto(file, e, mid, oid) {
 // congelatore: la foto diventa l'elenco
 async function aiFreezer(file, add, done) {
   let p; try { p = await shrinkPic(file); } catch (_) { return toast("Foto non leggibile"); }
-  toast("📷 Claude sta guardando…");
+  toast("📷 Sto guardando la foto…");
   try { const j = await aiPost("/food/photo", { img: p.b64, mime: p.mime, mode: "congelatore" }); const r = aiRows(j.items);
     for (const [f, q] of r.L) add(f, q); done(); toast(r.L.length ? `✓ ${r.L.length} cose riconosciute: controlla le quantità` : "Non ho riconosciuto alimenti");
   } catch (err) { toast("⚠️ " + (err.message || err)); }
 }
 // Impostazioni → Foto del cibo
 function aiSettings() {
-  const box = $("aiSet"); if (!box) return; const c = aiCfg();
-  box.innerHTML = `<p>Fotografi il piatto e <b>Claude</b> stima ingredienti, grammi e kcal. Costa circa <b>1 centesimo a foto</b>, pagato col credito Anthropic.${c.month != null ? ` Questo mese: <b>${c.month}</b> foto.` : ""}</p>
-    <label class="plab">Codice dell'app<input id="aiCode" value="${esc(c.code || "")}" placeholder="FOTO-XXXX-XXXX-XXXX" autocomplete="off" autocapitalize="characters"></label>
-    <div class="row"><button class="btn primary" id="aiSave">Salva e prova</button>${c.code ? `<button class="btn" id="aiOff">Disattiva</button>` : ""}</div><p class="note" id="aiMsg">${c.code ? (c.ok ? "● Attivo" : "") : "Il codice resta solo su questo telefono (non va nel backup)."}</p>`;
-  $("aiSave").onclick = async () => { const code = $("aiCode").value.trim().toUpperCase(); if (!code) return; aiSet({ code }); const m = $("aiMsg"); m.textContent = "Provo il collegamento…";
-    try { const j = await aiPost("/food/status", {}); aiSet({ ok: true, today: j.today, month: j.month }); m.innerHTML = `<b class="okc">● Attivo</b> · oggi ${j.today} foto, questo mese ${j.month} (limite ${j.maxDay} al giorno)`; renderCibo(); }
-    catch (e) { aiSet({ ok: false }); m.innerHTML = `<span class="warnc">${esc(e.message || e)}</span>`; } };
-  const off = $("aiOff"); if (off) off.onclick = () => { try { localStorage.removeItem(AIK); } catch (_) {} aiSettings(); renderCibo(); };
+  const box = $("aiSet"); if (!box) return; const c = aiCfg(), via = { cloudflare: "Cloudflare Workers AI (gratis)", gemini: "Google Gemini (chiave gratuita)", claude: "Claude (a pagamento)" }[c.via] || "";
+  box.innerHTML = `<p>Fotografi il piatto e l'IA stima ingredienti, grammi e kcal; poi puoi correggere tutto. <b>Gratis</b>: gira sul tuo account Cloudflare (quello delle notifiche), massimo 40 foto al giorno.</p>
+    <p class="note" id="aiMsg">${aiOn() ? `<b class="okc">● Attivo</b>${via ? " · " + via : ""}${c.today != null ? ` · oggi ${c.today} foto` : ""}` : c.ok === false && !c.free ? "Serve il codice dell'app." : "Controllo il servizio…"}</p>
+    ${c.free ? "" : `<label class="plab">Codice dell'app (solo se richiesto)<input id="aiCode" value="${esc(c.code || "")}" placeholder="FOTO-XXXX-XXXX-XXXX" autocomplete="off" autocapitalize="characters"></label>`}
+    <div class="row"><button class="btn primary" id="aiSave">${c.free ? "Ricontrolla" : "Salva e prova"}</button></div>`;
+  $("aiSave").onclick = async () => { const ce = $("aiCode"), code = ce ? ce.value.trim().toUpperCase() : ""; if (ce) aiSet({ code }); $("aiMsg").textContent = "Provo il collegamento…"; await aiProbe(true); aiSettings(); };
+  if (!c.chk) aiProbe().then(aiSettings);
 }
 
 
@@ -1626,7 +1673,7 @@ function libBox(d, mid) {
   return `<div class="libbox"><h3>🎉 Cosa hai mangiato? <small>facoltativo · fuori conto</small></h3>
     <textarea id="lbT" rows="2" placeholder="es. 6 rustici e 2 pizzette al buffet">${esc(f.t || "")}</textarea>
     <div id="lbP">${f.it && f.it.length ? `<div class="qbox">${rowsHTML(f.it)}<p class="qtot"><b>~${fmt(t[0])} kcal</b> · fuori dal conto del giorno</p></div>` : ""}
-    ${miss.length ? `<p class="xpno">Non ho capito: «${esc(miss.join("», «"))}»</p>${aiOn() ? `<button class="btn sm primary" id="lbAi">✨ Fallo capire a Claude</button>` : ""}` : ""}
+    ${miss.length ? `<p class="xpno">Non ho capito: «${esc(miss.join("», «"))}»</p>${aiOn() ? `<button class="btn sm primary" id="lbAi">✨ Fallo capire all'IA</button>` : ""}` : ""}
     ${stimaBox()}</div>
     <div class="row"><label class="btn sm" for="lbPic">📷 ${aiOn() ? "Foto: stima Claude" : "Foto a Claude"}</label><input type="file" id="lbPic" accept="image/*" capture="environment" hidden>${f.ed && (f.t || "").trim() ? `<button class="lnk" id="lbRe">↺ Rileggi dal testo</button>` : ""}</div>
     <p class="note">Fa parte del piano (2 a settimana): le kcal le vedi ma non entrano nel conto e non si compensano.</p></div>`;
@@ -1639,12 +1686,12 @@ function libBind(sh, mid, oid) {
   const q = box.querySelector(".qbox"); if (q) bindRows(q, f.it, () => { f.ed = true; f.it = f.it.filter(([, n]) => n > 0); redraw(); });
   stimaBind(box, row => { f.it = [...(f.it || []), row]; f.ed = true; f.miss = []; redraw(); }, redraw);
   const re = $("lbRe"); if (re) re.onclick = () => { f.ed = false; f.miss = null; redraw(); };
-  const ai = $("lbAi"); if (ai) ai.onclick = async () => { ai.disabled = true; ai.textContent = "Claude sta leggendo…";
+  const ai = $("lbAi"); if (ai) ai.onclick = async () => { ai.disabled = true; ai.textContent = "Sto leggendo…";
     try { const j = await aiPost("/food/photo", { mode: "testo", text: (f.t || "").trim(), meal: "pasto libero" }); const r = aiRows(j.items); if (!r.L.length) throw new Error("non ho riconosciuto alimenti");
-      f.it = r.L; f.ed = true; f.miss = r.miss; redraw(); toast(`✓ ~${valOfQ(f.it)[0]} kcal (fuori conto)`); } catch (e) { toast("⚠️ " + (e.message || e)); ai.disabled = false; ai.textContent = "✨ Fallo capire a Claude"; } };
+      f.it = r.L; f.ed = true; f.miss = r.miss; redraw(); toast(`✓ ~${valOfQ(f.it)[0]} kcal (fuori conto)`); } catch (e) { toast("⚠️ " + (e.message || e)); ai.disabled = false; ai.textContent = "✨ Fallo capire all'IA"; } };
   $("lbPic").onchange = async e => { const file = e.target.files[0]; e.target.value = ""; if (!file) return;
     if (!aiOn()) return askClaude(file, (f.t || "").trim(), "", "");
-    let p; try { p = await shrinkPic(file); } catch (_) { return toast("Foto non leggibile"); } toast("📷 Claude sta guardando…");
+    let p; try { p = await shrinkPic(file); } catch (_) { return toast("Foto non leggibile"); } toast("📷 Sto guardando la foto…");
     try { const j = await aiPost("/food/photo", { img: p.b64, mime: p.mime, mode: "piatto", meal: "pasto libero", note: (f.t || "").trim() }); const r = aiRows(j.items); if (!r.L.length) throw new Error("non ho riconosciuto alimenti");
       f.it = r.L; f.ed = true; f.miss = r.miss; if (!(f.t || "").trim()) f.t = j.piatto || ""; redraw(); toast(`✓ ${j.piatto || "Fatto"} · ~${valOfQ(f.it)[0]} kcal (fuori conto)`); } catch (err) { toast("⚠️ " + (err.message || err)); } };
 }

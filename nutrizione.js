@@ -43,7 +43,7 @@ window.CIBO = {
       { id: "involtini", t: "Involtini di bresaola", d: "60 g di bresaola + 2 cucchiai di fiocchi di latte + rucola · 1 galletta", p: ["bresaola", "fiocchi", "rucola"], r: "involtini", go: "p", porta: "Preparali la sera prima, in frigo; poi in borsa termica." },
       { id: "uovaripiene", t: "Uova ripiene", d: "2 uova sode ripiene di tuorlo, yogurt e paprika", p: ["uova"], r: "uovaripiene", go: "p", porta: "Preparale la sera prima, contenitore in borsa termica." },
       { id: "bgn", t: "Bresaola, grana e noci", d: "40 g di bresaola + 15 g di grana a scaglie + 2 noci", p: ["bresaola", "noci"], go: "p", easy: 1, porta: "Tutto in un contenitorino, in borsa termica. Niente da preparare." },
-      { id: "muf", t: "Muffin di albumi", d: "3 muffin salati di albumi, spinaci e grana (si fanno in 6 in una volta)", p: ["frittata", "spinaci"], r: "muffinalbumi", go: "p", easy: 1, porta: "Li fai la domenica: in frigo durano 4 giorni, si mangiano freddi." },
+      { id: "muf", t: "Muffin di albumi", d: "3 muffin salati di albumi (fatti la domenica)", p: ["frittata", "spinaci"], r: "muffinalbumi", go: "p", easy: 1, porta: "Li fai la domenica: in frigo durano 4 giorni, si mangiano freddi." },
       { id: "ceci", t: "Ceci croccanti piccanti", d: "120 g di ceci lessati, croccanti in friggitrice con paprika e peperoncino", p: ["ceci"], r: "cecicroccanti", go: "p", easy: 1, porta: "Fatti in anticipo in un barattolo chiuso: restano croccanti 2-3 giorni." },
       { id: "eda", t: "Edamame sale e peperoncino", d: "120 g di edamame surgelati, 3 minuti al microonde, sale grosso e peperoncino", p: ["piselli"], r: "edamame", go: "m", porta: "Al lavoro col microonde: la busta surgelata in borsa termica, 3 minuti e sono pronti." },
       { id: "rot", t: "Rotolini di tacchino", d: "6 fette di fesa di tacchino arrotolate con 20 g di formaggio spalmabile + 1 galletta", p: ["bresaola", "gallette"], go: "p", easy: 1, porta: "Arrotolati la sera prima, contenitore in borsa termica." },
@@ -527,7 +527,7 @@ window.CIBO = {
   shop: [
     { cat: "Proteine", items: ["Petto di pollo", "Pesce bianco surgelato", "Straccetti di manzo", "Macinato magro", "Gamberi surgelati", "Salmone", "Uova (12)", "Albume in brick", "Tonno sott'olio", "Ceci", "Bresaola"] },
     { cat: "Latticini", items: ["Yogurt intero bianco", "Fiocchi di latte", "Mozzarella light", "Latte"] },
-    { cat: "Carboidrati", items: ["Riso", "Pasta", "Cous cous", "Farro o orzo precotto", "Riso precotto (emergenze)", "Gnocchi", "Patate", "Patate dolci", "Pane di segale", "Piadine", "Cornflakes", "Gallette", "Crema di riso"] },
+    { cat: "Carboidrati", items: ["Riso", "Pasta", "Cous cous", "Farro o orzo precotto", "Riso precotto (emergenze)", "Gnocchi", "Patate", "Patate dolci", "Pane di segale", "Piadine", "Cornflakes", "Gallette", "Fiocchi d'avena"] },
     { cat: "Verdure", items: ["Verdure grigliate surgelate", "Verdure miste surgelate (piselli, carote)", "Spinaci surgelati", "Insalata in busta", "Pomodorini", "Zucchine", "Rucola", "Limoni o lime"] },
     { cat: "Altro", items: ["Olio extravergine", "Spruzzino per l'olio", "Noci", "Proteine in polvere", "Passata", "Capperi", "Salsa di soia", "Senape", "Aceto balsamico", "Spezie", "Cannella e cacao amaro", "Carta forno", "Lievito per dolci"] },
   ],
@@ -542,7 +542,7 @@ window.CIBO = {
 Object.assign(window.CIBO, {
   foods: {
     // proteine
-    pollo: { n: "Petto di pollo (crudo)", u: "g", s: 25, v: [110, 23, 0, 1.5], k: "pollo,petto di pollo,tacchino,fesa", d: 150, cg: { petto: 200, petti: 200, coscia: 150, cosce: 150, fesa: 400, confezione: 400, confezioni: 400, vaschetta: 400, vaschette: 400 } },
+    pollo: { n: "Petto di pollo (crudo)", u: "g", s: 25, v: [110, 23, 0, 1.5], k: "pollo,petto di pollo,tacchino,petto di tacchino", d: 150, cg: { petto: 200, petti: 200, coscia: 150, cosce: 150, fesa: 400, confezione: 400, confezioni: 400, vaschetta: 400, vaschette: 400 } },
     polloc: { n: "Pollo alla griglia (cotto)", u: "g", s: 25, v: [150, 30, 0, 3], k: "pollo alla griglia,pollo grigliato,pollo arrosto,pollo cotto,pollo al forno", d: 150 },
     carnec: { n: "Carne alla griglia (cotta)", u: "g", s: 25, v: [190, 30, 0, 7.5], k: "carne alla griglia,carne grigliata,bistecca,tagliata,carne,arrosto,maiale,lonza", d: 150 },
     pescec: { n: "Pesce cotto (griglia o forno)", u: "g", s: 25, v: [110, 22, 0, 2.5], k: "pesce alla griglia,pesce al forno,pesce cotto,pesce grigliato", d: 150 },
@@ -612,7 +612,7 @@ Object.assign(window.CIBO, {
     soia: { n: "Salsa di soia", u: "cucchiaino|cucchiaini", g: 5, s: 1, v: [55, 8, 5, 0.5], k: "soia,salsa di soia", d: 2, cg: { cucchiaio: 15, cucchiai: 15 } },
     sale: { n: "Sale", u: "pizzico|pizzichi", g: 0.5, s: 1, v: [0, 0, 0, 0], k: "sale", d: 1 },
     balsamico: { n: "Aceto balsamico", u: "cucchiaino|cucchiaini", g: 5, s: 1, v: [90, 0.5, 17, 0], k: "balsamic,aceto", d: 1 },
-    cacao: { n: "Cacao amaro", u: "cucchiaino|cucchiaini", g: 5, s: 1, v: [355, 20, 11, 25], k: "cacao", d: 1 },
+    cacao: { n: "Cacao amaro", u: "cucchiaino|cucchiaini", g: 5, s: 1, v: [355, 20, 11, 25], k: "cacao,cacao amaro", d: 1 },
     maionese: { n: "Maionese", u: "cucchiaio|cucchiai", g: 15, s: 1, v: [700, 1, 1, 77], k: "maionese,salsa rosa,salse", d: 1 },
     ketchup: { n: "Ketchup", u: "cucchiaio|cucchiai", g: 15, s: 1, v: [100, 1, 25, 0.1], k: "ketchup,barbecue", d: 1 },
     // fuori piano (per leggere quello che scrive a mano)
@@ -858,7 +858,7 @@ Object.assign(window.CIBO, {
     ["roastbeef", "Roast beef / carpaccio", "g", 10, [130, 22, 0, 4.5], "roast beef,carpaccio,tartare", 100],
     ["mortadella", "Mortadella", "fetta|fette", 15, [310, 15, 0, 28], "mortadell", 3],
     ["speck", "Speck", "fetta|fette", 10, [300, 28, 0, 20], "speck", 4],
-    ["tacchinoaff", "Fesa di tacchino affettata", "fetta|fette", 10, [105, 20, 2, 2], "tacchino affettato,fesa di tacchino a fette,affettato di tacchino,petto di tacchino a fette,pollo affettato", 5],
+    ["tacchinoaff", "Fesa di tacchino affettata", "fetta|fette", 10, [105, 20, 2, 2], "tacchino affettato,fesa di tacchino a fette,fesa di tacchino,fesa,affettato di tacchino,petto di tacchino a fette,pollo affettato", 5],
     ["pancetta", "Pancetta / guanciale / bacon", "g", 10, [400, 15, 0, 38], "pancett,guancial,bacon", 30],
     ["porchetta", "Porchetta", "g", 10, [300, 25, 0, 22], "porchett", 80],
     ["orata", "Orata / branzino / spigola (cotti)", "g", 25, [150, 23, 0, 6.5], "orata,branzin,spigol,dentice,sogliol,rombo,trota,cernia,pesce spada,pesce al forno,pesce alla griglia", 200],
@@ -967,7 +967,10 @@ Object.assign(window.CIBO, {
     ["cocktail", "Cocktail", "ml", 50, [110, 0, 12, 0], "cocktail,gin tonic,mojito,negroni,moscow mule,long drink,cuba libre,margarita cocktail,americano cocktail", 200],
     ["superalc", "Superalcolico / amaro", "ml", 10, [230, 0, 10, 0], "amaro,limoncello,grappa,whisky,whiskey,vodka,rum,sambuca,shot,cicchetto,digestivo", 40],
     ["tisana", "Tè caldo / tisana", "ml", 50, [1, 0, 0.2, 0], "tisan,camomill,infuso,the caldo,te caldo,te verde,the verde,tazza di te", 250],
-    ["frullato", "Frullato / smoothie", "ml", 50, [70, 2, 13, 1.2], "frullat,smoothie,milkshake,frappe", 300],
+    ["frullato", "Frullato / smoothie", "ml", 50, [70, 2, 13, 1.2], "frullato,smoothie,milkshake,frappe", 300],
+    // 22/11/2026: le preparazioni dell'app scritte a parole
+    ["muffalb", "Muffin di albumi", "muffin|muffin", 75, [61, 9.6, 0.9, 1.7], "muffin di albumi,muffin di albume,muffin salati,muffin salato", 3],
+    ["tortatazza", "Torta in tazza (avena e proteine)", "tazza|tazze", 170, [210, 21, 20.6, 4], "torta in tazza,mug cake,mugcake", 1],
   ];
   for (const [id, n, u, g, v, k, d, cg] of L) {
     if (F[id]) continue;
@@ -1028,3 +1031,67 @@ Object.assign(window.CIBO, {
   };
   for (const [id, n, g, v] of window.CIBO.stima.tipi) F["st_" + id] = { n: "Stima · " + n.replace(/^\S+ /, ""), u: "porzione|porzioni", g, s: 0.5, v, k: "", d: 1 };
 })();
+
+/* 🔄 VARIANTI E SOSTITUZIONI (22/11/2026, richiesta dell'utente: "aggiungi varianti di ingredienti per le singole ricette e possibili
+   sostituzioni"). swaps: gruppi di alimenti che si scambiano; "p" = a parità di PROTEINE (pollo 200 g = merluzzo ~270 g),
+   "k" = a parità di KCAL (riso 80 g = pane ~110 g), "g" = stessi grammi (verdure). L'app calcola i grammi da sola nel riquadro
+   "Quanto ne hai mangiato". vars: varianti di gusto per ricetta (stessa sostanza, sapore diverso). Gusti: niente frutta, noci sì
+   (altra frutta secca no), niente yogurt greco/skyr, niente crema di riso, tonno solo sott'olio e solo nella pasta. */
+Object.assign(window.CIBO, {
+  swaps: [
+    // carne e pesce crudi: tabella scambi del PT (pollo 200 = manzo 200 = macinato 200 = merluzzo 250 = orata 200 = gamberi 250 = salmone 150)
+    ["t", "Carne e pesce crudi", { pollo: 1, manzo: 1, macinato: 1, merluzzo: 1.25, orata: 1, gamberi: 1.25, calamari: 1.25, salmone: 0.75 }],
+    ["p", "Carne e pesce cotti", ["polloc", "carnec", "pescec"]],
+    ["p", "Affettati", ["bresaola", "tacchinoaff", "pcotto", "pcrudo", "salaff"]],
+    ["p", "Latticini", ["fiocchi", "mozz", "ricotta"]],
+    ["k", "Cereali e patate", ["riso", "pasta", "cous", "farro", "quinoa", "gnocchi", "patate"]],
+    ["k", "Pane e simili", ["pane", "segale", "pintegrale", "piadina", "pancarre", "galletta", "fettebisc"]],
+    ["k", "Colazione", ["avena", "cornflakes", "fettebisc", "galletta"]],
+    ["g", "Verdure", ["zucchine", "broccoli", "peperoni", "spinaci", "fagiolini", "melanzane", "funghi", "asparagi", "cavolfiore", "insalata", "rucola", "pomodorini", "verdure", "vgrill", "carote"]],
+    ["k", "Grassi", ["olio", "noce", "avocado"]],
+  ],
+  vars: {
+    pollo: ["Al curry e yogurt: 1 cucchiaino di curry e 2 cucchiai di yogurt al posto della paprika.", "Alla diavola: paprika, peperoncino e aglio, a fine cottura limone.", "Agli agrumi e rosmarino: scorza di limone, rosmarino tritato e pepe."],
+    pollocrock: ["Panatura al grana: 10 g di grana nei cornflakes (togli 10 g di cornflakes).", "Piccante: paprika affumicata e peperoncino nell'albume.", "Nuggets: pollo a bocconcini, stessa panatura, 10 minuti."],
+    pesce: ["Al cartoccio: pesce con pomodorini, olive e capperi chiuso nella carta forno, friggitrice 180 °C 12 minuti.", "Alla pizzaiola: passata, origano e aglio sopra il pesce negli ultimi 5 minuti.", "Al limone e prezzemolo con pangrattato: crosticina come il merluzzo gratinato."],
+    manzo: ["Alla pizzaiola: straccetti in padella con passata e origano.", "Teriyaki: soia e 1 cucchiaino di miele a fine cottura, sesamo sopra.", "Tagliata rucola e grana: 10 g di grana a scaglie al posto di 1 giro d'olio."],
+    polpette: ["Al sugo piccante: passata con peperoncino e basilico.", "Di pollo: macinato di pollo o tacchino al posto del manzo (stessi grammi).", "Burger: stesso impasto in 2 dischi, come i burger in friggitrice."],
+    gamberi: ["Aglio, olio e peperoncino con prezzemolo (la versione classica).", "Al curry: 1 cucchiaino di curry e 2 cucchiai di yogurt a fine cottura.", "Con zucchine e scorza di limone, come la pasta gamberi e zucchine."],
+    gnocchi: ["Con pollo a cubetti al posto dei gamberi (200 g).", "Pomodorini e mozzarella light (mezza) gli ultimi 3 minuti: tipo gnocchi alla sorrentina."],
+    salmone: ["Teriyaki: soia e miele spennellati negli ultimi 3 minuti.", "Al sesamo: crosta di semi di sesamo (1 cucchiaino), niente olio.", "Con patate normali al posto delle dolci (stesso peso)."],
+    curry: ["Rosso: 1 cucchiaio di concentrato di pomodoro e paprika nel curry.", "Con gamberi al posto del pollo (250 g, 3 minuti di cottura).", "Più piccante: peperoncino fresco o fiocchi a fine cottura."],
+    risosaltato: ["Con gamberi o pollo avanzato al posto di parte delle uova.", "Piccante: un cucchiaino di sriracha o peperoncino con la soia.", "Con edamame al posto dei piselli."],
+    pizzapiadina: ["Diavola: salame piccante al posto della bresaola (30 g: più grasso, metà quantità).", "Bianca: mozzarella, rucola e bresaola dopo la cottura.", "Ortolana: verdure grigliate surgelate e mozzarella."],
+    pastatonno: ["Con pomodorini, capperi e olive (la versione mediterranea).", "Con zucchine trifolate e scorza di limone.", "Fredda con rucola e pomodorini, per il lavoro."],
+    frittatapasta: ["Con prosciutto cotto a dadini (40 g) e grana.", "Con zucchine e menta.", "Piccante: peperoncino e paprika affumicata nelle uova."],
+    frittata: ["Con patate a cubetti avanzate (al posto del pane del pasto).", "Con spinaci e grana.", "Con peperoni e cipolla, tipo tortilla spagnola."],
+    farro: ["Con pollo a cubetti al posto della mozzarella.", "Con orzo o cous cous al posto del farro (grammi giusti con «🔄 Sostituisci»).", "Con ceci, pomodorini e origano, tipo greca (senza feta)."],
+    frigo: ["Uova strapazzate + bresaola + gallette quando non c'è niente.", "Tonno? No: solo nella pasta. Usa bresaola o fiocchi di latte."],
+    teriyaki: ["Con salmone al posto del pollo (grammi giusti con «🔄 Sostituisci»).", "Piccante: peperoncino o sriracha nella glassa.", "Con noodles di riso al posto del riso (stesse kcal)."],
+    chili: ["Di pollo: macinato di pollo o tacchino, stesse spezie.", "Senza carne: doppia dose di fagioli + 150 g di albume strapazzato a parte per le proteine.", "Patata ripiena: chili sopra una patata cotta al microonde (8 minuti) al posto del riso."],
+    burger: ["Di pollo: macinato di pollo con paprika.", "Smash: palline schiacciate sottilissime in padella rovente, 2 minuti per lato.", "Senza pane: burger al piatto con patate a spicchi in friggitrice."],
+    pizzaiola: ["Con merluzzo al posto del pollo (grammi giusti con «🔄 Sostituisci»).", "Con capperi e olive nel sugo.", "Piccante: peperoncino e aglio nel sugo."],
+    merluzzogrt: ["Con salmone al posto del merluzzo (grammi giusti con «🔄 Sostituisci»).", "Panatura alle erbe: prezzemolo, timo e aglio.", "Con pomodorini e olive intorno al posto delle zucchine."],
+    bowlmex: ["Con macinato speziato al posto del pollo (taco bowl).", "Con gamberi al lime.", "Con fagioli neri al posto del mais e un po' di piccante in più."],
+    pastapollo: ["Al pesto di rucola: rucola, grana, olio e 2 noci frullati (le noci sostituiscono 1 giro d'olio).", "Con zucchine grigliate al posto dei pomodorini.", "Fredda con mozzarella light a dadini (togli il grana)."],
+    pastagamberi: ["Con pomodorini e un cucchiaio di passata: versione rossa.", "Con broccoli al posto delle zucchine.", "Con calamari al posto dei gamberi (stessi grammi circa, ricalcola qui sotto)."],
+    pastaragu: ["Ragù di pollo o tacchino: più leggero.", "Ragù piccante con peperoncino e un po' di paprika.", "Lasagna veloce: piadina a strati con ragù e mezza mozzarella in friggitrice."],
+    paneuovo: ["Con spinaci sotto l'uovo.", "Con una fetta di prosciutto cotto (togli 1 uovo).", "Piccante: paprika e peperoncino sull'uovo."],
+    pancake: ["Al cacao: 1 cucchiaino di cacao amaro nella pastella.", "Salati: senza cannella, con grana ed erba cipollina; sopra bresaola.", "Con cornflakes tritati al posto dell'avena (stesse kcal)."],
+    torta: ["Al cacao con 1 noce tritata dentro (togli 1 noce dallo spuntino).", "Alla cannella e vaniglia.", "Con cornflakes tritati al posto dell'avena."],
+    yogurtcrunch: ["Con avena tostata in padella al posto dei cornflakes.", "Con 2 noci tritate (al posto di 15 g di cornflakes).", "Al caffè: un cucchiaino di caffè solubile e cacao."],
+    purgatorio: ["Con spinaci nel sugo.", "Shakshuka: cumino, paprika e peperoni nel sugo.", "Con una manciata di ceci nel sugo (al posto della fetta di pane)."],
+    toastcotto: ["Con bresaola e rucola al posto del cotto (bresaola dopo la cottura).", "Con fesa di tacchino e pomodoro.", "Con pane di segale (stesse kcal)."],
+    wrapuovo: ["Con prosciutto cotto o fesa di tacchino al posto della bresaola.", "Con salmone affumicato e fiocchi di latte.", "Piccante: un po' di peperoncino nella frittatina."],
+    tazzauova: ["Con prosciutto cotto a dadini (30 g, togli metà albume).", "Con pomodorini e origano.", "Con zucchine grattugiate."],
+    frenchtoast: ["Salato: senza cannella e miele, con grana nell'uovo e bresaola sopra.", "Al cacao: cacao amaro nell'uovo.", "Con pane di segale (stesse kcal)."],
+    pizzette: ["Con bresaola e rucola.", "Con verdure grigliate.", "Piccanti con peperoncino e origano."],
+    involtini: ["Con fiocchi di latte ed erba cipollina.", "Con rucola e grana.", "Con fesa di tacchino al posto della bresaola."],
+    uovaripiene: ["Al curry: curry nel ripieno.", "Con un po' di senape nel ripieno.", "Con erba cipollina e pepe."],
+    toastfiocchi: ["Con bresaola sopra.", "Con salmone affumicato.", "Con pomodorini e origano, tipo bruschetta."],
+    muffinalbumi: ["Con prosciutto cotto a dadini.", "Con zucchine e menta.", "Con pomodorini secchi e origano."],
+    cecicroccanti: ["Al curry.", "Rosmarino e aglio.", "Paprika dolce e un pizzico di zucchero di canna (versione dolce-salata)."],
+    edamame: ["Con soia e aglio.", "Con limone e pepe.", "Con un pizzico di paprika affumicata."],
+  },
+});
+
