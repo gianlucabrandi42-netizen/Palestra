@@ -14,7 +14,27 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,800;1,800&family=Inter:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="style.css?v=2026-11-22-2114">
+<link rel="stylesheet" href="style.css?v=2026-11-22-2119">
+<script>
+/* Registro errori(22/11/2026): ogni errore dell'app finisce in una coda sul telefono (localStorage "palestra-err")
+   e app.js lo manda al servizio (errFlush), così si vede e si sistema senza screenshot. Niente dati personali:
+   messaggio accorciato, file, riga, versione, schermata. */
+(function () {
+  function add(msg, src, line, col, stack) {
+    try {
+      msg = String(msg || "").replace(/(["«'])[^"»']{24,}\1/g, "$1…$1").slice(0, 220);
+      var f = String(src || "").split("/").pop().split("?")[0], sig = msg + "|" + f + "|" + line;
+      var st = String(stack || "").split("\n").slice(0, 6).map(function (l) { return l.replace(/https?:\/\/[^ )]*\//g, "").replace(/\?v=[^:]*/g, "").trim(); }).join(" ← ").slice(0, 600);
+      var Q = JSON.parse(localStorage.getItem("palestra-err") || "[]"), e = Q.find(function (x) { return x.sig === sig; });
+      if (e) { e.n = (e.n || 1) + 1; e.t = Date.now(); e.sent = 0; } else Q.push({ sig: sig, msg: msg, f: f, line: line, col: col, st: st, t: Date.now(), n: 1 });
+      localStorage.setItem("palestra-err", JSON.stringify(Q.slice(-20)));
+      if (window.errFlush) setTimeout(window.errFlush, 500);
+    } catch (_) {}
+  }
+  window.addEventListener("error", function (e) { if (e.message) add(e.message, e.filename, e.lineno, e.colno, e.error && e.error.stack); });
+  window.addEventListener("unhandledrejection", function (e) { var r = e.reason || {}; add("Promise: " + (r.message || r), r.fileName || "", r.lineNumber || 0, 0, r.stack); });
+})();
+</script>
 <script>if (navigator.standalone || (window.matchMedia && matchMedia("(display-mode: standalone)").matches)) document.documentElement.classList.add("standalone");</script>
 </head>
 <body>
@@ -152,21 +172,21 @@
 
 <div class="toast" id="toast" hidden></div>
 
-<script src="data.js?v=2026-11-22-2114"></script>
-<script src="schede.js?v=2026-11-22-2114"></script>
-<script src="macchine.js?v=2026-11-22-2114"></script>
-<script src="macchine-db.js?v=2026-11-22-2114"></script>
-<script src="macchine-schede.js?v=2026-11-22-2114"></script>
-<script src="nutrizione.js?v=2026-11-22-2114"></script>
-<script src="js/01-base.js?v=2026-11-22-2114"></script>
-<script src="js/02-allenamento.js?v=2026-11-22-2114"></script>
-<script src="js/03-analisi.js?v=2026-11-22-2114"></script>
-<script src="js/04-seduta.js?v=2026-11-22-2114"></script>
-<script src="js/05-serie.js?v=2026-11-22-2114"></script>
-<script src="js/06-progressi.js?v=2026-11-22-2114"></script>
-<script src="js/07-backup.js?v=2026-11-22-2114"></script>
-<script src="js/08-timer.js?v=2026-11-22-2114"></script>
-<script src="js/09-avvio.js?v=2026-11-22-2114"></script>
-<script src="cibo.js?v=2026-11-22-2114"></script>
+<script src="data.js?v=2026-11-22-2119"></script>
+<script src="schede.js?v=2026-11-22-2119"></script>
+<script src="macchine.js?v=2026-11-22-2119"></script>
+<script src="macchine-db.js?v=2026-11-22-2119"></script>
+<script src="macchine-schede.js?v=2026-11-22-2119"></script>
+<script src="nutrizione.js?v=2026-11-22-2119"></script>
+<script src="js/01-base.js?v=2026-11-22-2119"></script>
+<script src="js/02-allenamento.js?v=2026-11-22-2119"></script>
+<script src="js/03-analisi.js?v=2026-11-22-2119"></script>
+<script src="js/04-seduta.js?v=2026-11-22-2119"></script>
+<script src="js/05-serie.js?v=2026-11-22-2119"></script>
+<script src="js/06-progressi.js?v=2026-11-22-2119"></script>
+<script src="js/07-backup.js?v=2026-11-22-2119"></script>
+<script src="js/08-timer.js?v=2026-11-22-2119"></script>
+<script src="js/09-avvio.js?v=2026-11-22-2119"></script>
+<script src="cibo.js?v=2026-11-22-2119"></script>
 </body>
 </html>

@@ -40,5 +40,7 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
   }).catch(() => {});
 }
 // versione installata, per controllare che l'aggiornamento sia arrivato
-setTimeout(() => swVersion().then(v => { const e = $("appVer"); if (e) e.textContent = "Versione app: " + (v || "non installata (aperta dal browser?)"); }), 800);
+setTimeout(() => swVersion().then(v => { const e = $("appVer"); if (!e) return; const Q = errQ(), last = Q.length ? Q.reduce((a, b) => a.t > b.t ? a : b) : null;
+  e.textContent = "Versione app: " + (v || "non installata (aperta dal browser?)") + (Q.length ? ` · ${Q.length} errori registrati${Q.every(x => x.sent) ? " e inviati" : ""} (ultimo ${new Date(last.t).toLocaleDateString("it-IT", { day: "numeric", month: "short" })})` : " · nessun errore"); }), 800);
+setTimeout(() => window.errFlush(), 4000);
 function swVersion() { return new Promise(ok => { const c = navigator.serviceWorker && navigator.serviceWorker.controller; if (!c) return ok(null); const ch = new MessageChannel(); ch.port1.onmessage = e => ok(e.data); c.postMessage("ver", [ch.port2]); setTimeout(() => ok(null), 1500); }); }

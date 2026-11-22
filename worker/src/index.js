@@ -44,6 +44,18 @@ export class Keys extends DurableObject {
     await this.ctx.storage.put({ ["d:" + day]: d + 1, ["m:" + month]: m + 1 });
     return { ok: true, today: d + 1, month: m + 1 };
   }
+  // registro errori dell'app (22/11/2026): stesso errore = una riga con contatore; ultimi 30 giorni, massimo 80 righe
+  async addErr(list, meta) {
+    const L = (await this.ctx.storage.get("errs")) || [], now = Date.now();
+    for (const e of list.slice(0, 20)) {
+      const sig = clip(e.sig, 300), x = L.find(y => y.sig === sig && y.v === meta.v);
+      if (x) { x.n += Math.max(1, Math.min(99, +e.n || 1)); x.last = now; x.view = meta.view; }
+      else L.push({ sig, msg: clip(e.msg, 220), f: clip(e.f, 40), line: +e.line || 0, col: +e.col || 0, st: clip(e.st, 600), n: Math.max(1, Math.min(99, +e.n || 1)), first: now, last: now, ...meta });
+    }
+    const keep = L.filter(y => now - y.last < 30 * 864e5).sort((a, b) => b.last - a.last).slice(0, 80);
+    await this.ctx.storage.put("errs", keep); return keep.length;
+  }
+  async listErr() { return (await this.ctx.storage.get("errs")) || []; }
   async keys() {
     let k = await this.ctx.storage.get("vapid");
     if (!k) { k = await newVapidKeys(); await this.ctx.storage.put("vapid", k); }
@@ -224,6 +236,13 @@ export default {
         if (!u.ok) return json({ error: `limite raggiunto (${FOTO_MAX_DAY} foto al giorno, ${FOTO_MAX_MONTH} al mese)` }, 429);
         const res = await fotoAnalyze(env, b);
         return json({ ...res, used: { today: u.today, month: u.month } }, res.error ? 502 : 200);
+      }
+      if (url.pathname === "/errors" || url.pathname === "/errors/list") {
+        const st = env.KEYS.get(env.KEYS.idFromName("errori"));
+        if (url.pathname === "/errors/list") return json({ errors: await st.listErr() });
+        if (!Array.isArray(b.e)) return json({ error: "bad request" }, 400);
+        const meta = { v: clip(b.v, 20), view: clip(b.view, 12), ua: clip(b.ua, 30), sa: !!b.standalone };
+        return json({ ok: true, n: await st.addErr(b.e, meta) });
       }
       if (url.pathname === "/test") {
         if (!validSub(b.sub)) return json({ error: "bad request" }, 400);

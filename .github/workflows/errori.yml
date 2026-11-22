@@ -1,0 +1,17 @@
+# Legge il registro degli errori dell'app dal servizio (22/11/2026). Ogni giorno e a mano:
+#   gh workflow run errori.yml  ·  poi  gh run view --log
+name: Registro errori dell'app
+on:
+  schedule: [{ cron: "17 5 * * *" }]
+  workflow_dispatch:
+jobs:
+  leggi:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Errori degli ultimi 30 giorni
+        run: |
+          R=$(curl -s -X POST -H "Content-Type: application/json" -d '{}' https://palestra-push.gianluca-brandi42.workers.dev/errors/list)
+          N=$(echo "$R" | jq '.errors | length')
+          echo "Errori registrati: $N"
+          echo "$R" | jq -r '.errors[] | "\n[\(.last/1000|strftime("%d/%m %H:%M"))] ×\(.n) · v\(.v) · \(.view) · \(.ua)\n  \(.msg)\n  \(.f):\(.line):\(.col)\n  \(.st)"'
+          if [ "$N" != "0" ]; then echo "## ⚠️ $N errori registrati dall'app" >> "$GITHUB_STEP_SUMMARY"; echo "$R" | jq -r '.errors[] | "- ×\(.n) v\(.v) \(.view): \(.msg) (\(.f):\(.line))"' >> "$GITHUB_STEP_SUMMARY"; fi

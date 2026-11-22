@@ -145,7 +145,9 @@ function dishFix(items, from) {
   const cl = items.slice(from), isDish = f => /^(piatto|porzione|trancio|ciotola|bowl)/.test((FO(f) || {}).u || "") && !DISH_BASE[f];
   if (cl.some(i => isDish(i.f))) for (let i = items.length - 1; i >= from; i--) if (DISH_IN.has(items[i].f) && !isDish(items[i].f)) items.splice(i, 1);
   const c = items.slice(from).find(i => DISH_BASE[i.f] && DISH_BASE[i.f] < 1);
-  if (c && items.length - from > 1 && items.slice(from).some(i => i !== c && !["erbe", "olio", "sale"].includes(i.f))) c.q = Math.round(c.q * DISH_BASE[c.f] * 100) / 100;
+  if (c && items.length - from > 1 && items.slice(from).some(i => i !== c && !["erbe", "olio", "sale"].includes(i.f))) {
+    // piadina farcita col ripieno scritto = 1 piadina semplice (prima 0,55 × 725 kcal ≈ 400 kcal per la sola piadina)
+    if (c.f === "piadinaf" && FO("piadina")) { c.f = "piadina"; } else c.q = Math.round(c.q * DISH_BASE[c.f] * 100) / 100; }
 }
 // distanza tra due parole (errori di battitura): "carbonra" ≈ "carbonara", "zuchine" ≈ "zucchine"
 function lev(a, b) { const m = a.length, n = b.length; if (Math.abs(m - n) > 2) return 9; let pr = Array.from({ length: n + 1 }, (_, j) => j);
@@ -165,6 +167,8 @@ function readFood(txt, size, oneEach, noFuzzy) {
   // "(o 8 gallette)": vale la prima) e gli aggettivi di preparazione ("avena frullata" non è un frullato)
   txt = normT(txt).replace(/\((?:o|oppure)\b[^)]*\)/g, " ").replace(/\b(?:o|oppure|altrimenti)\b[^,;+\n.()]*/g, " ")
     .replace(/\d+(?:[.,]\d+)?\s*(?:secondi|second|sec|minuti|minuto|min|ore|ora|gradi|°c?)\b/g, " ").replace(/\d+\s*°/g, " ")
+    // 22/11/2026 (test automatici): kcal scritte e "totale" non sono alimenti ("totale 550 kcal" diventava 550 torte)
+    .replace(/[~≈]?\s*\d+(?:[.,]\d+)?\s*k?cal(?:orie)?\b/g, " ").replace(/\b(?:totale|tot|in tutto|circa)\b/g, " ")
     .replace(/([a-z])\s+(?:frullat|tritat|sbriciolat|grattugiat|sminuzzat)[aeio]\b/g, "$1");
   let src = normT(txt).replace(/(\d+(?:[.,]\d+)?)\s*[-–]\s*(\d+(?:[.,]\d+)?)/g, (m, a, b) => String((parseFloat(a.replace(",", ".")) + parseFloat(b.replace(",", "."))) / 2)).replace(/\bfettin([ae])\b/g, "fett$1").replace(/\bun (tot|po|paio)\b/g, "$1"); for (const k of kwList()) if (/ /.test(k[3]) && src.includes(k[3])) src = src.split(k[3]).join(k[3].replace(/ /g, "_"));
   for (const clause of src.split(/,|;|\+|\n|\.(?!\d)/)) { const c0 = items.length;

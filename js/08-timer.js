@@ -190,6 +190,18 @@ function alarm(soft) {
 // Servizio su Cloudflare (cartella worker/): l'app gli chiede di inviare una notifica all'ora di fine recupero.
 // Le notifiche push su iPhone funzionano solo con l'app aperta dall'icona sulla Home (iOS 16.4+).
 const PUSH_URL = "https://palestra-push.gianluca-brandi42.workers.dev";
+// Registro errori (22/11/2026): manda al serviziogli errori raccolti da index.html (coda "palestra-err"), una volta sola ciascuno
+const APP_VER = ((document.querySelector('script[src*="?v="]') || {}).src || "").split("v=")[1] || "?";
+const errQ = () => { try { return JSON.parse(localStorage.getItem("palestra-err") || "[]"); } catch (e) { return []; } };
+window.errFlush = async function () {
+  const Q = errQ(), todo = Q.filter(e => !e.sent); if (!todo.length || !navigator.onLine) return;
+  const ua = (navigator.userAgent.match(/(iPhone OS|Android) [\d_.]+/) || [navigator.platform || ""])[0].replace(/_/g, ".");
+  try {
+    const r = await fetch(PUSH_URL + "/errors", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ e: todo.map(({ sig, msg, f, line, col, st, n, t }) => ({ sig, msg, f, line, col, st, n, t })), v: APP_VER, view: (typeof S !== "undefined" && S.view) || "", ua, standalone: !!navigator.standalone }) });
+    if (r.ok) { const sent = new Set(todo.map(e => e.sig)), N = errQ(); N.forEach(e => { if (sent.has(e.sig)) e.sent = 1; }); localStorage.setItem("palestra-err", JSON.stringify(N)); }
+  } catch (e) {}
+};
 const pushReady = () => !!PUSH_URL;
 const newPushId = () => "p" + Array.from(crypto.getRandomValues(new Uint8Array(12)), b => (b % 36).toString(36)).join("");
 const b64uToU8 = s => { const b = atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)); return Uint8Array.from(b, c => c.charCodeAt(0)); };
