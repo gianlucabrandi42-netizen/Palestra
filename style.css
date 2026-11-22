@@ -1654,3 +1654,11 @@ details.vars ul{margin:8px 0 4px;padding-left:18px}details.vars li{margin:4px 0;
 /* niente zoom a caso (22/11/2026): l'iPhone ingrandiva toccando i campi con testo < 16 px (risolto con maximum-scale=1 nel
    viewport, il pizzico resta) e col doppio tocco rapido sui tasti (manipulation = niente zoom da doppio tocco) */
 html{touch-action:manipulation}
+/* tastierino più grande (22/11/2026, richiesta dell'utente): tasti da 54 px, numeri più grandi */
+.pad{gap:8px;padding-left:12px;padding-right:12px}
+.pk{height:54px;border-radius:14px;font-size:27px}
+.pk svg{width:28px;height:28px}
+.pk.k-minus,.pk.k-plus{font-size:19px}
+.pk.k-next .pkl{font-size:17px}
+.pk.k-next .pkl span{font-size:26px}
+.pk.k-del svg{width:36px;height:36px}
