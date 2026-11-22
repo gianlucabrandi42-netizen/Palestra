@@ -1,0 +1,20 @@
+# Prove automatiche dell'app (22/11/2026): a ogni pubblicazione apre l'app in Chromium e controlla regole, giro completo
+# e riquadro Info (tools/check.sh). Se qualcosa non va, GitHub manda una mail al proprietario del repository.
+name: Prove automatiche
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["worker/**", "**.md"]
+  workflow_dispatch:
+jobs:
+  prove:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Playwright e Chromium
+        run: pip install playwright && python -m playwright install --with-deps chromium
+      - name: Prove
+        run: sh tools/check.sh

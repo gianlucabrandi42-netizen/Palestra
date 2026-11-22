@@ -1779,5 +1779,5 @@ function foodReport(from) {
   return ["", "🍽 ALIMENTAZIONE", `Giorni segnati: ${ds.length} · pasti liberi: ${lib}${x ? ` · cibi extra scritti: ${x}` : ""}`];
 }
 
-// app aperta direttamente sul Cibo: app.js disegna prima che questo file sia caricato
+// app aperta direttamente sul Cibo: js/09-avvio.js disegna prima che questo file sia caricato
 if (typeof S !== "undefined" && S.view === "cibo") renderCibo();
