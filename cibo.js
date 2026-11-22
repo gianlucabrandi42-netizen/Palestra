@@ -158,7 +158,7 @@ function fuzzyHit(p) {
       if (d <= tol && (!best || d < best.d || (d === best.d && n.length > best.n.length))) best = { d, n, id }; } }
   return best && best.id;
 }
-function readFood(txt, size, oneEach) {
+function readFood(txt, size, oneEach, noFuzzy) {
   const fac = size === "p" ? .7 : size === "t" ? 1.4 : 1, items = [], miss = [];
   // 21/11/2026: i nomi dei piatti con "e"/"con" dentro ("pasta e fagioli", "cacio e pepe", "piadina con…") non si spezzano
   // 22/11/2026: tolti tempi e temperature ("90 secondi al microonde", "200 gradi"), le alternative ("3 gallette o 1 yogurt",
@@ -174,7 +174,7 @@ function readFood(txt, size, oneEach) {
     const hits = []; let rest = p;
     for (;;) { const k = kwList().find(([re]) => re.test(rest)); if (!k) break; const m = rest.match(k[0]), at = m.index + m[1].length;
       const end = rest.slice(at).search(/[^a-z]|$/); if (!hits.some(h => h[0] === k[1])) hits.push([k[1], at, Math.max(k[2], end)]); rest = rest.slice(0, at) + " ".repeat(Math.max(k[2], end)) + rest.slice(at + Math.max(k[2], end)); }
-    if (!hits.length) { const fz = fuzzyHit(p); if (fz) hits.push([fz, 0, 0]); }
+    if (!hits.length && !noFuzzy) { const fz = fuzzyHit(p); if (fz) hits.push([fz, 0, 0]); }
     if (!hits.length) { const left = p.replace(/[^a-z ]/g, " ").split(/\s+/).filter(w => w.length > 2 && !FILL.has(w)); if (left.length) miss.push(p.replace(/_/g, " ")); continue; }
     hits.sort((a, b) => a[1] - b[1]); if (oneEach) hits.length = 1;
     // 22/11/2026: ogni numero va all'alimento giusto. "50 g di bresaola" → bresaola (c'è "di"); "pollo 200 g" → pollo (subito dopo);
@@ -393,7 +393,9 @@ function rankOpts(md, d, opts) {
   const m = fDay(d).m || {}, w = whereOf(d, md.id), use = useCounts(md.id, d), r2 = recipeById(m.pr);
   const sc = o => (o.id === m[md.id] ? 1e4 : 0) + (o.fr ? 5000 : 0) + (md.id === "ce" && o.id === m.pr && r2 && !r2.one ? 3000 : 0) + (w === "mensa" && o.id === "mensa" ? 2000 : 0) + (o.id === "sala" && md.id === "pr" && (shiftOf(d) || {}).id === "mat" && new Date(d + "T12:00").getDay() === 6 ? 2500 : 0)
     + (fits(o, w) ? 0 : -1000) + (w !== "casa" && o.easy ? 80 : 0) + (use[o.id] || 0) * 60 + (o.dish ? 25 + (myDish()[o.id.slice(2)] || {}).n * 10 : 0) + (o.free || o.id === "altro" || o.id === "rist" || o.id === "mensa" || o.id === "sala" ? -300 : 0);
-  return opts.map((o, i) => [o, sc(o) - i * 0.01]).sort((a, b) => b[1] - a[1]).map(x => x[0]);
+  // 22/11/2026: nei giorni "0" a pranzo niente carboidrato → pasta al tonno, gnocchi, pizza di piadina… restano in fondo
+  const z = o => md.id === "pr" && lunchLvl(d) === 0 && STRICT.has(o.r || o.id) && o.id !== m.pr ? -700 : 0;
+  return opts.map((o, i) => [o, sc(o) + z(o) - i * 0.01]).sort((a, b) => b[1] - a[1]).map(x => x[0]);
 }
 // tutte le idee di un pasto, con ricerca e filtri
 function openPicker(mid) {
@@ -630,7 +632,7 @@ function syncProds() {
   for (const k of Object.keys(CB.foods)) if (k.startsWith("p_")) delete CB.foods[k];
   for (const [id, p] of Object.entries(prods())) { if (!p.v || p.v[0] == null) continue; const sf = (p.of || p.sub) && CB.foods[p.of || p.sub];
     const pu = p.pu && sf && !isW(sf) ? { u: sf.u, g: sf.g, s: sf.s } : { u: "g", s: 10 };
-    CB.foods["p_" + id] = { n: p.n + (p.b ? " · " + p.b : ""), ...pu, of: p.of || p.sub, b: p.b, v: p.v.map(x => +x || 0), k: [p.n, p.b && `${p.b} ${p.n}`].filter(Boolean).map(x => x.replace(/,/g, " ")).join(","), d: p.d || (sf ? Math.round(sf.d * (isW(sf) ? 1 : sf.g)) : 100), mine: 1 }; }
+    CB.foods["p_" + id] = { n: p.n + (p.b ? " · " + p.b : ""), ...pu, of: p.of || p.sub, b: p.b, v: p.v.map(x => +x || 0), k: [p.n, p.b && `${p.b} ${p.n}`].filter(Boolean).map(x => x.replace(/,/g, " ")).join(","), d: p.d || (sf ? (p.pu && !isW(sf) ? sf.d : Math.round(sf.d * (isW(sf) ? 1 : sf.g))) : 100), mine: 1 }; } // 22/11: a pezzi la quantità di base resta in pezzi (prima 2 gallette diventavano 16)
   KW = null;
 }
 function applySubs(L) {
@@ -742,8 +744,11 @@ function prodForm(p, note) {
   $("pOk").onclick = () => {
     const n = $("pN").value.trim(), V = [0, 1, 2, 3].map(i => { const x = parseFloat(($("pV" + i).value || "").replace(",", ".")); return isNaN(x) ? null : x; });
     if (!n) return toast("Scrivi il nome"); if (V.some(x => x == null)) return toast("Servono kcal, proteine, carboidrati e grassi per 100 g");
+    // 22/11/2026: controllo dell'etichetta (kcal ≈ 4·P + 4·C + 9·G): un numero scritto male falserebbe tutti i conti
+    const at = 4 * V[1] + 4 * V[2] + 9 * V[3]; if (V[0] > 30 && Math.abs(V[0] - at) / Math.max(V[0], at) > .3 && !$("pOk").dataset.ok) { $("pOk").dataset.ok = 1; $("pOk").textContent = "Salva lo stesso"; return toast(`⚠️ Controlla: con questi valori le kcal dovrebbero essere circa ${Math.round(at)}`); }
+    if (V.some(x => x > 900) || V[1] + V[2] + V[3] > 101) return toast("⚠️ Valori impossibili per 100 g: controlla l'etichetta");
     const id = p.id || Date.now().toString(36), d = parseFloat(($("pD").value || "").replace(",", "."));
-    const sv = $("pS").value || undefined; prods()[id] = { ...(p.id ? prods()[p.id] : {}), n, b: $("pB").value.trim(), v: V, code: p.code || undefined, sub: sv, of: sv, d: d > 0 ? d : undefined, at: Date.now() }; delete prods()[id].std; CS.scanSub = null;
+    const sv = $("pS").value || undefined; prods()[id] = { ...(p.id ? prods()[p.id] : {}), n, b: $("pB").value.trim(), v: V, code: p.code || undefined, sub: sv, of: sv, d: d > 0 && !(p.id && (prods()[p.id] || {}).pu) ? d : undefined, at: Date.now() }; delete prods()[id].std; CS.scanSub = null;
     save(); syncProds(); const cb = CS.scanCb; CS.scanCb = null; panelClose(); toast("🏷 Salvato: " + n); if (cb) cb("p_" + id); else renderCibo(); };
   const del = $("pDel"); if (del) del.onclick = () => { if (!del.dataset.sure) { del.dataset.sure = 1; del.textContent = "Tocca di nuovo per eliminare"; return; } delete prods()[p.id]; save(); syncProds(); panelClose(); renderCibo(); };
 }
@@ -780,7 +785,7 @@ function plateBox(r, mid, d) {
   const m = mid || (r.main ? "pr" : Object.keys(r.for || {})[0]), oid = r.main ? r.id : (r.for || {})[m], L = m && oid && baseQ(m, oid, d);
   if (!L) return condBox(r.id);
   const L0 = r.main && m === "pr" ? CB.lunch[lunchLvl(d)] : null;
-  return `<div class="plate1"><h3>🍽 Il tuo piatto · ${m === "ce" ? "cena" : m === "pr" ? "pranzo" : "1 porzione"}</h3>${L0 ? `<p class="note">Pranzo da ${esc(L0.t)}.</p>` : ""}<ul>${L.filter(([, q]) => q).map(([f, q]) => `<li>${esc(qText(f, q))}</li>`).join("")}</ul></div>${condBox(r.id)}`;
+  return `<div class="plate1"><h3>🍽 Il tuo piatto · ${m === "ce" ? "cena" : m === "pr" ? "pranzo" : "1 porzione"}</h3>${L0 ? `<p class="note">Pranzo da ${esc(L0.t)}.</p>` : ""}${m === "pr" && lunchLvl(d) === 0 && STRICT.has(r.id) ? `<p class="note warnc">Oggi a pranzo il piano è senza carboidrato: questo piatto senza la sua pasta non ha senso, tienilo per cena o per un giorno di palestra.</p>` : ""}<ul>${L.filter(([, q]) => q).map(([f, q]) => `<li>${esc(qText(f, q))}</li>`).join("")}</ul></div>${condBox(r.id)}`;
 }
 function condBox(key) {
   const t = CB.ct[key]; if (!t) return "";
@@ -999,14 +1004,15 @@ const PROTG = { pollo: 200, manzo: 200, macinato: 200, merluzzo: 250, pescec: 20
 function compGrams(f, meal, d, L) {
   const o = FO(f), main = meal === "pr" || meal === "ce"; let base = f;
   if (o.mine) { const p = prods()[f.slice(2)]; if (p && p.sub) base = p.sub; }
-  const conv = g => o.mine || isW(o) ? Math.round(g) : g;   // i prodotti sono in grammi
-  const toG = (bf, q) => isW(FO(bf)) ? q : q * FO(bf).g;
+  // 22/11/2026: per un prodotto di marca la quantità del piano si calcola sull'alimento base e poi si converte nella sua unità
+  // (prima un pane di segale di marca "a fette" riceveva 120 fette: i grammi finivano nel campo dei pezzi)
+  const out = q => o.mine && base !== f ? convQ(base, q, f) : q;
   if (!main) return o.mine ? (prods()[f.slice(2)] || {}).d || o.d : o.d;
-  if (PROTG[base] != null) return o.mine ? Math.round(toG(base, PROTG[base])) : PROTG[base];
+  if (PROTG[base] != null) return out(PROTG[base]);
   const cn = Object.keys(CB.carbFood).find(k => CB.carbFood[k] === base);
-  if (cn) { let c = carbQ(cn, meal, d); if (!c || !c[1]) { const row = CB.carbs.find(r => r[0] === cn); const m = row && row[2].match(/(\d+)/); c = [base, m ? +m[1] : FO(base).d]; if (row && /½|¾/.test(row[2])) c[1] = /½/.test(row[2]) ? .5 : .75; } return o.mine ? Math.round(toG(base, c[1])) : c[1]; }
-  if (VEG.has(base)) return L.some(([x]) => VEG.has(x)) ? 150 : 200;
-  return conv(o.d);
+  if (cn) { let c = carbQ(cn, meal, d); if (!c || !c[1]) { const row = CB.carbs.find(r => r[0] === cn); const m = row && row[2].match(/(\d+)/); c = [base, m ? +m[1] : FO(base).d]; if (row && /½|¾/.test(row[2])) c[1] = /½/.test(row[2]) ? .5 : .75; if (row && / g/.test(row[2]) && !isW(FO(base))) c[1] = Math.round(c[1] / FO(base).g * 2) / 2; } return out(c[1]); }
+  if (VEG.has(base)) return out(L.some(([x]) => VEG.has(x)) ? 150 : 200);
+  return o.d;
 }
 function openCompose(keep) {
   const sh = $("fsheet"), d = cDay(), C = CS.cp = (keep && CS.cp) || { meal: (CS.hv && CS.hv.meal) || "pr", L: [] }, y = keep && !sh.hidden ? sh.querySelector(".is-c").scrollTop : 0;
@@ -1044,7 +1050,7 @@ const VEG = new Set(["vgrill", "vmiste", "verdure", "zucchine", "peperoni", "spi
 const CARBS = new Set(["riso", "risoc", "rprec", "pasta", "pastac", "pastai", "cous", "farro", "farrop", "quinoa", "gnocchi", "patate", "patatec", "pdolci", "pane", "panino", "piadina"]);
 const PANTRY = new Set([...CONDF, "cacao", "passata"]);
 const EQ = { polloc: "pollo", pastac: "pasta", pastai: "pasta", risoc: "riso", rprec: "riso", farrop: "farro", albume: "albumeg", mozzn: "mozz", pescec: "merluzzo", patatec: "patate" };
-const STRICT = new Set(["pastatonno", "frittatapasta", "pizzapiadina", "gnocchi", "risosaltato", "farro"]);
+const STRICT = new Set(["pastatonno", "frittatapasta", "pizzapiadina", "gnocchi", "risosaltato", "farro", "pastapollo", "pastagamberi", "pastaragu"]);
 function grpOf(f, flexCarb) { if (FO(f) && FO(f).mine) { const p = prods()[f.slice(2)]; f = p && p.sub || f; } if (VEG.has(f)) return "veg"; if (flexCarb && CARBS.has(f)) return "carb"; return EQ[f] || f; }
 function needOf(r, meal, d) {
   const mid = r.main ? (meal === "ce" ? "ce" : "pr") : Object.keys(r.for || {})[0], oid = r.main ? r.id : (r.for || {})[mid];
@@ -1067,10 +1073,39 @@ function hvMatch(text, meal, d) {
   return { items, list: list.sort((a, b) => a.sc - b.sc).slice(0, 6) };
 }
 const HVM = [["pr", "Pranzo"], ["ce", "Cena"], ["col", "Colazione"], ["s1", "Spuntino"]];
+// 📷 FOTO DEL FRIGO (22/11/2026, richiesta dell'utente: "faccio una foto al frigo e capisci da solo cosa ho e cosa no").
+// L'IA elenca gli alimenti visti → diventano "in casa"; gli alimenti freschi che erano "in casa" ma non si vedono più
+// vengono proposti come finiti (un tocco li toglie). Più foto (frigo + dispensa) si sommano. Le ricette sotto si aggiornano.
+const FRIDGE = new Set(["pollo", "manzo", "macinato", "merluzzo", "salmone", "gamberi", "uovo", "albumeg", "bresaola", "mozz", "mozzn", "fiocchi", "yogurt", "latte", "parmigiano", "zucchine", "peperoni", "spinaci", "insalata", "rucola", "pomodorini", "polloc", "tacchinoaff", "pcotto", "ricotta"]);
+function frigoBox() {
+  const F = CS.frigo; if (!F) return "";
+  if (F.run) return `<div class="shotrun"><i class="spin"></i><b>Sto guardando la foto…</b><small>di solito 10-15 secondi</small></div>`;
+  const nm = f => esc(shortN(f));
+  return `<div class="frres">${F.seen.length ? `<p><b>Vedo ${F.seen.length} cose</b>${F.added.length ? ` · ${F.added.length} aggiunte a «in casa»` : ""}: ${F.seen.map(nm).join(", ")}${F.unk.length ? ` · non so cosa sia: ${esc(F.unk.join(", "))}` : ""}</p>` : "<p>Non ho riconosciuto alimenti: prova più da vicino o con più luce.</p>"}
+    ${F.gone.length ? `<p class="plab">Non li vedo più · finiti? Tocca quelli che non hai</p><div class="rchips">${F.gone.map(f => `<button class="chip" data-fg="${f}" aria-pressed="${!pantry()[f]}">${pantry()[f] ? "" : "✕ "}${nm(f)}</button>`).join("")}</div><button class="lnk" id="frAllOff">Non ho più nessuno di questi</button>` : ""}
+    <p class="note">Altra foto (es. la dispensa)? Si aggiunge a questa. Quello che l'IA non vede lo tocchi tu qui sotto.</p></div>`;
+}
+function frigoBind(box) {
+  const inp = $("hvFrigo"); if (inp) inp.onchange = async e => { const file = e.target.files[0]; e.target.value = ""; if (!file) return;
+    if (!aiOn()) await aiProbe(true); if (!aiOn()) return toast("Analisi delle foto non disponibile ora: tocca tu quello che hai");
+    let p; try { p = await shrinkPic(file, 1280); } catch (_) { return toast("Foto non leggibile"); }
+    const prev = CS.frigo && !CS.frigo.run ? CS.frigo : null; CS.frigo = { ...(prev || { seen: [], added: [], gone: [], unk: [] }), run: true }; renderCibo();
+    try { const j = await aiPost("/food/photo", { img: p.b64, mime: p.mime, mode: "frigo" }); const P = pantry(), F = CS.frigo;
+      for (const it of j.items || []) { const r = readFood(it.n, "n", true, true), f = r.items[0] && r.items[0].f;
+        if (!f) { if (!F.unk.includes(it.n)) F.unk.push(it.n); continue; } const g = { polloc: "pollo", pastac: "pasta", risoc: "riso", pcotto: "pcotto" }[f] || f;
+        if (!F.seen.includes(g)) F.seen.push(g); if (!P[g]) { P[g] = 1; if (!F.added.includes(g)) F.added.push(g); } }
+      // freschi che erano in casa ma non si vedono in nessuna delle foto
+      F.gone = Object.keys(P).filter(f => P[f] && FRIDGE.has(f) && !F.seen.includes(f)).concat(F.gone.filter(f => !F.seen.includes(f))).filter((f, i, a) => a.indexOf(f) === i);
+      F.run = false; save(); renderCibo(); toast(F.seen.length ? `📷 ${F.seen.length} alimenti riconosciuti` : "Nessun alimento riconosciuto");
+    } catch (err) { CS.frigo = prev; renderCibo(); toast("⚠️ " + (err.message || err)); } };
+  box.querySelectorAll("[data-fg]").forEach(b => b.onclick = () => { const P = pantry(), f = b.dataset.fg; if (P[f]) delete P[f]; else P[f] = 1; save(); renderCibo(); });
+  const all = $("frAllOff"); if (all) all.onclick = () => { const P = pantry(); for (const f of CS.frigo.gone) delete P[f]; save(); renderCibo(); toast("Tolti da «in casa»"); };
+}
 function hvCard() {
   const H = CS.hv = CS.hv || { open: false, t: "", meal: "pr", r: "" };
-  if (!H.open) return `<button class="card hvopen" id="hvOpen"><b>🧺 Cosa cucino con quello che ho?</b><span>Scrivi o fotografa cosa hai: ti dico cosa puoi fare subito, oppure Claude inventa una ricetta nuova per il tuo piano.</span></button>`;
+  if (!H.open) return `<button class="card hvopen" id="hvOpen"><b>🧺 Cosa cucino con quello che ho?</b><span>Fotografa il frigo o scrivi cosa hai: ti dico cosa puoi fare subito, oppure Claude inventa una ricetta nuova per il tuo piano.</span></button>`;
   return `<div class="card hv"><div class="hvh"><b>🧺 Cosa hai in casa?</b><button class="btn sm" id="hvX">Chiudi</button></div>
+    <div class="frigo"><label class="btn primary cookb" for="hvFrigo">📷 Fotografa frigo o dispensa: capisco io cosa hai</label><input type="file" id="hvFrigo" accept="image/*" capture="environment" hidden>${frigoBox()}</div>
     <p class="plab">In casa · tocca quello che hai (l'app se lo ricorda)</p>
     <div class="pgridt">${pantryTiles()}</div>
     <textarea id="hvT" rows="2" placeholder="Altro? Scrivilo: es. pollo 300 g, 4 uova, mozzarella" autocomplete="off">${esc(H.t)}</textarea>
@@ -1153,6 +1188,7 @@ function hvBind(box) {
   if (!H.open || !$("hvT")) return;
   const res = () => { const z = box.querySelector(".hvres"); z.innerHTML = hvRes(); z.querySelectorAll("[data-rec]").forEach(b => b.onclick = () => openRecipe(b.dataset.rec)); };
   res();
+  frigoBind(box);
   $("hvX").onclick = () => { H.open = false; renderCibo(); };
   $("hvT").oninput = e => { H.t = e.target.value; res(); };
   // quello che scrivi diventa una casella "in casa"
@@ -1399,7 +1435,7 @@ function frUse(d, mid, L, undo) {
     for (const [id, q, snap] of U) { const x = frz().find(y => y.id === id); if (x) x.q = Math.round((x.q + q) * 100) / 100; else if (snap) frz().push({ ...snap, q }); }
     setFDay(d, x => { delete x.frzU[mid]; }); save(); return; }
   const U = []; for (const [f, q] of L || []) { if (!q || !FO(f)) continue; const k = FO(f).of || f;
-    const x = frz().filter(y => y.th && y.q > 0 && (y.f === f || (FO(y.f).of || y.f) === k)).sort((a, b) => a.th < b.th ? -1 : 1)[0]; if (!x) continue;
+    const x = frz().filter(y => y.th && y.q > 0 && (y.f === f || ((FO(y.f) || {}).of || y.f) === k)).sort((a, b) => a.th < b.th ? -1 : 1)[0]; if (!x) continue;
     const use = Math.min(x.q, convQ(f, q, x.f)); x.q = Math.round((x.q - use) * 100) / 100; U.push([x.id, use, x.q <= 0 ? { ...x } : null]); if (x.q <= 0) frz().splice(frz().indexOf(x), 1); }
   if (U.length) { setFDay(d, x => x.frzU = { ...(x.frzU || {}), [mid]: U }); save(); const t = U.map(([, q, sn], i) => qText((sn || frz().find(y => y.id === U[i][0]) || {}).f || L[0][0], q)).join(", "); setTimeout(() => toast(`🧊 Scalato dal frigo: ${t}`), 1100); }
 }
@@ -1533,11 +1569,14 @@ function shrinkPic(file, max = 1024, q = .8) {
 const aif = () => { const f = FOOD(); return (f.aif = f.aif || {}); };
 function syncAif() { for (const [k, x] of Object.entries(aif())) CB.foods["ai_" + k] = { n: x.n, u: "g", s: 10, d: 100, v: x.v, k: [], ai: 1 }; }
 // dagli alimenti di Claude alle righe dell'app
+const AI_COOK = { pollo: "polloc", manzo: "carnec", macinato: "carnec", merluzzo: "pescec", orata: "pescec", patate: "patatec" };
 function aiRows(items) {
   const L = [], miss = [];
   for (const it of items || []) {
     const cot = it.cotto && /\b(pasta|riso|cous|farro|orzo|quinoa)\b/i.test(it.n) && !/cott|crud/i.test(it.n) ? " cotta" : "";
-    const r = readFood(`${it.n}${cot} ${Math.round(it.g)} g`, "n"), one = r.items.length === 1 && !r.miss.length ? [r.items[0].f, r.items[0].q] : null;
+    const r = readFood(`${it.n}${cot} ${Math.round(it.g)} g`, "n", false, true); let one = r.items.length === 1 && !r.miss.length ? [r.items[0].f, r.items[0].q] : null;
+    // 22/11/2026: l'IA pesa carne, pesce e patate COTTI (si vede il piatto): valori da cotto, non da crudo
+    if (one && it.cotto !== false && AI_COOK[one[0]] && !/crud/i.test(it.n)) one = [AI_COOK[one[0]], Math.round(gramsOf(one[0], one[1]))];
     let row = null;
     // 22/11/2026: se l'app conosce l'alimento usa SEMPRE i suoi valori (tabelle verificate): dall'IA prende solo cosa c'è e quanto.
     // Il modello gratuito sbaglia spesso le kcal (pasta 80 g = 88 kcal), molto meno i grammi.

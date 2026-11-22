@@ -1647,3 +1647,7 @@ details.vars{margin:10px 0;padding:10px 12px;border:1px solid var(--line);border
 details.vars summary{display:flex;flex-direction:column;gap:2px;cursor:pointer;list-style:none}details.vars summary span{font-size:13px;color:var(--muted)}
 details.vars ul{margin:8px 0 4px;padding-left:18px}details.vars li{margin:4px 0;font-size:14px}
 .swp .chip{font-size:13px;padding:5px 10px;min-height:0}
+
+/* 22/11/2026: foto del frigo */
+.frigo{margin:4px 0 10px}.frigo .frres{margin-top:8px;padding:10px 12px;border-radius:12px;background:var(--raised);border:1px solid var(--line);font-size:14px}
+.frigo .frres p{margin:4px 0}.frigo .rchips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}

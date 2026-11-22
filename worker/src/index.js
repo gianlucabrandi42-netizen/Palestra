@@ -115,6 +115,9 @@ Se ci sono una forchetta, un piatto o una mano, usali per capire le dimensioni.`
   testo: `Sei un nutrizionista esperto di cucina italiana. Una persona ha scritto cosa ha mangiato, a parole sue (anche con nomi regionali, marche o errori di battitura).
 Capisci di che piatto o cibo si tratta e scomponilo in alimenti con grammi e valori. Se non dice la quantità usa una porzione normale italiana.
 Includi i condimenti tipici di quel piatto (olio, burro, sughi, formaggio) come voci a parte se non sono già nel nome.`,
+  frigo: `Guarda la foto di un frigorifero, di una dispensa o di una spesa ed elenca gli alimenti che riconosci con sicurezza, anche nelle confezioni (leggi le etichette se si vedono).
+Nomi semplici e generici in italiano, uno per alimento (es. "petto di pollo", "uova", "yogurt", "mozzarella", "bresaola", "zucchine", "insalata", "latte", "pasta", "riso", "passata").
+Per ognuno una stima dei grammi presenti (0 se non si capisce). Non inventare: se non sei sicuro non scriverlo. Ignora bibite, salse e condimenti. Massimo 20 alimenti.`,
   congelatore: `Guarda la foto del congelatore o della spesa da congelare ed elenca gli alimenti che riconosci.
 Per ogni alimento il peso in grammi (usa quello scritto sulla confezione se si legge, altrimenti una stima) e i valori di quella quantità.
 Nomi semplici in italiano (es. "petto di pollo", "merluzzo", "verdure miste", "pane di segale"). Niente condimenti.`,
@@ -162,8 +165,8 @@ async function askCloudflare(env, text, b) {
   throw new Error(last);
 }
 async function fotoAnalyze(env, b) {
-  const mode = b.mode === "congelatore" ? "congelatore" : b.mode === "testo" ? "testo" : "piatto";
-  const text = FOTO_PROMPT[mode] + (b.meal ? `\nPasto: ${clip(b.meal, 40)}.` : "") + (mode === "testo" ? `\nHa scritto: «${clip(b.text, 500)}»` : b.note ? `\nNota di chi mangia: ${clip(b.note, 300)}` : "") + "\n\n" + (mode === "congelatore" ? "" : FOTO_REF + "\n\n") + FOTO_FORMAT;
+  const mode = ["congelatore", "testo", "frigo"].includes(b.mode) ? b.mode : "piatto";
+  const text = FOTO_PROMPT[mode] + (b.meal ? `\nPasto: ${clip(b.meal, 40)}.` : "") + (mode === "testo" ? `\nHa scritto: «${clip(b.text, 500)}»` : b.note ? `\nNota di chi mangia: ${clip(b.note, 300)}` : "") + "\n\n" + (mode === "congelatore" || mode === "frigo" ? "" : FOTO_REF + "\n\n") + FOTO_FORMAT;
   const img = mode === "testo" ? null : b.img, pv = provider(env);
   let t;
   try { t = pv === "claude" ? await askClaude(env, text, { ...b, img }) : pv === "gemini" ? await askGemini(env, text, { ...b, img }) : await askCloudflare(env, text, { ...b, img }); }
@@ -173,7 +176,7 @@ async function fotoAnalyze(env, b) {
   const num = x => { const v = Number(String(x).replace(",", ".")); return isFinite(v) && v >= 0 ? Math.round(v * 10) / 10 : 0; };
   // controllo dei conti: se le kcal non tornano con proteine, carboidrati e grassi (4/4/9) si usano quelle calcolate
   const fix = x => { const at = 4 * x.p + 4 * x.c + 9 * x.f; if (at > 0 && (!x.kcal || Math.abs(x.kcal - at) / at > 0.2)) x.kcal = Math.round(at); return x; };
-  const items = (Array.isArray(j.items) ? j.items : []).slice(0, 12).map(x => fix({ n: clip(x.n || x.nome, 60), g: num(x.g ?? x.grammi), cotto: !!x.cotto, kcal: num(x.kcal), p: num(x.p), c: num(x.c), f: num(x.f) })).filter(x => x.n && x.g > 0);
+  const items = (Array.isArray(j.items) ? j.items : []).slice(0, mode === "frigo" ? 20 : 12).map(x => fix({ n: clip(x.n || x.nome, 60), g: num(x.g ?? x.grammi), cotto: !!x.cotto, kcal: num(x.kcal), p: num(x.p), c: num(x.c), f: num(x.f) })).filter(x => x.n && (x.g > 0 || mode === "frigo"));
   if (!items.length) return { error: "nessun alimento riconosciuto: riprova con più luce o scrivilo" };
   return { piatto: clip(j.piatto, 60), items, note: clip(j.note, 300), sicurezza: ["alta", "media", "bassa"].includes(j.sicurezza) ? j.sicurezza : "media", via: pv };
 }

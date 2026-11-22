@@ -32,7 +32,7 @@ window.CIBO = {
     ] },
     { id: "s1", name: "Spuntino 1", color: "#8CC152", skip: true, opts: [
       // 20/11/2026: al lavoro servono spuntini da 2 ingredienti, pronti (easy: 1) — vanno per primi quando sei al lavoro
-      { id: "yog", t: "Yogurt e noci", d: "Yogurt intero 150 g + 3 noci", p: ["yogurt", "noci"], box: "ciotola", go: "p", easy: 1, porta: "Vasetto in borsa termica, noci in tasca." },
+      { id: "yog", t: "Yogurt e noci", d: "Yogurt intero 150 g + 2 noci", p: ["yogurt", "noci"], box: "ciotola", go: "p", easy: 1, porta: "Vasetto in borsa termica, noci in tasca." },
       { id: "bre", t: "Bresaola e gallette", d: "60 g di bresaola + 2 gallette", p: ["bresaola", "gallette"], go: "p", easy: 1, porta: "Bresaola in borsa termica, gallette nel sacchetto." },
       { id: "shn", t: "Shaker e noci", d: "Shaker con 30 g di proteine in acqua + 3 noci", p: ["shaker", "noci"], go: "p", easy: 1, porta: "Polvere già nello shaker, acqua al momento; noci in tasca. Niente frigo." },
       { id: "yogc", t: "Yogurt e cornflakes", d: "Yogurt intero 150 g + 30 g di cornflakes", p: ["yogurt", "cornflakes"], box: "ciotola", go: "p", easy: 1, porta: "Vasetto in borsa termica, cornflakes in un sacchetto: li versi nel vasetto." },
@@ -74,7 +74,7 @@ window.CIBO = {
       ] },
     { id: "ce", name: "Cena", color: "#B57EDC", main: true },
     { id: "dc", name: "Dopo cena", color: "#9AA5B1", extra: true, opts: [
-      { id: "yog", t: "Yogurt e noci", d: "Yogurt intero 150 g + 3 noci", p: ["yogurt", "noci"], box: "ciotola" },
+      { id: "yog", t: "Yogurt e noci", d: "Yogurt intero 150 g + 2 noci", p: ["yogurt", "noci"], box: "ciotola" },
       { id: "fio", t: "Fiocchi di latte", d: "1 vasetto di fiocchi di latte", p: ["fiocchi"], box: "ciotola" },
       { id: "shn", t: "Shaker e noci", d: "Shaker con 30 g di proteine + 3 noci (se ti alleni la sera, dopo cena)", p: ["shaker", "noci"] },
       { id: "bgn", t: "Bresaola, grana e noci", d: "40 g di bresaola + 15 g di grana + 2 noci", p: ["bresaola", "noci"] },
@@ -107,7 +107,9 @@ window.CIBO = {
   // 80 = giorno di palestra · 40 = giorno dopo la palestra · 0 = secondo giorno di fila (o più) senza palestra.
   lunch: { 80: { t: "giorno di palestra", d: "riso 80 g · pasta 75 g" }, 40: { t: "giorno dopo la palestra", d: "riso 40 g · pasta 40 g" }, 0: { t: "2° giorno senza palestra", d: "niente carboidrato · doppia verdura" } },
   // Totale del piano per la giornata (Fase 2): con e senza palestra.
-  target: { gym: [2180, 175, 255, 50], rest: [1830, 165, 190, 46], rest0: [1700, 162, 158, 46] },
+  // 22/11/2026: obiettivi = giornata tipo del piano CON I VALORI DELL'APP (colazione A, yogurt e noci, pollo, spuntino 2 A/B, cena col pollo).
+  // Prima erano quelli del PT con crema di riso e frutta (grassi 46-50 g): seguendo il piano la barra dei grassi diventava arancione.
+  target: { gym: [2300, 185, 255, 58], rest: [1950, 175, 190, 54], rest0: [1810, 170, 155, 54] },
   // caselle in più per pranzo e cena, oltre alle ricette
   mainExtra: [
     { id: "mensa", t: "Mensa", d: "Un secondo normale + verdure a volontà. Primo: porzione normale nei giorni di palestra, mezza il giorno dopo, niente primo (doppio contorno) dal 2° giorno senza palestra. Niente fritti, panna o pane in più.", p: ["pasta", "pollo", "verdure"], only: "pr" },
@@ -522,7 +524,7 @@ window.CIBO = {
   carbs: [["Riso", "80 g", "40 g", "50 g"], ["Pasta", "75 g", "40 g", "65 g"], ["Pasta integrale", "80 g", "40 g", "70 g"], ["Cous cous", "70 g", "35 g", "60 g"], ["Farro o orzo", "80 g", "40 g", "70 g"], ["Quinoa", "70 g", "35 g", "60 g"], ["Riso precotto in busta", "180 g", "90 g", "150 g"], ["Farro o orzo precotti in busta", "170 g", "85 g", "150 g"], ["Gnocchi", "200 g", "100 g", "150 g"], ["Patate", "350 g", "175 g", "300 g"], ["Patate dolci", "300 g", "150 g", "270 g"], ["Pane", "100 g", "50 g", "85-100 g"], ["Pane di segale", "115 g", "60 g", "100 g"], ["Piadina (niente olio)", "1", "½", "¾"], ["Cornflakes o gallette", "70 g", "35 g", "60 g"]],
   // [alimento, quantità, olio nel pasto]
   prots: [["Petto di pollo", "200 g", "1 cucchiaio"], ["Manzo magro", "200 g", "1 cucchiaio"], ["Macinato magro", "200 g", "mezzo"], ["Merluzzo, nasello, platessa", "250 g", "1 cucchiaio"], ["Orata o branzino", "200 g", "mezzo"], ["Gamberi", "250 g", "1 cucchiaio"], ["Salmone", "150 g", "niente"], ["Tonno sott'olio sgocciolato (nella pasta)", "150 g", "niente"], ["Uova", "2 uova + 150 g di albume", "1 cucchiaio"], ["Mozzarella light + pollo o bresaola", "1 + 100 g", "niente"], ["Legumi + pollo", "palestra 100+100 g · senza 150+150 g", "1 cucchiaio"]],
-  fats: "3 noci (~100 kcal) = 10 mandorle = 15 g di arachidi = 2 cucchiaini di burro di arachidi = 1 cucchiaio d'olio. 1 cucchiaino di burro di arachidi ≈ 2 noci. Olio: 1 cucchiaio a pranzo e 1 a cena, compreso quello per cuocere.",
+  fats: "3 noci (~100 kcal) = 15 g di arachidi = 2 cucchiaini di burro di arachidi = 1 cucchiaio d'olio. 10 mandorle (~70 kcal) = 2 noci. 1 cucchiaino di burro di arachidi (~47 kcal) ≈ 1-2 noci. Olio: 1 cucchiaio a pranzo e 1 a cena, compreso quello per cuocere.",
 
   shop: [
     { cat: "Proteine", items: ["Petto di pollo", "Pesce bianco surgelato", "Straccetti di manzo", "Macinato magro", "Gamberi surgelati", "Salmone", "Uova (12)", "Albume in brick", "Tonno sott'olio", "Ceci", "Bresaola"] },
@@ -660,12 +662,12 @@ Object.assign(window.CIBO, {
     "col.paneuovo": "uovo 3, segale 1, noce 2, spruzz 5, soia 1", "col.pancake": "avena 50, prot 30, albume 1, latte 70, galletta 3", "col.A": "avena 50, prot 30, albume 1, latte 50, cacao 1, galletta 3",
     "col.C": "yogurt 150, cornflakes 65, cacao 1", "col.A2": "prot 30, cornflakes 65", "col.B": "uovo 3, segale 1, noce 2, sale 1",
     "s1.pizzette": "galletta 2, passata 30, mozz 0.5", "s1.involtini": "bresaola 60, fiocchi 30, rucola 20, galletta 1", "s1.uovaripiene": "uovo 2, yogurt 15",
-    "s1.yog": "yogurt 150, noce 3", "s1.bre": "bresaola 60, galletta 2", "s1.fio": "fiocchi 150", "s1.uov": "uovo 2, sale 1", "s1.moz": "mozz 0.5, galletta 2", "s1.shn": "prot 30, noce 3", "s1.yogc": "yogurt 150, cornflakes 30", "s1.fiog": "fiocchi 150, galletta 2",
+    "s1.yog": "yogurt 150, noce 2", "s1.bre": "bresaola 60, galletta 2", "s1.fio": "fiocchi 150", "s1.uov": "uovo 2, sale 1", "s1.moz": "mozz 0.5, galletta 2", "s1.shn": "prot 30, noce 3", "s1.yogc": "yogurt 150, cornflakes 30", "s1.fiog": "fiocchi 150, galletta 2",
     "s2g.shg": "prot 30, galletta 8, noce 3", "s2.bre": "bresaola 60, galletta 3", "s2.shn": "prot 30, noce 3", "s2.fiog": "fiocchi 150, galletta 2", "dc.shn": "prot 30, noce 3",
     "s2g.pancake": "avena 50, prot 30, albume 1, latte 70, galletta 3, noce 3", "s2g.A": "avena 50, prot 30, albume 1, latte 50, cacao 1, galletta 3, noce 3",
     "s2g.A2": "prot 30, cornflakes 65, noce 3", "s2g.pan": "pane 110, bresaola 60, noce 3",
     "s2.fio": "segale 1, fiocchi 150, pomodorini 5", "s2.yog": "yogurt 150, cornflakes 30", "s2.pan": "pane 50, bresaola 50",
-    "dc.yog": "yogurt 150, noce 3", "dc.fio": "fiocchi 150",
+    "dc.yog": "yogurt 150, noce 2", "dc.fio": "fiocchi 150",
     // 21/11/2026: nuove colazioni e spuntini
     "col.purg": "uovo 2, albume 2, passata 100, segale 1, olio 1, sale 1", "col.toastc": "pintegrale 2, pcotto 50, mozz 0.5", "col.wrapu": "piadina 0.5, uovo 2, albume 1, bresaola 30, rucola 15, spruzz 3",
     "col.salm": "segale 2, salaff 60, fiocchi 50", "col.tazzau": "uovo 1, albumeg 100, spinaci 30, parmigiano 5, segale 2", "col.frt": "pintegrale 2, uovo 1, albumeg 100, miele 1, spruzz 3",
