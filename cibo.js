@@ -1539,7 +1539,9 @@ function aiRows(items) {
     const cot = it.cotto && /\b(pasta|riso|cous|farro|orzo|quinoa)\b/i.test(it.n) && !/cott|crud/i.test(it.n) ? " cotta" : "";
     const r = readFood(`${it.n}${cot} ${Math.round(it.g)} g`, "n"), one = r.items.length === 1 && !r.miss.length ? [r.items[0].f, r.items[0].q] : null;
     let row = null;
-    if (one) { const k = valOfQ([one])[0]; if (!it.kcal || Math.abs(k - it.kcal) <= Math.max(30, it.kcal * .25)) row = one; }
+    // 22/11/2026: se l'app conosce l'alimento usa SEMPRE i suoi valori (tabelle verificate): dall'IA prende solo cosa c'è e quanto.
+    // Il modello gratuito sbaglia spesso le kcal (pasta 80 g = 88 kcal), molto meno i grammi.
+    if (one) row = one;
     if (!row && it.kcal > 0) { const slug = normT(it.n).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30) || "cibo", per = x => Math.round(x / it.g * 1000) / 10;
       aif()[slug] = { n: it.n.charAt(0).toUpperCase() + it.n.slice(1), v: [per(it.kcal), per(it.p), per(it.c), per(it.f)], at: Date.now() }; syncAif(); row = ["ai_" + slug, Math.round(it.g)]; }
     if (!row && one) row = one;

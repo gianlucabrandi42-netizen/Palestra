@@ -119,6 +119,9 @@ Includi i condimenti tipici di quel piatto (olio, burro, sughi, formaggio) come 
 Per ogni alimento il peso in grammi (usa quello scritto sulla confezione se si legge, altrimenti una stima) e i valori di quella quantità.
 Nomi semplici in italiano (es. "petto di pollo", "merluzzo", "verdure miste", "pane di segale"). Niente condimenti.`,
 };
+const FOTO_REF = `Riferimenti per i pesi (porzioni italiane): un piatto di pasta o riso ≈ 220-250 g cotti (80-100 g crudi): scrivi il peso da cotto e "cotto":true;
+un petto di pollo ≈ 150-200 g; una fetta di pane ≈ 30-40 g; un uovo ≈ 55 g; una pizza intera ≈ 330 g; un cucchiaio d'olio ≈ 10 g; una porzione di verdure ≈ 150-200 g.
+Valori indicativi per 100 g: pasta cotta 150 kcal, riso cotto 130, pollo cotto 150, pane 270, olio 900, parmigiano 390, patate al forno 130.`;
 const FOTO_FORMAT = `Rispondi SOLO con un oggetto JSON valido, senza testo prima o dopo, in questo formato:
 {"piatto":"nome breve del piatto","items":[{"n":"alimento","g":grammi,"cotto":true,"kcal":0,"p":0,"c":0,"f":0}],"note":"una frase su cosa è incerto","sicurezza":"alta|media|bassa"}
 p, c, f = grammi di proteine, carboidrati, grassi della quantità indicata. Massimo 12 alimenti.`;
@@ -160,7 +163,7 @@ async function askCloudflare(env, text, b) {
 }
 async function fotoAnalyze(env, b) {
   const mode = b.mode === "congelatore" ? "congelatore" : b.mode === "testo" ? "testo" : "piatto";
-  const text = FOTO_PROMPT[mode] + (b.meal ? `\nPasto: ${clip(b.meal, 40)}.` : "") + (mode === "testo" ? `\nHa scritto: «${clip(b.text, 500)}»` : b.note ? `\nNota di chi mangia: ${clip(b.note, 300)}` : "") + "\n\n" + FOTO_FORMAT;
+  const text = FOTO_PROMPT[mode] + (b.meal ? `\nPasto: ${clip(b.meal, 40)}.` : "") + (mode === "testo" ? `\nHa scritto: «${clip(b.text, 500)}»` : b.note ? `\nNota di chi mangia: ${clip(b.note, 300)}` : "") + "\n\n" + (mode === "congelatore" ? "" : FOTO_REF + "\n\n") + FOTO_FORMAT;
   const img = mode === "testo" ? null : b.img, pv = provider(env);
   let t;
   try { t = pv === "claude" ? await askClaude(env, text, { ...b, img }) : pv === "gemini" ? await askGemini(env, text, { ...b, img }) : await askCloudflare(env, text, { ...b, img }); }
