@@ -141,3 +141,20 @@ T("Sostituzioni: grammi equivalenti della tabella del PT", () => {
   const a = swapAlts("pollo", 200); ok(a && a.length, "nessuna alternativa al pollo");
   const m = a.find(x => x[0] === "merluzzo"); if (m) near(m[1], 250, 1, "merluzzo al posto di 200 g di pollo");
 });
+
+T("Punto della settimana: decisioni secondo le regole del piano", () => {
+  const F = FOOD(), keepAdj = F.adj, keepBody = D.body; F.adj = [];
+  const mon = "2030-03-04", end = "2030-03-10", mk = (dB, dA) => { D.body = [];
+    for (const [d, w] of [["2030-02-12", 61 + dA], ["2030-02-20", 61 + dA], ["2030-02-27", 61 + dB], ["2030-03-08", 61 + dB]]) D.body.push({ id: d, date: d, w }); };
+  mk(-0.8, 0); let x = fdDecide(fdData(mon)); eq([x.act, x.t], [1, "Più carboidrati a pranzo"], "peso giù");
+  mk(0.9, 0); x = fdDecide(fdData(mon)); eq(x.act, -1, "peso su senza forza in salita");
+  mk(0.2, 0); x = fdDecide(fdData(mon)); eq(x.act, null, "peso stabile: nessun cambio");
+  F.adj = [{ from: "2030-03-05", k: 1 }]; mk(-0.8, 0); x = fdDecide(fdData(mon)); eq([x.act, x.t], [null, "Aspetta ancora"], "un cambio alla volta");
+  // il gradino cambia davvero il pranzo dei giorni senza palestra
+  setFDay("2030-03-12", d => { d.gym = false; }); setFDay("2030-03-13", d => { d.gym = false; }); setFDay("2030-03-14", d => { d.gym = false; });
+  F.adj = [{ from: "2030-03-13", k: 1 }];
+  eq([lunchLvl("2030-03-12"), lunchLvl("2030-03-14")], [0, 40], "gradino 1 dal 13: prima 0, dopo 40");
+  ok(dayTarget("2030-03-14")[0] > dayTarget("2030-03-12")[0], "obiettivo del giorno più alto col gradino");
+  ok(/Applica|Aspetta|Continua|Nessun/.test(foodDecBox({ mon })), "riquadro nel punto della settimana");
+  F.adj = keepAdj; D.body = keepBody;
+});

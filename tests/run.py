@@ -52,6 +52,7 @@ TOUR = [
     ("Info ed esecuzione", "const b=document.querySelector('.infobtn'); b&&b.click()"),
     ("Progressi", "closeSheet&&closeSheet(); document.querySelector('[data-view=prog]').click()"),
     ("Report per il PT", "typeof openReport==='function'&&openReport()"),
+    ("Punto della settimana", "openReview()"),
     ("Scheda", "document.querySelector('[data-view=plan]').click()"),
     ("Cibo · Oggi", "document.querySelector('[data-view=cibo]').click()"),
     ("Cibo · Ricette", "const b=[...document.querySelectorAll('#cseg button')][1]; b&&b.click()"),

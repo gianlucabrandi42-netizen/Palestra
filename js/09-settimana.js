@@ -52,7 +52,7 @@ function weekReview(mon) {
   if (typeof dayVals === "function" && typeof CB !== "undefined") {
     let logged = 0, full = 0, protOk = 0;
     for (let i = 0; i < 7; i++) { const d = addD(mon, i); if (d > todayISO()) break; const v = dayVals(d); if (!v.any && !v.free) continue; logged++;
-      if (dayDone(d) && !v.free) { full++; const T = CB.target[isGym(d) ? "gym" : lunchLvl(d) === 40 ? "rest" : "rest0"]; if (v.t[1] >= T[1] * 0.85) protOk++; } }
+      if (dayDone(d) && !v.free) { full++; const T = dayTarget(d); if (v.t[1] >= T[1] * 0.85) protOk++; } }
     R.food = { logged, full, protOk, free: freeInWeek(mon), check: (FOOD().week || {})[mon] || {} };
   }
   // corpo: peso medio delle 2 settimane che finiscono domenica contro le 2 prima
@@ -126,6 +126,7 @@ function reviewHTML(R) {
       <div><b>${restAvg != null ? fmtSec(restAvg) : "—"}</b><span>recupero${restPl ? ` · prev. ${fmtSec(restPl)}` : ""}</span></div></div>
     ${G.length ? `<ul class="rv-good">${G.map(g => `<li>${esc(g)}</li>`).join("")}</ul>` : ""}
     ${A.length ? `<p class="rv-l">Cosa fare ${nextTxt}</p><ul class="rv-do">${A.map(([i, t]) => `<li><i>${i}</i><span>${esc(t)}</span></li>`).join("")}</ul>` : ""}
+    ${typeof foodDecBox === "function" ? foodDecBox(R) : ""}
     ${R.proposeDeload ? `<div class="rv-dl"><span>🔋 Scarico ${nextTxt}: carichi −35% e una serie in meno, poi si riparte.</span><button class="btn sm primary" data-rv="dl">Sì, pianificalo</button><button class="btn sm ghost" data-rv="nodl">No</button></div>` : ""}
     ${!R.deload && (D.prefs.deloadPlan === R.next || deloadWeeks().has(R.next)) ? `<p class="rv-note">🔋 Scarico ${D.prefs.deloadPlan === R.next ? "pianificato" : "attivo"} dal ${fmtDate(R.next).slice(0, 5)} <button class="linkbtn" data-rv="undl">Annulla</button></p>` : ""}
     <p class="rv-l">Settimana in breve</p>

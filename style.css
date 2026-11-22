@@ -1693,3 +1693,11 @@ html{touch-action:manipulation}
 .linkbtn{background:none;border:0;color:var(--accent);text-decoration:underline;font:inherit;padding:0 4px}
 .tabbar button.dot{position:relative}
 .tabbar button.dot::after{content:"";position:absolute;top:6px;right:calc(50% - 18px);width:9px;height:9px;border-radius:50%;background:#FF5F57;box-shadow:0 0 0 2px var(--surface)}
+/* 🍽 Piano del cibo dentro il punto della settimana (22/11/2026, revisione.js) */
+.fdbox{margin:12px 0;padding:12px 13px;border-radius:14px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.09)}
+.fdbox.act{background:color-mix(in srgb,var(--accent) 12%,transparent);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+.fdbox small{display:block;color:var(--muted,#9aa0a6);font-size:12px}
+.fdbox>b{display:block;font-size:16.5px;margin:3px 0 4px}
+.fdbox p{margin:5px 0;line-height:1.42;font-size:14px}
+.fdbox .fdnow span{color:var(--muted,#9aa0a6);font-size:13px}
+.fdb{display:flex;gap:8px;margin-top:8px}.fdb .btn{flex:1}

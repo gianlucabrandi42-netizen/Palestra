@@ -19,7 +19,14 @@ const gymAuto = d => Object.values(D.sessions).some(s => s.date === d && hasData
 // 20/11/2026: le sedute registrate vincono sempre (anche su un "No" detto la mattina); prima della seduta conta la risposta a "Oggi ti alleni?"
 const isGym = d => gymAuto(d) || fDay(d).gym === true;
 // scala 80/40/0 del PT adattata: palestra oggi = 80, palestra ieri = 40, altrimenti 0
-const lunchLvl = d => isGym(d) ? 80 : isGym(addDays(d, -1)) ? 40 : 0;
+// 22/11/2026: aggiustamento del piano deciso col Punto della settimana (revisione.js), salvato con la data da cui vale (FOOD().adj),
+// così i giorni passati restano coi conti di allora. k = −1 anche il giorno dopo la palestra a 0 · 0 piano normale 80/40/0 ·
+// 1 il pranzo da 0 diventa da 40 · 2 anche quello da 40 diventa da 80 (regole del NUTRIZIONE_PIANO, sezione 9)
+const adjAt = d => { let k = 0; for (const a of FOOD().adj || []) if (a.from <= d) k = a.k; return k; };
+const lunchLvl = d => { if (isGym(d)) return 80; const after = isGym(addDays(d, -1)), k = adjAt(d);
+  return k <= -1 ? 0 : k === 1 ? 40 : k >= 2 ? (after ? 80 : 40) : after ? 40 : 0; };
+// obiettivo del giorno: palestra / pranzo da 80 senza palestra (piano aggiustato) / da 40 / da 0
+const dayTarget = d => isGym(d) ? CB.target.gym : lunchLvl(d) === 80 ? CB.target.rest.map((v, i) => v + [145, 3, 31, 0][i]) : CB.target[lunchLvl(d) === 40 ? "rest" : "rest0"];
   // ☕ caffè e cappuccino, fatti a casa o al lavoro (20/11/2026): cappuccino, macchiato, caffè con un tocco; contano nelle kcal ma non segnano un pasto
 function barCard(day) {
   const B = (day.x || []).filter(x => x.bar), su = !!FOOD().barSugar;
@@ -446,7 +453,7 @@ function xVal(e) { if (e.k) return [e.k, e.p || 0, e.c || 0, e.f || 0]; if (e.it
 const r50 = n => Math.round(n / 50) * 50;
 function balanceCard(d) {
   const { t, free, nox, any } = dayVals(d); if (!any && !free) return "";
-  const T = CB.target[isGym(d) ? "gym" : lunchLvl(d) === 40 ? "rest" : "rest0"], done = dayDone(d), m = fDay(d).m || {};
+  const T = dayTarget(d), done = dayDone(d), m = fDay(d).m || {};
   const pc = t[0] / T[0], N = [["Proteine", 1], ["Carboidrati", 2], ["Grassi", 3]];
   let msg;
   if (free) { const lk = libKcal(d)[0]; msg = `Con un pasto libero oggi${lk ? ` (~${r50(lk)} kcal, fuori conto)` : ""} i conti non contano: domani si riparte normale, senza compensare.`; }
@@ -1775,6 +1782,8 @@ function mergeFood(inc) {
   if (g.nobrand) f.nobrand = { ...g.nobrand, ...(f.nobrand || {}) };
   if (g.fridge) { const have = new Set(frList().map(x => x.id)); for (const x of g.fridge) if (!have.has(x.id)) f.fridge.push(x); }
   for (const [w, x] of Object.entries(g.week || {})) { const l = f.week[w]; if (!l || (x.at || 0) > (l.at || 0)) f.week[w] = x; }
+  if (g.adj && (g.adjT || 0) > (f.adjT || 0)) { f.adj = g.adj; f.adjT = g.adjT; }
+  for (const [w, x] of Object.entries(g.rev || {})) { f.rev = f.rev || {}; const l = f.rev[w]; if (!l || (x.at || 0) > (l.at || 0)) f.rev[w] = x; }
 }
 // per il report al PT
 function foodReport(from) {

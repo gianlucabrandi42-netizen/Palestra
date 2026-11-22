@@ -127,7 +127,7 @@ $("csv").onclick = () => {
 function renderMore() {
   const ds = daysSince(D.prefs.lastBackup);
   $("backupInfo").textContent = `${Object.values(D.sessions).filter(hasData).length} sedute salvate · ultimo backup: ${ds == null ? "mai" : ds === 0 ? "oggi" : ds + " giorni fa"}`;
-  renderTimerSet(); renderCloud();
+  renderTimerSet(); renderCloud(); if (typeof renderUso === "function") renderUso();
   $("gymEdit").innerHTML =GYMS.map(g => `<div class="lrow"><div class="t"><b>${esc(g.name)}</b><small>${gymSessions(g.id).length} sedute · carichi e regolazioni separati</small></div></div>`).join("");
 }
 
