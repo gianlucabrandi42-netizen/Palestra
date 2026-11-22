@@ -971,6 +971,8 @@ Object.assign(window.CIBO, {
     ["tisana", "Tè caldo / tisana", "ml", 50, [1, 0, 0.2, 0], "tisan,camomill,infuso,the caldo,te caldo,te verde,the verde,tazza di te", 250],
     ["frullato", "Frullato / smoothie", "ml", 50, [70, 2, 13, 1.2], "frullato,smoothie,milkshake,frappe", 300],
     // 22/11/2026: le preparazioni dell'app scritte a parole
+    // 22/11/2026: la pizza fatta in casa fotografata viene descritta a pezzi (impasto + condimenti): l'impasto non è una pizza intera
+    ["impasto", "Impasto per pizza (cotto)", "g", 10, [255, 8, 50, 3], "impasto,impasto pizza,impasto per pizza,impasto della pizza,base pizza,base della pizza,pasta per pizza,pasta della pizza,impasto integrale,base integrale", 250],
     ["muffalb", "Muffin di albumi", "muffin|muffin", 75, [61, 9.6, 0.9, 1.7], "muffin di albumi,muffin di albume,muffin salati,muffin salato", 3],
     ["tortatazza", "Torta in tazza (avena e proteine)", "tazza|tazze", 170, [210, 21, 20.6, 4], "torta in tazza,mug cake,mugcake", 1],
   ];

@@ -125,7 +125,7 @@ function kwList() {
   // 21/11/2026: gli spazi delle parole chiave valgono anche come "_" (frasi protette, vedi readFood) e l'ultima vocale può
   // cambiare a fine parola (zucchina/zucchine, polpetta/polpette, biscotto/biscotti)
   const esc_ = t => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/ /g, "[ _]");
-  for (const [id, o] of Object.entries(CB.foods)) for (const k of (o.k || "").split(",")) { const n = normT(k.trim()); if (n.length < 3) continue; const pr = n.length + (o.mine ? 1000 : 0);
+  for (const [id, o] of Object.entries(CB.foods)) for (const k of String(o.k || "").split(",")) { const n = normT(k.trim()); if (n.length < 3) continue; const pr = n.length + (o.mine ? 1000 : 0);
     KW.push([new RegExp("(^|[^a-z])" + esc_(n)), id, pr, n]);
     if (n.length >= 4 && /[aeio]$/.test(n)) KW.push([new RegExp("(^|[^a-z])" + esc_(n.slice(0, -1)) + "[aeio](?![a-z])"), id, pr - 1.5, n]); }
   KW.sort((a, b) => b[2] - a[2]);
@@ -798,7 +798,7 @@ const QPOP = ["noce", "olio", "soia", "parmigiano", "pane", "galletta", "yogurt"
 function foodHits(t) {
   t = normT(t).trim(); const mine = Object.keys(CB.foods).filter(k => FO(k).mine);
   if (!t) return [...mine.slice(0, 6), ...QPOP];
-  const hit = k => { const o = FO(k); return normT(o.n).includes(t) || normT(o.k || "").split(",").some(w => (w = w.trim()) && (w.startsWith(t) || (t.startsWith(w) && w.length > 2))); };
+  const hit = k => { const o = FO(k); return normT(o.n).includes(t) || normT(String(o.k || "")).split(",").some(w => (w = w.trim()) && (w.startsWith(t) || (t.startsWith(w) && w.length > 2))); };
   return [...mine.filter(hit), ...Object.keys(CB.foods).filter(k => !FO(k).mine && hit(k))].slice(0, 14);
 }
 const hitBtns = t => foodHits(t).map(f => `<button class="chip${FO(f).mine ? " mine" : ""}" data-qa="${f}">${esc(FO(f).n)}</button>`).join("") + `<button class="chip scanc" data-qscan="1">📷 Scansiona un prodotto</button>`;
@@ -1567,7 +1567,7 @@ function shrinkPic(file, max = 1024, q = .8) {
     img.onerror = () => { URL.revokeObjectURL(url); ko(new Error("foto non leggibile")); }; img.src = url; });
 }
 const aif = () => { const f = FOOD(); return (f.aif = f.aif || {}); };
-function syncAif() { for (const [k, x] of Object.entries(aif())) CB.foods["ai_" + k] = { n: x.n, u: "g", s: 10, d: 100, v: x.v, k: [], ai: 1 }; }
+function syncAif() { for (const [k, x] of Object.entries(aif())) CB.foods["ai_" + k] = { n: x.n, u: "g", s: 10, d: 100, v: x.v, k: "", ai: 1 }; } // 22/11: k era [] e mandava in errore la lettura del testo
 // dagli alimenti di Claude alle righe dell'app
 const AI_COOK = { pollo: "polloc", manzo: "carnec", macinato: "carnec", merluzzo: "pescec", orata: "pescec", patate: "patatec" };
 function aiRows(items) {
