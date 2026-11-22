@@ -883,9 +883,14 @@ function recapCard(d, s, units) {
   return el;
 }
 function renderLog() {
-  if (S.sheet || $("isheet")._card) { $("isheet").querySelector(".is-c").textContent = ""; $("isheet")._card = null; }
+  // 22/11/2026 ("toccando i pulsanti in Info la schermata si ricarica e perdo il punto"): con il riquadro Info aperto
+  // si ricordano posizione del contenuto, foto della galleria e immagini già caricate, e si rimettono dopo il ridisegno.
+  const sh = $("isheet"), c = sh && sh.querySelector(".is-c"), keep = S.sheet && sh && !sh.hidden && sh.classList.contains("on");
+  const st = keep ? { top: c.scrollTop, gx: (c.querySelector(".gallery") || {}).scrollLeft || 0, imgs: keepImgs(c), y: scrollY } : null;
+  if (S.sheet || sh._card) { c.textContent = ""; sh._card = null; }
   renderLog0();
   if (S.sheet) { if (document.querySelector(`.ex[data-ex="${S.sheet}"]`)) openSheet(S.sheet); else closeSheet(); }
+  if (st && S.sheet && !sh.hidden) { reuseImgs(c, st.imgs); const g = c.querySelector(".gallery"); if (g && st.gx) g.scrollLeft = st.gx; c.scrollTop = st.top; if (scrollY !== st.y) scrollTo(0, st.y); }
 }
 function renderLog0() {
   PIC.clear(); renderConsole(); renderWeek(); renderSite(); renderDur();
@@ -2405,7 +2410,12 @@ resumeLast();
 if ("serviceWorker" in navigator && location.protocol === "https:") {
   const hadCtl = !!navigator.serviceWorker.controller; let swReload = false, swDone = false;
   const doReload = () => { if (swDone) return; const a = document.activeElement; if (a && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) { swReload = true; return; } swDone = true; location.reload(); };
-  navigator.serviceWorker.addEventListener("controllerchange", () => { if (hadCtl) doReload(); });
+  // 22/11/2026 ("la schermata si ricarica e perdo il punto"): l'aggiornamento arrivava qualche secondo dopo il rientro nell'app,
+  // mentre si toccavano i pulsanti. Ora la pagina si ricarica solo quando non la stai usando: uscendo dall'app o al rientro,
+  // oppure subito solo nei primi 1,5" dall'apertura (prima di qualsiasi tocco).
+  const t0 = Date.now(); let touched = false; addEventListener("pointerdown", () => { touched = true; }, { capture: true, passive: true });
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (!hadCtl) return; if (!touched && Date.now() - t0 < 1500) doReload(); else swReload = true; });
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && swReload) { swDone = true; location.reload(); } });
   navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(reg => {
     document.addEventListener("visibilitychange", () => { if (document.visibilityState !== "visible") return; if (swReload) return doReload(); reg.update().catch(() => {}); });
   }).catch(() => {});
