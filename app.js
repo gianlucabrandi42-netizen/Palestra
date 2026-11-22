@@ -762,7 +762,10 @@ function setSec(ex, i, r) {
   const uni = ex && /per (gamba|braccio|lato)/i.test((ex.tec || "") + " " + (ex.sets[i] && ex.sets[i].note || ""));
   return Math.min(90, Math.max(20, n * (uni ? 2 : 1) * SEC_REP));
 }
-const restGap = (a, b, ex, i) => a && b && a.at && b.at && b.at > a.at ? Math.max(0, Math.round((b.at - a.at) / 1000) - setSec(ex, i, b)) : null;
+// 22/11/2026 (richiesta dell'utente): 5" per posizionarsi prima della serie e 5" per levarsi dall'esercizio dopo,
+// tolti dal recupero misurato, così non risultano come recupero in più
+const SETUP_SEC = 10;
+const restGap = (a, b, ex, i) => a && b && a.at && b.at && b.at > a.at ? Math.max(0, Math.round((b.at - a.at) / 1000) - setSec(ex, i, b) - SETUP_SEC) : null;
 const isLong = (sec, plan, buddy) => sec != null && sec > plan * (buddy ? 2 : 1.5) && sec > plan + 30;
 const lrOn = r => !!(r && r.lr && !r.lrOk);
 // ---------- durata dell'allenamento: dal primo inserimento all'ultimo (sessione.t0 / t1), tasti Inizia / Fine (tEnd) ----------
@@ -1064,7 +1067,7 @@ function renderLog0() {
             // verde = nei tempi (tolleranza 15"); rosso = recupero lungo, stessa soglia del messaggio "Recupero lungo" (isLong); arancione = in mezzo
             const ov = Math.round((g - pl) / 5) * 5, cl = isLong(g, pl, !!current().buddy) ? "red" : g > pl + 15 ? "orange" : "green";
             row._gap.className = "rgap " + cl;
-            row._gap.innerHTML = `<span>recupero ${fmtSec(Math.round(g / 5) * 5)}${cl !== "green" ? ` <b>+${fmtSec(ov)}</b>` : ""}</span><small>previsto ${fmtSec(pl)} + serie ~${setSec(ex, i, all[i])}"</small>`; } }
+            row._gap.innerHTML = `<span>recupero ${fmtSec(Math.round(g / 5) * 5)}${cl !== "green" ? ` <b>+${fmtSec(ov)}</b>` : ""}</span><small>previsto ${fmtSec(pl)} · serie ~${setSec(ex, i, all[i])}" · cambio 10"</small>`; } }
         const cr = exSets(current(), ex.key)[i] || {}, fv = feelOf(cr);
         judge(kg, rp, fb, tn, rr, { ...jc, step: stp.v, last: i >= need(ex, current()) - 1 }, isDirty(), cr.eff, goal);
         { const pv = i > 0 ? exSets(current(), ex.key)[i - 1] : null, k = num(kg.value), rv = num(rp.value);
