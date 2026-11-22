@@ -76,3 +76,5 @@ jobs:
           curl -s -X POST -H 'Content-Type: application/json' -d "{\"id\":\"$VID\"}" $U/vault/get | jq -e '.data | startswith("PROVA-")' > /dev/null
           echo "analisi foto → $(curl -s -X POST -H 'Content-Type: application/json' -d '{}' $U/food/status | jq -c '{configured, needCode, via, error}')"
           echo "prova testo  → $(curl -s -m 60 -X POST -H 'Content-Type: application/json' -d '{"mode":"testo","text":"un piatto di pasta al pomodoro con parmigiano"}' $U/food/photo | jq -c '{piatto, via, error, items: [.items[]? | {n, g, kcal}]}')"
+          IMG=$(base64 -w0 icons/icon-192.png 2>/dev/null || true)
+          if [ -n "$IMG" ]; then printf '{"mode":"piatto","mime":"image/png","img":"%s"}' "$IMG" > /tmp/foto.json; echo "prova foto   → $(curl -s -m 60 -X POST -H 'Content-Type: application/json' --data @/tmp/foto.json $U/food/photo | jq -c '{piatto, via, error, n: (.items // [] | length)}') (immagine di prova: l'icona dell'app)"; fi
