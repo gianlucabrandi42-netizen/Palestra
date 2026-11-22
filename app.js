@@ -642,6 +642,20 @@ function dbSearch(q, exKey) {
     if (!ok) continue; if (cat.k.includes(exKey)) sc += 5; if (m.b === "Panatta") sc += 1; else if (m.b === "Technogym") sc += 0.5; out.push({ m, sc }); } // le palestre dell'utente sono Panatta
   return out.sort((a, b) => b.sc - a.sc || a.m.b.localeCompare(b.m.b)).slice(0, 14).map(x => x.m);
 }
+// Sostituti già usati in questa palestra (22/11/2026, richiesta dell'utente: "mettimi per primi quelli che ho già aggiunto"):
+// per questo esercizio, dal più recente; poi quelli usati per altri esercizi con lo stesso movimento.
+function usedSubs(ex) {
+  const last = new Map(); gymSessions(S.gym).forEach(x => { const n = subOf(x, ex.key); if (n && (!last.has(n) || x.date > last.get(n))) last.set(n, x.date); });
+  return [...last.entries()].sort((a, b) => a[1] < b[1] ? 1 : -1).map(e => e[0]);
+}
+function usedSubsOther(ex, mine) {
+  const c0 = subCat(ex.name, ex.key), seen = new Set(mine.map(dbNorm)), out = [];
+  gymSessions(S.gym).slice().reverse().forEach(x => Object.entries(x.sub || {}).forEach(([k, n]) => { if (!n || k === ex.key || seen.has(dbNorm(n))) return;
+    const d = dbFind(n), c = d ? d.c : subCat(n, k); if (c && c0 && (c === c0 || (window.MACCHINE_DB.CAT[c].k || []).includes(ex.key))) { seen.add(dbNorm(n)); out.push(n); } }));
+  return out.slice(0, 8);
+}
+function usedWhen(key, n) { const ss = gymSessions(S.gym).filter(x => subOf(x, key) && sameSub(subOf(x, key), n)); if (!ss.length) return ""; const d = ss.map(x => x.date).sort().pop();
+  return `${ss.length} ${ss.length === 1 ? "volta" : "volte"} · ultima ${new Date(d + "T12:00").toLocaleDateString("it-IT", { day: "numeric", month: "short" })}`; }
 const dbName = m => `${m.b} ${m.l} ${m.n}`;
 const dbFind = n => { const DB = window.MACCHINE_DB, k = dbNorm(n); return DB ? DB.list.find(m => dbNorm(dbName(m)) === k) || null : null; };
 // ---------- scheda completa del sostituto (18/11/2026, richiesta dell'utente) ----------
@@ -668,7 +682,7 @@ const imgQ = q => `https://www.google.com/search?tbm=isch&q=${encodeURIComponent
 const mQ = m => imgQ(`${m.b} ${m.l} "${m.n}"`);
 function todayBanners(s, ex, painRef, rs) {
   const out = [];
-  { const used = [...new Set(gymSessions(S.gym).filter(x => x.id !== s.id).map(x => subOf(x, ex.key)).filter(Boolean))].reverse();
+  { const used = usedSubs(ex).filter(n => gymSessions(S.gym).some(x => x.id !== s.id && subOf(x, ex.key) && sameSub(subOf(x, ex.key), n))); // dalla più recente
     const started = exSets(s, ex.key).some(r => r && (r.kg != null || r.reps != null));
     if (used.length && !subOf(s, ex.key) && !started && !((s.machOk || {})[ex.key]) && S.subEdit !== ex.key && !isSkip(s, ex.key))
       out.push(`<div class="xb ask col"><p class="askq">🏋️ Che macchina usi oggi?</p><div class="alts">
@@ -676,13 +690,14 @@ function todayBanners(s, ex, painRef, rs) {
         ${used.map(n => `<div class="alt"><button type="button" class="altn" data-alt="${esc(n)}">${machinePic(n) ? `<img src="${machinePic(n)}" alt="">` : ""}<b>${esc(n)}</b></button></div>`).join("")}
         <div class="alt"><button type="button" class="altn" data-mach="other"><b>Un'altra…</b><small>scrivi il nome o fai una foto</small></button></div></div></div>`); }
   if (S.subEdit === ex.key && !subOf(s, ex.key)) {
-    const used = [...new Set(gymSessions(S.gym).map(x => subOf(x, ex.key)).filter(Boolean))].reverse();
+    const used = usedSubs(ex), usedOther = usedSubsOther(ex, used);
     const cat = ((window.MACCHINE || {})[ex.key] || []).filter(m => !m.gym || m.gym.includes(S.gym) ).filter(m => !used.some(u => sameSub(u, m.n)));
     const pp = S.subPic && S.subPic.key === ex.key ? S.subPic.url : "";
     out.push(`<div class="xb sub col"><div class="subrow"><label class="subin">↔ <input autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${pp ? "Marca e nome sulla targhetta" : "Marca e nome (es. panatta inclined)"}"></label><label class="subcam${pp ? " on" : ""}" aria-label="Scatta una foto alla macchina">${pp ? `<img src="${pp}" alt="">` : `<svg viewBox="0 0 24 24"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13.2" r="3.6"/></svg>`}<input type="file" accept="image/*" capture="environment" hidden data-subpic></label></div>
       ${pp ? `<p class="subhint">📷 Foto pronta: scrivi marca e nome che leggi sulla targhetta (o scegli sotto) e la salvo con la macchina.</p>` : ""}
+      ${used.length ? `<div class="alts used"><span class="altk">⭐ Già usate per questo esercizio</span>${used.map(n => `<div class="alt" data-un="${esc(dbNorm(n))}"><button type="button" class="altn" data-alt="${esc(n)}">${machinePic(n) ? `<img src="${machinePic(n)}" alt="">` : ""}<b>${esc(n)}</b><small>${esc(usedWhen(ex.key, n))}</small></button></div>`).join("")}</div>` : ""}
+      ${usedOther.length ? `<div class="alts used"><span class="altk">Già usate qui per altri esercizi (stesso movimento)</span>${usedOther.map(n => `<div class="alt" data-un="${esc(dbNorm(n))}"><button type="button" class="altn" data-alt="${esc(n)}">${machinePic(n) ? `<img src="${machinePic(n)}" alt="">` : ""}<b>${esc(n)}</b></button></div>`).join("")}</div>` : ""}
       <div class="dbres" hidden></div>
-      ${used.length ? `<div class="alts"><span class="altk">Già usate qui</span>${used.map(n => `<div class="alt"><button type="button" class="altn" data-alt="${esc(n)}">${machinePic(n) ? `<img src="${machinePic(n)}" alt="">` : ""}<b>${esc(n)}</b></button></div>`).join("")}</div>` : ""}
       ${cat.length ? `<div class="alts"><span class="altk">Macchine che allenano gli stessi muscoli</span>${cat.map(m => `<div class="alt"><button type="button" class="altn" data-alt="${esc(m.n)}"><b>${esc(m.n)}</b><small>${esc(m.d)}</small></button><a class="altq" href="https://www.google.com/search?tbm=isch&q=${encodeURIComponent(`Panatta "${m.n}"`)}" target="_blank" rel="noopener">Com'è fatta ↗</a></div>`).join("")}</div>` : ""}
       <button class="chip" data-undo="subx">Annulla</button></div>`);
   }
@@ -1145,10 +1160,14 @@ function renderLog0() {
       if (nm && nm.trim()) return withPic(nm.trim()); S.subPic = { key: ex.key, file: f, url: URL.createObjectURL(f) }; renderLog(); };
     const pin = card.querySelector("[data-pic]"); if (pin) pin.onchange = () => { if (pin.files[0]) saveMachinePic(subOf(current(), ex.key), pin.files[0]); };
     const sbi = card.querySelector(".subin input"); if (sbi) { sbi.onkeydown = e => { if (e.key === "Enter") sbi.blur(); }; sbi.onchange = () => { if (Date.now() - (S.camTap || 0) < 2000 || Date.now() - (S.dbTap || 0) < 1500) return; withPic(sbi.value.trim() || null); };
-      const box = card.querySelector(".dbres"), others = [...card.querySelectorAll(".xb.sub .alts")];
-      sbi.oninput = () => { const r = dbSearch(sbi.value, ex.key); box.hidden = !sbi.value.trim(); others.forEach(o => o.hidden = !!sbi.value.trim());
+      const box = card.querySelector(".dbres"), others = [...card.querySelectorAll(".xb.sub .alts:not(.used)")], usedBoxes = [...card.querySelectorAll(".xb.sub .alts.used")];
+      const usedSet = new Set([...usedSubs(ex), ...usedSubsOther(ex, [])].map(dbNorm));
+      sbi.oninput = () => { const q = sbi.value.trim(), toks = dbNorm(q).split(" ").filter(Boolean);
+        let r = dbSearch(sbi.value, ex.key); r = [...r.filter(m => usedSet.has(dbNorm(dbName(m)))), ...r.filter(m => !usedSet.has(dbNorm(dbName(m))))];
+        box.hidden = !q; others.forEach(o => o.hidden = !!q);
+        usedBoxes.forEach(ub => { let any = false; ub.querySelectorAll(".alt").forEach(a => { const ok = !toks.length || toks.every(t => a.dataset.un.includes(t)); a.hidden = !ok; any = any || ok; }); ub.hidden = !any; });
         box.innerHTML = r.length ? `<span class="altk">Dal database macchinari · ${r.length === 14 ? "primi 14" : r.length}</span><p class="subhint">Per essere sicuro: il nome deve essere quello sulla targhetta della macchina; con "Foto vere" vedi proprio quel modello.</p>${r.map(m => { const c = window.MACCHINE_DB.CAT[m.c], fit = c.k.includes(ex.key);
-          return `<div class="alt"><button type="button" class="altn" data-db="${esc(dbName(m))}">${machinePic(dbName(m)) ? `<img src="${machinePic(dbName(m))}" alt="">` : ""}<b>${esc(m.n)}</b><small>${esc(m.b)} · ${esc(m.l)} · ${esc(c.ml)}${fit ? "" : " · <i>altro movimento</i>"}</small></button><a class="altq" href="${mQ(m)}" target="_blank" rel="noopener">Foto vere ↗</a></div>`; }).join("")}`
+          return `<div class="alt"><button type="button" class="altn" data-db="${esc(dbName(m))}">${machinePic(dbName(m)) ? `<img src="${machinePic(dbName(m))}" alt="">` : ""}<b>${usedSet.has(dbNorm(dbName(m))) ? "⭐ " : ""}${esc(m.n)}</b><small>${esc(m.b)} · ${esc(m.l)} · ${esc(c.ml)}${fit ? "" : " · <i>altro movimento</i>"}${usedSet.has(dbNorm(dbName(m))) ? " · <b>già usata</b>" : ""}</small></button><a class="altq" href="${mQ(m)}" target="_blank" rel="noopener">Foto vere ↗</a></div>`; }).join("")}`
           : sbi.value.trim() ? `<p class="subhint">Nessuna macchina trovata: va bene lo stesso, il nome che scrivi resta salvato.</p>` : "";
         box.querySelectorAll("[data-db]").forEach(b => { b.onpointerdown = () => { S.dbTap = Date.now(); }; b.onclick = () => withPic(b.dataset.db); }); }; /* toccando la fotocamera il nome aspetta la foto */ setTimeout(() => sbi.focus(), 60); }
     const cp = card.querySelector("[data-copy]") || { set hidden(v) {} };
