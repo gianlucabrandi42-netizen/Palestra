@@ -1701,3 +1701,94 @@ html{touch-action:manipulation}
 .fdbox p{margin:5px 0;line-height:1.42;font-size:14px}
 .fdbox .fdnow span{color:var(--muted,#9aa0a6);font-size:13px}
 .fdb{display:flex;gap:8px;margin-top:8px}.fdb .btn{flex:1}
+/* PULSANTI D'AZIONE VERI (24/11/2026, richiesta dell'utente: "non solo una riga di testo, proprio un pulsante").
+   .lnk = azione (pulsante pieno tenue nel colore della palestra, icona in <i>), .lnk.in = link dentro una frase,
+   .lnk.no = togli/annulla (rosso tenue), .lnk.wide = tutta la larghezza, .lnk.sm = piccolo */
+.lnk:not(.in){display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:42px;padding:9px 14px;border-radius:13px;
+  border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);background:color-mix(in srgb,var(--accent) 14%,rgba(255,255,255,.02));
+  color:var(--ink);font-weight:700;font-size:14px;line-height:1.2;text-align:center;text-decoration:none;cursor:pointer;
+  transition:transform .08s,background .15s;-webkit-tap-highlight-color:transparent}
+.lnk:not(.in) i{font-style:normal;font-size:15px;line-height:1;color:var(--accent);flex:none}
+.lnk:not(.in):active{transform:scale(.97);background:color-mix(in srgb,var(--accent) 26%,transparent)}
+.lnk.no{border-color:rgba(255,95,87,.38);background:rgba(255,95,87,.10)}
+.lnk.no i{color:#FF5F57}
+.lnk.wide{display:flex;width:100%}
+.lnk.sm{min-height:34px;padding:6px 12px;font-size:13px;border-radius:11px}
+.lnk.in{border:0;background:none;color:var(--accent);font-weight:700;font-size:inherit;padding:0 2px;text-decoration:underline;text-underline-offset:2px}
+/* riga di azioni di un pasto: pulsanti affiancati della stessa larghezza */
+.mselx,.meal .mselx{display:flex;flex-wrap:nowrap;gap:8px;margin-top:10px;padding:0 14px 2px}
+.mselx .lnk{flex:1 1 0;min-width:0;font-size:13.5px;padding:9px 8px}
+.qadd{gap:8px}
+.qadd .lnk{flex:1 1 auto}
+.swp>.lnk{width:100%}
+.bfoot .lnk,#scan .bfoot .lnk{flex:1 1 auto}
+/* "Dopo cena", "Aggiungi un cibo": pulsanti pieni invece del tratteggio */
+.cmore{border-style:solid;border-color:color-mix(in srgb,var(--accent) 32%,transparent);background:color-mix(in srgb,var(--accent) 9%,transparent);color:var(--ink);font-weight:700;min-height:46px;font-size:14px}
+/* pulsanti "fantasma" (Non ora, No…) e aggiunte: pulsanti veri, neutri */
+.btn.ghost{background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink);padding-left:14px}
+.addsetup{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:8px 14px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--ink);font-size:13.5px}
+.more{min-height:38px;padding:6px 12px;border-radius:11px;border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--ink)}
+.more svg{stroke:var(--accent)}
+/* 📏 Il pasto del PT (24/11/2026, cibo.js: ptStrip, ptBox, tilePt) */
+.ptstrip{display:grid;grid-template-columns:34px repeat(4,1fr);gap:2px 6px;align-items:baseline;margin:8px 14px 2px;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.06);font-variant-numeric:tabular-nums}
+.ptstrip small{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;text-align:center}
+.ptstrip em{font-style:normal;font-size:11.5px;font-weight:800;color:var(--muted)}
+.ptstrip i{font-style:normal;text-align:center;font-size:13.5px;color:var(--muted);font-weight:600}
+.ptstrip b{text-align:center;font-size:14.5px;font-weight:800;border-radius:7px;padding:1px 0}
+.ptstrip b.ok,.ptstrip b.up{color:#6FD39B}.ptstrip b.hi{color:#FF9447}.ptstrip b.hi2{color:#FF5F57}.ptstrip b.lo{color:#7DB4FF}
+.ptsv{margin:4px 14px 0;font-size:12.5px;line-height:1.35;color:#FFB27A}
+.tk{display:block;font-style:normal;font-size:11px;font-weight:800;margin-top:2px;font-variant-numeric:tabular-nums}
+.tk.ok{color:#6FD39B}.tk.hi{color:#FF9447}.tk.hi2{color:#FF5F57}.tk.lo{color:#7DB4FF}
+.ptbox{margin:14px 0 4px;padding:13px 13px 10px;border-radius:14px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.09)}
+.ptbox.ok{border-color:rgba(111,211,155,.4)}.ptbox.hi{border-color:rgba(255,148,71,.45)}.ptbox.hi2{border-color:rgba(255,95,87,.5)}.ptbox.lo{border-color:rgba(125,180,255,.45)}
+.pth{display:flex;flex-direction:column;gap:1px;margin-bottom:6px}.pth b{font-size:15px}.pth small{color:var(--muted);font-size:12.5px}
+.ptsrc{margin:4px 0 8px;font-size:13px;line-height:1.4;color:var(--muted)}.ptsrc b{color:var(--ink)}
+.ptr{display:grid;grid-template-columns:92px auto 1fr;grid-template-rows:auto auto;column-gap:10px;align-items:baseline;padding:6px 0;border-top:1px solid rgba(255,255,255,.06)}
+.ptr span{font-size:13px;color:var(--muted)}.ptr b{font-size:17px;font-variant-numeric:tabular-nums}.ptr b small{font-size:11px;color:var(--muted);margin-left:2px;font-weight:600}
+.ptr em{font-style:normal;font-size:12.5px;color:var(--muted);text-align:right}.ptr em i{font-style:normal;font-weight:800}
+.ptr.ok b,.ptr.up b,.ptr.ok em i,.ptr.up em i{color:#6FD39B}.ptr.hi b,.ptr.hi em i{color:#FF9447}.ptr.hi2 b,.ptr.hi2 em i{color:#FF5F57}.ptr.lo b,.ptr.lo em i{color:#7DB4FF}
+.ptbar{grid-column:1/-1;position:relative;height:6px;margin-top:5px;border-radius:4px;background:rgba(255,255,255,.07)}
+.ptbar s{position:absolute;top:0;bottom:0;border-radius:4px;background:rgba(111,211,155,.35)}
+.ptbar u{position:absolute;top:-3px;width:4px;height:12px;margin-left:-2px;border-radius:2px;background:var(--ink)}
+.ptv{margin:8px 0 2px;font-size:13.5px;font-weight:700;line-height:1.4}
+.ptbox.ok .ptv{color:#6FD39B}.ptbox.hi .ptv{color:#FF9447}.ptbox.hi2 .ptv{color:#FF5F57}.ptbox.lo .ptv{color:#7DB4FF}
+.ptleg{margin:6px 0 0;font-size:11.5px;color:var(--muted)}
+.ptleg s,.ptleg u{display:inline-block;vertical-align:middle;margin:0 2px}.ptleg s{width:16px;height:6px;border-radius:3px;background:rgba(111,211,155,.35)}.ptleg u{width:4px;height:11px;border-radius:2px;background:var(--ink)}
+/* 🧪 Simula */
+.cseg button{font-size:12.5px;padding:0 2px}
+.sim h3,.simh{margin:2px 0 6px;font-size:17px}.simh{margin:22px 4px 4px}
+.simt{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;border-radius:14px;background:rgba(255,255,255,.05);margin:10px 0 6px}
+.simt button{border:0;background:none;color:var(--muted);font-weight:700;font-size:12.5px;min-height:40px;border-radius:11px}
+.simt button[aria-pressed="true"]{background:var(--grad,var(--accent));color:#0b0d0c}
+.simlv{font-size:12.5px;color:var(--muted);margin:4px 2px 10px}
+.simrows{display:grid;gap:8px}
+.simrow{display:grid;grid-template-columns:6px 1fr auto;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 12px 10px 8px;border-radius:13px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035);color:var(--ink);font:inherit}
+.simrow>i{align-self:stretch;border-radius:3px;background:var(--c)}
+.simrow div{display:flex;flex-direction:column;gap:1px;min-width:0}.simrow small{font-size:11.5px;color:var(--muted)}.simrow b{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.simrow span{font-size:12.5px;font-variant-numeric:tabular-nums}
+.simrow.ok span{color:#6FD39B}.simrow.hi span{color:#FF9447}.simrow.hi2 span{color:#FF5F57}.simrow.lo span{color:#7DB4FF}.simrow.none span{color:var(--muted)}
+.simrow em{font-style:normal;font-size:12.5px;font-weight:700;color:var(--accent);padding:7px 10px;border-radius:10px;background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.simtot{margin-top:14px;padding:12px;border-radius:14px;background:rgba(255,255,255,.04)}.simtot h4{margin:0 0 6px;font-size:15px}
+.simb{display:grid;grid-template-columns:92px 1fr auto;align-items:baseline;column-gap:8px;padding:6px 0}
+.simb span{font-size:13px;color:var(--muted)}.simb b{font-size:17px;font-variant-numeric:tabular-nums}.simb b small{font-size:12px;color:var(--muted);font-weight:600}
+.simb em{font-style:normal;font-size:12.5px;font-weight:800;color:#6FD39B}.simb.hi b,.simb.hi em{color:#FF9447}.simb.hi2 b,.simb.hi2 em{color:#FF5F57}.simb.lo b,.simb.lo em{color:#7DB4FF}
+.simact{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.simact .lnk:first-child{grid-column:1/-1}
+.simall{margin:10px 0;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:var(--card,#16181b);border-top:3px solid var(--c);overflow:hidden}
+.simall summary{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 14px;list-style:none;cursor:pointer}.simall summary::-webkit-details-marker{display:none}
+.simall summary b{font-size:15px}.simall summary span{font-size:12.5px;color:var(--muted)}.simall summary::after{content:"›";font-size:20px;color:var(--muted);transition:transform .2s}.simall[open] summary::after{transform:rotate(90deg)}
+.simall .ptsrc,.simall .ptleg{margin-left:14px;margin-right:14px}.simall .ptleg{margin-bottom:12px}
+.simtab{display:grid;grid-template-columns:1fr repeat(4,auto);gap:0;margin:0 8px;font-variant-numeric:tabular-nums}
+.simtab>span{font-size:11px;color:var(--muted);text-transform:uppercase;padding:4px 6px;text-align:right}.simtab>span:first-child{text-align:left}
+.simtab>button{border:0;background:none;color:var(--ink);text-align:left;font:inherit;font-size:13px;font-weight:600;padding:8px 6px;border-top:1px solid rgba(255,255,255,.06);line-height:1.25}
+.simtab>b{font-size:13px;text-align:right;padding:8px 6px;border-top:1px solid rgba(255,255,255,.06);min-width:30px}
+.simtab>b.ok,.simtab>b.up{color:#6FD39B}.simtab>b.hi{color:#FF9447}.simtab>b.hi2{color:#FF5F57}.simtab>b.lo{color:#7DB4FF}
+.simopt{display:block;width:100%;text-align:left;padding:11px 12px;margin:8px 0;border-radius:13px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035);color:var(--ink);font:inherit}
+.simopt.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.simopt div{display:flex;flex-direction:column;gap:3px}.simopt b{font-size:15px}.simopt span{font-size:12.5px;font-variant-numeric:tabular-nums}
+.simopt span i{font-style:normal;margin-right:6px;font-weight:700}.simopt i.ok,.simopt i.up{color:#6FD39B}.simopt i.hi{color:#FF9447}.simopt i.hi2{color:#FF5F57}.simopt i.lo{color:#7DB4FF}
+.simopt small{font-size:12px;color:var(--muted);line-height:1.35}
+.cseg{display:grid !important;grid-template-columns:repeat(5,1fr);gap:2px}
+.cseg button{min-width:0;white-space:nowrap}
+/* azioni a forma di chip nell'allenamento: pulsanti veri */
+.chip[data-undo],#durGo,#durStart,#siteOff,#histAll{min-height:38px;padding:7px 14px;border-radius:12px;border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);background:color-mix(in srgb,var(--accent) 13%,transparent);color:var(--ink);font-weight:700;font-size:13.5px}
+.fb .lrok,.set .fb .lrok{border-color:color-mix(in srgb,var(--accent) 45%,transparent);background:color-mix(in srgb,var(--accent) 16%,transparent);font-weight:800}

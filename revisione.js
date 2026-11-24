@@ -36,7 +36,7 @@ function fdDecide(R, skipFrom) {
   // skipFrom: dopo "Applica" la decisione si mostra com'era prima del cambio appena fatto (non "Aspetta ancora")
   const A = (FOOD().adj || []).filter(a => !skipFrom || a.from < skipFrom), k = A.filter(a => a.from <= R.end).reduce((x, a) => a.k, 0), last = A.length ? A[A.length - 1] : null;
   const wait = last && (new Date(R.end + "T12:00") - new Date(last.from + "T12:00")) / 864e5 < 14;
-  const med = R.str.med, dw = R.dw, strUp = med != null && med > 1, strDown = med != null && med <= 0;
+  const med = R.str.med, dw = R.dw == null ? null : Math.round(R.dw * 10) / 10, strUp = med != null && med > 1, strDown = med != null && med <= 0;
   const kg = x => (x > 0 ? "+" : "−") + Math.abs(x).toFixed(1).replace(".", ",") + " kg";
   const up = why => k >= 2 ? { t: "Continua così", why: why + " Sei già al gradino più alto: se continua, parlane col PT.", act: null } : { t: "Più carboidrati a pranzo", why, act: k + 1 };
   const down = why => k <= -1 ? { t: "Continua così", why: why + " Sei già al gradino più basso: niente tagli in più, conta la costanza.", act: null } : { t: "Un po' meno carboidrati a pranzo", why, act: k - 1 };
@@ -59,7 +59,7 @@ function foodDecBox(R0) {
   return `<div class="fdbox${x.act != null && !applied && !st.skip ? " act" : ""}"><small>🍽 Piano del cibo · regole del controllo del peso</small><b>${esc(x.t)}</b><p>${esc(x.why)}</p>
     ${x.act != null && !applied && !st.skip ? `<p class="fdnow">Da oggi: <b>${esc(FD_LV[x.act])}</b><br><span>ora: ${esc(FD_LV[x.k])}</span></p>
       <div class="fdb"><button type="button" class="btn sm primary" data-fd="apply" data-fdm="${R0.mon}" data-fdk="${x.act}">Applica</button><button type="button" class="btn sm ghost" data-fd="skip" data-fdm="${R0.mon}">Non ora</button></div>` : ""}
-    ${applied ? `<p class="fdnow">✓ Applicato il ${fdDay(st.appliedOn)}: ${esc(FD_LV[st.applied])} <button type="button" class="linkbtn" data-fd="undo" data-fdm="${R0.mon}">Annulla</button></p>` : ""}
+    ${applied ? `<p class="fdnow">✓ Applicato il ${fdDay(st.appliedOn)}: ${esc(FD_LV[st.applied])} <button type="button" class="lnk sm" data-fd="undo" data-fdm="${R0.mon}">Annulla</button></p>` : ""}
     ${!applied && x.k ? `<p class="fdnow"><span>In uso: ${esc(FD_LV[x.k])}</span></p>` : ""}</div>`;
 }
 document.addEventListener("click", e => {

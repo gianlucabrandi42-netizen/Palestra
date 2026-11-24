@@ -158,3 +158,31 @@ T("Punto della settimana: decisioni secondo le regole del piano", () => {
   ok(/Applica|Aspetta|Continua|Nessun/.test(foodDecBox({ mon })), "riquadro nel punto della settimana");
   F.adj = keepAdj; D.body = keepBody;
 });
+
+T("Pasto del PT: obiettivi del giorno = somma dei pasti del PT", () => {
+  const s = (...k) => k.reduce((a, x) => a.map((v, i) => v + CB.pt[x].c[i]), [0, 0, 0, 0]);
+  eq(CB.target.gym, s("col", "s1", "pr80", "s2g", "ce"), "palestra");
+  eq(CB.target.rest, s("col", "s1", "pr40", "s2r", "ce"), "giorno dopo");
+  eq(CB.target.rest0, s("col", "s1", "pr0", "s2r", "ce"), "2° senza palestra");
+  for (const [k, p] of Object.entries(CB.pt)) { const at = 4 * p.c[1] + 4 * p.c[2] + 9 * p.c[3]; check(Math.abs(at - p.c[0]) / p.c[0] < 0.08, `${k}: ${p.c[0]} kcal vs 4P+4C+9G ${at}`); }
+});
+
+T("Pasto del PT: confronto e verdetto", () => {
+  const C = ptCmp([606, 55, 71, 12], "pr80"); ok(C.every(r => r.st === "ok"), "il pasto del PT è in linea con se stesso");
+  eq(ptVerdict(C, "pr80"), "In linea col pasto del PT ✓");
+  const H = ptCmp([830, 55, 71, 28], "pr80"); eq([H[0].st, H[3].st], ["hi2", "hi2"], "kcal e grassi molto sopra");
+  ok(/grassi \+16 g \(≈ 2 cucchiai d'olio/.test(ptVerdict(H, "pr80")), ptVerdict(H, "pr80"));
+  eq(ptCmp([606, 80, 71, 12], "pr80")[1].st, "up", "proteine in più non sono un errore");
+  ok(/proteine/.test(ptVerdict(ptCmp([600, 30, 80, 14], "pr80"), "pr80")), "proteine basse segnalate");
+  // il PT dice: colazione A, B e C sono tutte del piano
+  for (const o of ["A2", "B"]) { const v = valOfQ(baseQ("col", o, D0)); ok(!ptBad(ptCmp(v, "col")), `colazione ${o} del PT fuori dalla fascia: ${v}`); }
+  const Cc = ptCmp(valOfQ(baseQ("col", "C", D0)), "col"); eq(Cc.map(r => r.st), ["ok", "lo", "ok", "ok"], "colazione C del PT: solo le proteine basse");
+});
+
+T("Simula: giornata del PT in linea e dati veri intatti", () => {
+  const before = JSON.stringify(FOOD().days); CS.sim = { t: "g", pick: {} };
+  const box = document.createElement("div"); renderSimula(box);
+  ok(/In linea col piano del PT/.test(box.textContent), "giornata del PT non in linea");
+  eq(JSON.stringify(FOOD().days), before, "il simulatore ha cambiato i giorni salvati");
+  for (const t of ["a", "r"]) { CS.sim.t = t; renderSimula(box); ok(box.querySelectorAll(".simall").length >= 5, "tabella delle idee"); ok(!/NaN|undefined/.test(box.innerHTML), "NaN/undefined nel simulatore"); }
+});

@@ -55,6 +55,7 @@ TOUR = [
     ("Punto della settimana", "openReview()"),
     ("Scheda", "document.querySelector('[data-view=plan]').click()"),
     ("Cibo · Oggi", "document.querySelector('[data-view=cibo]').click()"),
+    ("Cibo · Simula", "const b=document.querySelector('[data-ct=simula]'); b&&b.click()"),
     ("Cibo · Ricette", "const b=[...document.querySelectorAll('#cseg button')][1]; b&&b.click()"),
     ("Cibo · Scambi", "const b=[...document.querySelectorAll('#cseg button')][2]; b&&b.click()"),
     ("Cibo · Spesa", "const b=[...document.querySelectorAll('#cseg button')][3]; b&&b.click()"),

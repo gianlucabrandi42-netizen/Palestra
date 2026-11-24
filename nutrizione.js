@@ -109,7 +109,24 @@ window.CIBO = {
   // Totale del piano per la giornata (Fase 2): con e senza palestra.
   // 22/11/2026: obiettivi = giornata tipo del piano CON I VALORI DELL'APP (colazione A, yogurt e noci, pollo, spuntino 2 A/B, cena col pollo).
   // Prima erano quelli del PT con crema di riso e frutta (grassi 46-50 g): seguendo il piano la barra dei grassi diventava arancione.
-  target: { gym: [2300, 185, 255, 58], rest: [1950, 175, 190, 54], rest0: [1810, 170, 155, 54] },
+  // 24/11/2026 (richiesta dell'utente: "per ogni pasto le calorie e tutto quello che mi serve in rapporto a quello che ha scritto il PT"):
+  // obiettivi del giorno = SOMMA dei pasti del PT qui sotto (pt), senza il dopo cena facoltativo. Tornano coi totali di NUTRIZIONE_FASE2_VALORI
+  // (palestra ~2.180, senza palestra ~1.830). Prima (22/11) erano la giornata tipo dell'app con la torta in tazza a colazione (~2.300).
+  target: { gym: [2166, 183, 243, 52], rest: [1808, 171, 171, 49], rest0: [1675, 168, 139, 49] },
+  // 📏 IL PASTO DEL PT, per ogni pasto e tipo di giorno: c = centro [kcal, proteine, carboidrati, grassi] (valori dell'app per gli alimenti
+  // scritti dal PT, NUTRIZIONE_FASE2_VALORI), r = intervallo "in linea" (se manca: kcal ±10% come da regola anti-ossessione, proteine
+  // −15%/+30%, carboidrati ±20% (almeno ±8 g), grassi ±5 g). src = cosa ha scritto il PT.
+  pt: {
+    col: { t: "Colazione del PT (A, B o C)", c: [365, 27, 40, 11], r: { k: [330, 410], p: [23, 32], c: [15, 66], g: [2, 24] }, src: "A · 30 g di proteine + 50 g di carboidrato · B · 3 uova + 1 fetta di pane di segale + burro d'arachidi · C · yogurt + 60-70 g di cornflakes" },
+    s1: { t: "Spuntino 1 del PT (A o B)", c: [160, 14, 10, 7], r: { k: [135, 195], p: [7, 24], c: [3, 16], g: [1, 14] }, src: "A · yogurt + 10 mandorle (o 2 noci) · B · 60 g di bresaola + 2 gallette" },
+    pr80: { t: "Pranzo da 80 del PT (giorno di palestra)", c: [606, 55, 71, 12], src: "80 g di riso (o 75 g di pasta) + 200 g di pollo (200 di carne, 250 di pesce) + verdure + 1 cucchiaio d'olio" },
+    pr40: { t: "Pranzo da 40 del PT (giorno dopo la palestra)", c: [473, 53, 39, 12], src: "40 g di riso + 200 g di pollo (200 di carne, 250 di pesce) + verdure + 1 cucchiaio d'olio" },
+    pr0: { t: "Pranzo da 0 del PT", c: [340, 50, 7, 12], r: { c: [0, 15] }, src: "200 g di pollo (200 di carne, 250 di pesce) + doppia verdura + 1 cucchiaio d'olio, niente carboidrato" },
+    s2g: { t: "Spuntino 2 del PT dopo la palestra (A)", c: [465, 31, 62, 10], src: "30 g di proteine + 50 g di carboidrato + 15 g di arachidi (nell'app: shaker + cornflakes + noci)" },
+    s2r: { t: "Spuntino 2 del PT senza palestra (B)", c: [240, 21, 22, 7], src: "fiocchi di latte + 1 fetta di pane di segale" },
+    ce: { t: "Cena del PT", c: [570, 56, 60, 12], r: { k: [455, 670], c: [42, 72], g: [7, 17] }, src: "300 g di patate (o 100 g di pane, 50 g di riso) + 200 g di pollo (200 di carne, 250 di pesce, 3 uova) + verdure + 1 cucchiaio d'olio" },
+    dc: { t: "Dopo cena del PT (facoltativo)", c: [170, 8, 7, 12], r: { k: [100, 200], p: [5, 28], c: [0, 12], g: [3, 15] }, src: "yogurt + 10 mandorle (o 1 cucchiaino di burro d'arachidi): solo se hai fame" },
+  },
   // caselle in più per pranzo e cena, oltre alle ricette
   mainExtra: [
     { id: "mensa", t: "Mensa", d: "Un secondo normale + verdure a volontà. Primo: porzione normale nei giorni di palestra, mezza il giorno dopo, niente primo (doppio contorno) dal 2° giorno senza palestra. Niente fritti, panna o pane in più.", p: ["pasta", "pollo", "verdure"], only: "pr" },
