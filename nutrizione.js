@@ -1232,3 +1232,102 @@ Object.assign(window.CIBO, {
     chilipollo: ["Con macinato magro di manzo (170 g + 30 g di fagioli).", "Più verdure: zucchine a cubetti con i peperoni.", "Burrito bowl: tutto nel piatto col riso e insalata."],
   });
 })();
+
+// ⚡ CENE VELOCI E 😮‍💨 SONO STANCO (24/11/2026). L'utente odia cucinare e si annoia; quando è stanco mangia a caso.
+// Regola scelta con lui: nei giorni di riposo o pomeriggio UNA cucinata per pranzo e cena (le 🍱 batch); dopo il turno di mattina
+// la cena dev'essere veloce e tranquilla: massimo 15 minuti, massimo 5 ingredienti, verdure già pronte (insalata in busta, verdure
+// grigliate surgelate: le uniche cose pronte che vuole comprare). quick: 1 = cena veloce, one: true = 1 pasto, cold: 1 = zero cottura.
+// La varietà viene dai SAPORI (sapori qui sotto, "sapore di oggi"), non da ricette nuove. Prova automatica: tutte in linea col PT a cena.
+(() => {
+  const C = window.CIBO;
+  const R = [
+    { id: "fettine", s: "Pollo a fettine e patate", name: "Pollo a fettine, patate al microonde e insalata", min: 12, lvl: 1, tools: "padella + microonde", main: true, one: true, quick: 1, p: ["pollo", "patate", "insalata"],
+      pp: "200 g di petto di pollo a fettine sottili", vv: "insalata in busta", cb: { p1: "Patate" }, go: "c",
+      ingr: ["200 g di petto di pollo a fettine sottili", "Patate (dosi del giorno)", "Insalata in busta", "2 giri d'olio, sale, il sapore di oggi"],
+      steps: [
+        { tool: "microonde", p: ["patate"], t: "Patate a cubetti piccoli in una ciotola con 2 cucchiai d'acqua, coperte col piattino: microonde al massimo 8 minuti. Intanto fai il resto.", min: 8, ok: "La forchetta entra senza sforzo." },
+        { tool: "padella", p: ["pollo"], t: "Padella ben calda, 4-5 spruzzate d'olio, fettine stese: 2 minuti per lato senza toccarle. Sale e il sapore di oggi alla fine.", min: 4, ok: "Dorate fuori e bianche dentro.", tip: "Fettine sottili = cotte in 4 minuti. Se il petto è intero, taglialo a metà nello spessore." },
+        { tool: "piatto", p: ["pollo", "patate", "insalata"], t: "Insalata dalla busta nel piatto, patate e pollo sopra, 2 giri d'olio a crudo." },
+      ], p1: "Una padella, un microonde, zero pensieri", olio: "2 giri a crudo" },
+    { id: "frittalbumi", s: "Frittata di albumi", name: "Frittata di albumi e verdure grigliate col pane", min: 12, lvl: 1, tools: "padella", main: true, one: true, quick: 1, p: ["frittata", "verdure", "pane"],
+      pp: "2 uova + 8 albumi (circa 250 g di albume in brick)", vv: "200 g di verdure grigliate surgelate", cb: { p1: "Pane" }, go: "c",
+      ingr: ["2 uova + 250 g di albume (in brick)", "200 g di verdure grigliate surgelate", "Pane (dosi del giorno)", "Spruzzino d'olio, sale, il sapore di oggi"],
+      steps: [
+        { tool: "padella", p: ["verdure"], t: "Verdure grigliate ancora surgelate in padella antiaderente con 4-5 spruzzate d'olio: 4 minuti a fuoco medio.", min: 4 },
+        { tool: "ciotola", p: ["uova"], t: "Uova e albume in una ciotola con un pizzico di sale e il sapore di oggi: sbatti 20 secondi con la forchetta." },
+        { tool: "padella", p: ["frittata"], t: "Versa sulle verdure, coperchio, fuoco basso 6 minuti. Non serve girarla.", min: 6, ok: "La superficie non trema più.", tip: "Fuoco alto = sotto bruciata e sopra cruda: basso e coperchio." },
+        { tool: "piatto", p: ["frittata", "pane"], t: "Fai scivolare la frittata nel piatto, col pane accanto." },
+      ], p1: "Si mangia anche fredda il giorno dopo", olio: "solo lo spruzzino" },
+    { id: "merlfrigg", s: "Merluzzo e cous cous", name: "Merluzzo in friggitrice, cous cous e verdure grigliate", min: 15, lvl: 1, tools: "friggitrice + bollitore", main: true, one: true, quick: 1, p: ["pesce", "cous", "verdure"],
+      pp: "250 g di merluzzo surgelato", vv: "200 g di verdure grigliate surgelate", cb: { p1: "Cous cous" }, go: "c",
+      ingr: ["250 g di filetti di merluzzo surgelati", "200 g di verdure grigliate surgelate", "Cous cous (dosi del giorno)", "2 giri d'olio, limone, sale, il sapore di oggi"],
+      steps: [
+        { tool: "friggitrice", p: ["pesce", "verdure"], t: "Merluzzo e verdure, tutto ancora surgelato, sulla carta forno in friggitrice: 4-5 spruzzate, sale. 200 °C per 14 minuti.", min: 14, ok: "Il pesce si sfoglia con la forchetta.", tip: "Non scongelarlo: da surgelato resta più morbido." },
+        { tool: "bollitore", p: ["cous"], t: "Intanto il cous cous: stesso peso d'acqua bollente e un pizzico di sale, coperto 5 minuti, poi sgrana con la forchetta.", min: 5 },
+        { tool: "piatto", p: ["pesce", "cous", "verdure"], t: "Tutto nel piatto, limone, il sapore di oggi e 2 giri d'olio a crudo." },
+      ], p1: "Tutto surgelato: lo tieni sempre in casa", olio: "2 giri a crudo" },
+    { id: "wrappollo", s: "Wrap di pollo", name: "Wrap di pollo, insalata e salsa allo yogurt", min: 10, lvl: 1, tools: "padella", main: true, one: true, quick: 1, p: ["piadina", "pollo", "insalata"],
+      pp: "200 g di petto di pollo a striscioline", vv: "insalata in busta + 5 pomodorini", cb: { p1: "Piadina (niente olio)" }, go: "c",
+      ingr: ["200 g di petto di pollo a striscioline", "Piadina (dosi del giorno)", "Insalata in busta, 5 pomodorini", "2 cucchiai di yogurt bianco, sale, il sapore di oggi"],
+      steps: [
+        { tool: "padella", p: ["pollo"], t: "Padella calda con 4-5 spruzzate d'olio, striscioline di pollo 5 minuti mescolando. Sale e il sapore di oggi.", min: 5, ok: "Niente più rosa dentro." },
+        { tool: "ciotola", p: ["yogurt"], t: "Salsa: 2 cucchiai di yogurt, un pizzico di sale e d'aglio in polvere." },
+        { tool: "padella", p: ["piadina"], t: "Scalda la piadina 30 secondi per lato nella stessa padella.", min: 1 },
+        { tool: "piatto", p: ["piadina", "pollo", "insalata"], t: "Insalata, pomodorini, pollo e salsa sulla piadina: piega i lati e arrotola." },
+      ], p1: "Si mangia con le mani: zero piatti da lavare", olio: "niente: la piadina ha già i suoi grassi" },
+    { id: "gambcous", s: "Gamberi e cous cous", name: "Gamberi saltati, cous cous e zucchine grigliate", min: 10, lvl: 1, tools: "padella + bollitore", main: true, one: true, quick: 1, p: ["gamberi", "cous", "verdure"],
+      pp: "250 g di gamberi surgelati sgusciati", vv: "200 g di verdure grigliate surgelate", cb: { p1: "Cous cous" }, go: "c",
+      ingr: ["250 g di gamberi surgelati sgusciati", "200 g di zucchine grigliate surgelate", "Cous cous (dosi del giorno)", "2 giri d'olio, aglio, limone, sale, il sapore di oggi"],
+      steps: [
+        { tool: "bollitore", p: ["cous"], t: "Cous cous con lo stesso peso d'acqua bollente e un pizzico di sale, coperto 5 minuti.", min: 5 },
+        { tool: "padella", p: ["verdure"], t: "Zucchine surgelate in padella con 4-5 spruzzate d'olio e aglio: 4 minuti.", min: 4 },
+        { tool: "padella", p: ["gamberi"], t: "Gamberi (anche ancora surgelati) nella stessa padella, 3-4 minuti mescolando.", min: 4, ok: "Rosa e piegati a C." },
+        { tool: "piatto", p: ["gamberi", "cous", "verdure"], t: "Sgrana il cous cous, tutto nel piatto, limone, il sapore di oggi e 2 giri d'olio a crudo." },
+      ], p1: "10 minuti, un'unica padella", olio: "2 giri a crudo" },
+    { id: "freddo", s: "Piatto freddo", name: "Piatto freddo: bresaola, pane e insalata (zero cottura)", min: 4, lvl: 1, tools: "solo un piatto", main: true, one: true, quick: 1, cold: 1, p: ["bresaola", "pane", "insalata"],
+      pp: "150 g di bresaola", vv: "insalata in busta", cb: { p1: "Pane" }, go: "p", porta: "Bresaola e insalata nel contenitore, olio e limone a parte: pronto anche al lavoro senza attrezzi.",
+      ingr: ["150 g di bresaola", "Insalata in busta", "Pane (dosi del giorno)", "2 giri d'olio, limone, pepe"],
+      steps: [
+        { tool: "piatto", p: ["insalata"], t: "Insalata dalla busta nel piatto." },
+        { tool: "piatto", p: ["bresaola"], t: "Bresaola sopra, limone, pepe e 2 giri d'olio. Il pane accanto.", ok: "Fatto. Davvero: 4 minuti." },
+      ], p1: "Per le sere in cui non hai voglia di niente", olio: "2 giri a crudo" },
+  ];
+  C.recipes.push(...R);
+  Object.assign(C.mq, {
+    fettine: "pollo 200, insalata 100, spruzz 5, olio 2, sale 1",
+    frittalbumi: "uovo 2, albume 8, vgrill 200, spruzz 5, sale 1",
+    merlfrigg: "merluzzo 250, vgrill 200, spruzz 5, olio 2, aceto 10, sale 1",
+    wrappollo: "pollo 200, insalata 80, pomodorini 5, yogurt 30, spruzz 5, sale 1",
+    gambcous: "gamberi 250, vgrill 200, spruzz 5, olio 2, aceto 10, sale 1",
+    freddo: "bresaola 150, insalata 150, aceto 10, olio 2, sale 1",
+  });
+  Object.assign(C.ct, {
+    fettine: "Sale alla fine, poi il sapore di oggi. Olio solo a crudo.", frittalbumi: "Un pizzico di sale nelle uova; il resto lo fa il sapore di oggi.",
+    merlfrigg: "Limone e sale, olio a crudo.", wrappollo: "Niente olio: c'è la salsa allo yogurt.", gambcous: "Aglio in cottura, limone e olio a crudo.", freddo: "La bresaola è già salata: niente sale, solo limone, pepe e olio.",
+  });
+  Object.assign(C.vars, {
+    fettine: ["Teriyaki: soia e miele in padella l'ultimo minuto.", "Alla pizzaiola: 3 cucchiai di passata e origano.", "Patate dolci al posto delle patate."],
+    frittalbumi: ["Con spinaci surgelati al posto delle verdure grigliate.", "Con un pizzico di curry nelle uova.", "Con 30 g di bresaola a striscioline dentro."],
+    merlfrigg: ["Con salmone (150 g, niente olio).", "Panato: 1 cucchiaio di pangrattato sopra prima della friggitrice.", "Con patate al microonde al posto del cous cous."],
+    wrappollo: ["Messicano: paprika e cumino sul pollo.", "Col tacchino affettato al posto del pollo (zero cottura).", "Con gamberi saltati."],
+    gambcous: ["Arrabbiata: peperoncino nell'olio.", "Teriyaki: soia e miele l'ultimo minuto.", "Col riso in busta (se un giorno lo compri)."],
+    freddo: ["Con 2 uova sode al posto di metà bresaola.", "Con rucola e scaglie di grana (10 g).", "Con pane di segale."],
+  });
+  // 🎨 sapori: novità senza fatica, con quello che hai in dispensa (kcal piccole, già dentro la tolleranza del pasto)
+  C.sapori = [
+    { id: "teriyaki", n: "Teriyaki", k: 40, how: "2 cucchiaini di soia + 1 di miele + aglio e zenzero in polvere: in padella l'ultimo minuto, finché lucida.", su: "pollo, gamberi, merluzzo" },
+    { id: "curry", n: "Curry e yogurt", k: 25, how: "2 cucchiai di yogurt + 1 cucchiaino di curry + un pizzico di sale: sopra a crudo o come salsa.", su: "pollo, uova, gamberi" },
+    { id: "pizzaiola", n: "Pizzaiola", k: 15, how: "3 cucchiai di passata + origano + aglio: in padella 3 minuti insieme alla proteina.", su: "pollo, manzo, uova" },
+    { id: "limone", n: "Limone ed erbe", k: 5, how: "Succo di mezzo limone + prezzemolo o rosmarino + pepe; l'olio a crudo alla fine.", su: "pesce, pollo, insalata" },
+    { id: "paprika", n: "Paprika affumicata", k: 5, how: "1 cucchiaino di paprika affumicata + aglio in polvere + sale sulla proteina prima di cuocerla.", su: "pollo, patate, uova" },
+    { id: "arrabbiata", n: "Arrabbiata", k: 0, how: "Peperoncino e uno spicchio d'aglio nell'olio per 1 minuto, poi dentro la proteina.", su: "gamberi, pollo, verdure" },
+    { id: "senape", n: "Senape e miele", k: 35, how: "1 cucchiaino di senape + 1 di miele + qualche goccia di limone: sopra a crudo.", su: "pollo, salmone, insalata" },
+    { id: "messicano", n: "Messicano", k: 15, how: "Cumino + paprika + origano + limone sulla proteina; salsa di yogurt a parte.", su: "pollo, manzo, wrap" },
+    { id: "mediterraneo", n: "Mediterraneo", k: 20, how: "Pomodorini a metà + 4 capperi + origano, a crudo sopra.", su: "pesce, pollo, bresaola" },
+    { id: "agrodolce", n: "Agrodolce", k: 40, how: "1 cucchiaio di aceto balsamico + 1 cucchiaino di miele: 1 minuto in padella finché si addensa.", su: "pollo, verdure grigliate" },
+    { id: "sesamo", n: "Soia e sesamo", k: 30, how: "Soia + un cucchiaino di semi di sesamo tostati + zenzero: sopra alla fine.", su: "pollo, gamberi, riso" },
+    { id: "tzatziki", n: "Salsa greca", k: 25, how: "2 cucchiai di yogurt + aglio in polvere + menta o erba cipollina secca + sale.", su: "pollo, wrap, patate" },
+  ];
+  // kit anti-stanchezza: in cima alla lista della spesa
+  C.shop.unshift({ cat: "😮‍💨 Kit anti-stanchezza (sempre in casa)", items: ["Bresaola", "Insalata in busta", "Verdure grigliate surgelate", "Albume in brick", "Uova", "Cous cous", "Merluzzo surgelato", "Gamberi surgelati", "Piadine", "Pane (anche in freezer, a fette)"] });
+})();

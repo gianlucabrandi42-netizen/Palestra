@@ -7,7 +7,7 @@
 "use strict";
 const CB = window.CIBO;
 const FOOD = () => (D.food = D.food || { days: {}, pics: {}, shop: {}, week: {} }, D.food.days = D.food.days || {}, D.food.pics = D.food.pics || {}, D.food.shop = D.food.shop || {}, D.food.week = D.food.week || {}, D.food);
-const CS = { tab: "oggi", day: null, rf: "all", q: "", xform: null, recipe: null };
+const CS = { tab: "oggi", day: null, rf: "easy", q: "", xform: null, recipe: null };
 const foodPic = id => picOf("food:" + id, FOOD().pics[id]);
 const recipeById = id => CB.recipes.find(r => r.id === id);
 const mainRecipes = () => CB.recipes.filter(r => r.main);
@@ -81,6 +81,63 @@ function twoMeals(r, d) {
   return `<div class="twobox"><h3>🍱 Pranzo e cena con una cottura</h3><p class="note">Le dosi di un pasto: cucini tutto insieme e dividi. Il carboidrato cambia col giorno (oggi pranzo da ${lv}).</p>
     ${box("pr", `Pranzo · da ${lv}`, r.p1)}${box("ce", "Cena", r.p2)}</div>`;
 }
+// ---------- 🍳 COSA CUCINO OGGI · 🎨 SAPORE DI OGGI · 😮‍💨 SONO STANCO (24/11/2026) ----------
+// L'utente odia cucinare, si annoia e quando è stanco mangia a caso, ma vuole seguire il piano. Regola decisa con lui:
+// riposo / pomeriggio (e notte) = UNA cucinata per pranzo e cena (ricette 🍱 batch); turno di mattina = a pranzo la mensa e la sera
+// una cena veloce (⚡ quick: max 15 minuti, verdure pronte). Niente decisioni: l'app propone UNA ricetta (la meno usata nelle ultime
+// 4 settimane, a rotazione), "Un'altra" se non va. La varietà la dà il sapore di oggi (CB.sapori), non ricette nuove.
+// "Sono stanco": 3 pasti del piano dal più rapido (avanzo della cucinata, piatto freddo zero cottura, cene da 10 minuti), con un tocco.
+const dayNum = d => Math.floor(new Date(d + "T12:00") / 864e5);
+const rot = (n, len) => ((n % len) + len) % len;
+function pickRot(list, d, mid, off) { // la meno usata nelle ultime 4 settimane; a parità, una diversa ogni giorno; off = "Un'altra"
+  const used = useCounts(mid, d), hs = id => [...(id + dayNum(d))].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 9973, 7);
+  const L = list.slice().sort((a, b) => (used[a.id] || 0) - (used[b.id] || 0) || hs(a.id) - hs(b.id));
+  return L.length ? L[rot(off || 0, L.length)] : null; }
+const sapOf = d => CB.sapori[rot(dayNum(d) + (CS.sapOff || 0), CB.sapori.length)];
+const ptOk = (r, mid, d) => { const L = baseQ(mid, r.id, d); if (!L) return null; return ptTone(ptCmp(valOfQ(L), ptKey(mid, d))); };
+function todayPlan(d) {
+  if (!CB.sapori || d < todayISO()) return "";
+  const day = fDay(d), m = day.m || {}, sh = (shiftOf(d) || {}).id, sap = sapOf(d), isB = id => (recipeById(id) || {}).batch;
+  const sapRow = `<div class="tpsap"><span>🎨</span><div><small>Sapore di ${d === todayISO() ? "oggi" : "domani"}</small><b>${esc(sap.n)}</b><p>${esc(sap.how)}</p><em>su ${esc(sap.su)} · ~${sap.k} kcal</em></div><button class="lnk sm" data-tp="sap"><i>🎲</i>Un altro</button></div>`;
+  const tired = `<button class="tptired" data-tp="tired"><span>😮‍💨</span><div><b>Sono stanco</b><small>3 pasti del piano, il più veloce in 4 minuti</small></div><i>›</i></button>`;
+  const recBox = (r, mid, lab, sub) => { const t = ptOk(r, mid, d), t2 = r.batch ? ptOk(r, "ce", d) : null, ok = t === "ok" && (!t2 || t2 === "ok");
+    return `<div class="tprec"><button class="tpimg" data-tp="see" data-r="${r.id}" data-m="${mid}">${dishSVG(r.p, r.box, r.id, "dish")}</button><div class="tptx"><small>${lab}</small><b>${esc(r.name)}</b><p>${r.min} min · ${esc(r.tools)}${sub ? " · " + sub : ""}</p>${ok ? `<em class="ok">✓ in linea col PT${r.batch ? " a pranzo e a cena" : ""}</em>` : ""}</div></div>
+      <div class="tpbtn"><button class="btn primary" data-tp="cook" data-r="${r.id}" data-m="${mid}">▶ Cucina passo passo</button><button class="lnk" data-tp="see" data-r="${r.id}" data-m="${mid}"><i>📖</i>Vedi</button><button class="lnk" data-tp="next" data-k="${r.batch ? "tpB" : "tpQ"}"><i>🔄</i>Un'altra</button></div>`; };
+  let main = "";
+  if (!sh) main = `<p class="tpask">Dimmi il turno qui sopra e ti dico cosa cucinare: una cucinata per pranzo e cena nei giorni di riposo o pomeriggio, una cena veloce dopo il turno di mattina.</p>`;
+  else if (sh === "mat") {
+    if (m.ce) main = `<p class="tpdone">✓ Cena segnata: stasera sei a posto.</p>`;
+    else { const r = pickRot(CB.recipes.filter(x => x.quick), d, "ce", CS.tpQ); main = r ? recBox(r, "ce", "⚡ Stasera cena veloce · a pranzo c'è la mensa", "") : ""; }
+  } else if (isB(m.pr)) { const r = recipeById(m.pr);
+    main = `<p class="tpdone">✓ Oggi hai cucinato <b>${esc(r.s || r.name)}</b>.${m.ce ? " Pranzo e cena fatti 👌" : sh === "pom" ? " La seconda porzione è la cena da portare al lavoro: 2 minuti al microonde." : " La seconda porzione è la cena: scaldala 2 minuti."}</p>${m.ce ? "" : `<div class="tpbtn"><button class="btn primary" data-tp="ce" data-r="${r.id}">✓ Segna la cena (${esc(r.s || "pasto 2")})</button></div>`}`;
+  } else { const r = pickRot(CB.recipes.filter(x => x.batch), d, "pr", CS.tpB); main = r ? recBox(r, "pr", "🍱 Oggi una cucinata: pranzo e cena", sh === "pom" ? "la cena la porti al lavoro" : "") : ""; }
+  return `<div class="card tplan"><h3>🍳 Cosa cucino ${d === todayISO() ? "oggi" : "domani"}</h3>${main}${sapRow}${tired}</div>`;
+}
+function openTired(d) {
+  const sh = $("fsheet"); if (!sh) return; const h = new Date().getHours(), m = fDay(d).m || {};
+  const mid = h < 15.5 && !m.pr ? "pr" : "ce", cards = [];
+  if (mid === "ce" && m.pr && (recipeById(m.pr) || {}).batch) { const r = recipeById(m.pr); cards.push({ r, lab: "🍱 Ce l'hai già: la seconda porzione della cucinata", how: "Scaldala 2 minuti al microonde, coperta." }); }
+  const Q = CB.recipes.filter(x => x.quick).sort((a, b) => a.min - b.min);
+  for (const r of Q) { if (cards.length >= 3) break; if (cards.some(c => c.r.id === r.id)) continue; if (mid === "pr" && STRICT.has(r.id) && lunchLvl(d) === 0) continue;
+    cards.push({ r, lab: r.cold ? "❄️ Zero cottura · " + r.min + " minuti" : "⚡ " + r.min + " minuti", how: r.ingr.slice(0, 3).join(" · ") }); }
+  sh.querySelector(".is-h").innerHTML = `<b>😮‍💨 Sono stanco</b><span class="rmeta">${mid === "pr" ? "pranzo" : "cena"} · resta nel piano, col minimo sforzo</span>`;
+  sh.querySelector(".is-c").innerHTML = `<p class="note">Stanco non vuol dire pasto libero: questi sono pasti del piano del PT, fatti con ingredienti veri (niente piatti pronti), col minimo sforzo. Scegline uno e non pensarci più.</p>
+    ${cards.map(({ r, lab, how }) => { const L = baseQ(mid, r.id, d), v = L && valOfQ(L), C = v && ptCmp(v, ptKey(mid, d));
+      return `<div class="tired"><div class="tprec"><div class="tpimg">${dishSVG(r.p, r.box, r.id, "dish")}</div><div class="tptx"><small>${esc(lab)}</small><b>${esc(r.name)}</b><p>${esc(how)}</p>${v ? `<em class="${ptTone(C)}">${fmt(v[0])} kcal · P ${v[1]} · C ${v[2]} · G ${v[3]}${ptTone(C) === "ok" ? " · ✓ in linea col PT" : ""}</em>` : ""}</div></div>
+        <div class="tpbtn"><button class="btn primary" data-tp="eat" data-r="${r.id}" data-m="${mid}">✓ L'ho mangiato</button>${r.steps.length > 1 ? `<button class="lnk" data-tp="cook" data-r="${r.id}" data-m="${mid}"><i>▶</i>Fallo con me</button>` : ""}</div></div>`; }).join("")}
+    <p class="note">Per non restare mai senza: il <b>😮‍💨 Kit anti-stanchezza</b> in cima a Cibo → Spesa (ingredienti semplici da cucinare, non piatti pronti).</p>`;
+  if (sh.hidden) showSheet(sh); else sh.querySelector(".is-c").scrollTop = 0;
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest && e.target.closest("[data-tp]"); if (!b) return; const a = b.dataset.tp, d = cDay(), r = b.dataset.r, mid = b.dataset.m;
+  if (a === "sap") { CS.sapOff = (CS.sapOff || 0) + 1; renderCibo(); }
+  else if (a === "next") { CS[b.dataset.k] = (CS[b.dataset.k] || 0) + 1; renderCibo(); }
+  else if (a === "cook") { closeRecipe(); cook(r, { mid, oid: r }); }
+  else if (a === "see") openRecipe(r, { mid, oid: r });
+  else if (a === "tired") openTired(d);
+  else if (a === "ce") logMeal(d, "ce", r);
+  else if (a === "eat") { closeRecipe(); logMeal(d, mid, r); }
+});
 // tabellina nel pasto di Oggi: PT e (se segnato) il tuo pasto
 function ptStrip(mid, d, v) {
   const k = ptKey(mid, d), p = ptRef(k); if (!p) return ""; const C = v ? ptCmp(v, k) : null;
@@ -502,7 +559,7 @@ function renderOggi(box) {
     <div class="pside"><div class="pgym"><span>Palestra ${d === today ? "oggi" : "quel giorno"}</span><div class="seg2"><button data-gym="1" aria-pressed="${gym}">Sì</button><button data-gym="0" aria-pressed="${!gym}">No</button></div>${auto && day.gym == null ? `<small>dall'allenamento</small>` : ""}</div>
     <div class="pgym"><span>Turno</span><div class="seg4">${CB.shifts.map(x => `<button data-sh="${x.id}" aria-pressed="${day.turno === x.id}">${esc(x.t)}</button>`).join("")}</div></div>
     <p class="phint">${esc(dayHint(d))}</p></div></div>`;
-  h += shotBtn() + balanceCard(d) + bagCard(d);
+  h += todayPlan(d) + shotBtn() + balanceCard(d) + bagCard(d);
   h += barCard(day) + frzCard(d);
   // 20/11/2026 ("ci sono tanti piatti da scegliere, migliora il layout"): per ogni pasto le 3 idee più adatte (già segnata, frigo,
   // pasto 2 della ricetta del pranzo, compatibili col turno, quelle che usi di più, i tuoi piatti) + "Altre idee" con ricerca;
@@ -1201,7 +1258,7 @@ const VEG = new Set(["vgrill", "vmiste", "verdure", "zucchine", "peperoni", "spi
 const CARBS = new Set(["riso", "risoc", "rprec", "pasta", "pastac", "pastai", "cous", "farro", "farrop", "quinoa", "gnocchi", "patate", "patatec", "pdolci", "pane", "panino", "piadina"]);
 const PANTRY = new Set([...CONDF, "cacao", "passata"]);
 const EQ = { polloc: "pollo", pastac: "pasta", pastai: "pasta", risoc: "riso", rprec: "riso", farrop: "farro", albume: "albumeg", mozzn: "mozz", pescec: "merluzzo", patatec: "patate" };
-const STRICT = new Set(["pastatonno", "frittatapasta", "pizzapiadina", "gnocchi", "risosaltato", "farro", "pastapollo", "pastagamberi", "pastaragu"]);
+const STRICT = new Set(["wrappollo", "pastatonno", "frittatapasta", "pizzapiadina", "gnocchi", "risosaltato", "farro", "pastapollo", "pastagamberi", "pastaragu"]);
 function grpOf(f, flexCarb) { if (FO(f) && FO(f).mine) { const p = prods()[f.slice(2)]; f = p && p.sub || f; } if (VEG.has(f)) return "veg"; if (flexCarb && CARBS.has(f)) return "carb"; return EQ[f] || f; }
 function needOf(r, meal, d) {
   const mid = r.main ? (meal === "ce" ? "ce" : "pr") : Object.keys(r.for || {})[0], oid = r.main ? r.id : (r.for || {})[mid];
@@ -1363,12 +1420,12 @@ function hvBind(box) {
 const CATN = { col: "Colazione", sp: "Spuntino", base: "Le basi" };
 const MEALN = { col: "a colazione", s1: "allo spuntino 1", s2: "allo spuntino 2", pr: "a pranzo", ce: "a cena" };
 function renderRicette(box) {
-  const F = [["all", "Tutte"], ...(CB.recipes.some(r => r.mine) ? [["mine", "Le mie"]] : []), ["batch", "🍱 Una cottura, 2 pasti"], ["main", "Pranzo e cena"], ["col", "Colazione"], ["sp", "Spuntini"], ["new", "Da imparare"], ["fast", "Veloci (≤ 12′)"], ["base", "Le basi"]];
-  const ok = r => CS.rf === "all" || (CS.rf === "mine" && r.mine) || (CS.rf === "main" && r.main) || (CS.rf === "batch" && r.batch) || (CS.rf === r.cat) || (CS.rf === "new" && r.lvl === 2) || (CS.rf === "fast" && r.min <= 12);
+  const F = [["all", "Tutte"], ...(CB.recipes.some(r => r.mine) ? [["mine", "Le mie"]] : []), ["easy", "⭐ Facili"], ["quick", "⚡ Cene veloci"], ["batch", "🍱 Una cottura, 2 pasti"], ["main", "Pranzo e cena"], ["col", "Colazione"], ["sp", "Spuntini"], ["new", "Da imparare"], ["fast", "Veloci (≤ 12′)"], ["base", "Le basi"]];
+  const ok = r => CS.rf === "all" || (CS.rf === "mine" && r.mine) || (CS.rf === "main" && r.main) || (CS.rf === "batch" && r.batch) || (CS.rf === "quick" && r.quick) || (CS.rf === "easy" && (r.batch || r.quick)) || (CS.rf === r.cat) || (CS.rf === "new" && r.lvl === 2) || (CS.rf === "fast" && r.min <= 12);
   const L = CB.recipes.filter(ok);
   box.innerHTML = `${hvCard()}<div class="rfil">${F.map(([k, n]) => `<button class="chip" data-rf="${k}" aria-pressed="${CS.rf === k}">${n}</button>`).join("")}</div>
     ${CS.rf === "all" ? `<p class="note rtip">Nuovo in cucina? Parti da <button class="lnk in" data-rf="base">Le basi</button>: friggitrice, padella e pasta spiegate passo passo.</p>` : ""}
-    <div class="rgrid">${L.map(r => { const pic = foodPic(r.id); return `<button class="rcard" data-rec="${r.id}">${pic ? `<img src="${pic}" alt="">` : dishSVG(r.p, r.box, r.id, "dish")}<b>${esc(r.name)}</b><small>${r.min} min · ${esc(r.tools)}</small><em>${r.mine ? "la tua · " : ""}${r.batch ? "🍱 pranzo + cena" : r.main ? (r.one ? "1 pasto" : "2 pasti") : esc(CATN[r.cat] || "")}</em>${r.lvl === 2 ? `<i class="rnew">da imparare</i>` : ""}</button>`; }).join("")}</div>`;
+    <div class="rgrid">${L.map(r => { const pic = foodPic(r.id); return `<button class="rcard" data-rec="${r.id}">${pic ? `<img src="${pic}" alt="">` : dishSVG(r.p, r.box, r.id, "dish")}<b>${esc(r.name)}</b><small>${r.min} min · ${esc(r.tools)}</small><em>${r.mine ? "la tua · " : ""}${r.quick ? (r.cold ? "❄️ zero cottura" : "⚡ " + r.min + " min") : r.batch ? "🍱 pranzo + cena" : r.main ? (r.one ? "1 pasto" : "2 pasti") : esc(CATN[r.cat] || "")}</em>${r.lvl === 2 ? `<i class="rnew">da imparare</i>` : ""}</button>`; }).join("")}</div>`;
   box.querySelectorAll("[data-rf]").forEach(b => b.onclick = () => { CS.rf = b.dataset.rf; renderCibo(); });
   hvBind(box);
   box.querySelectorAll("[data-rec]").forEach(b => b.onclick = () => openRecipe(b.dataset.rec));

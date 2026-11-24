@@ -1805,3 +1805,18 @@ html{touch-action:manipulation}
 .twv .ok,.twv .up{color:#6FD39B}.twv .hi{color:#FF9447}.twv .hi2{color:#FF5F57}.twv .lo{color:#7DB4FF}
 .twn{margin:2px 0 0;font-size:12.5px;color:var(--muted);line-height:1.4}
 .twsub{margin:3px 0 0;font-size:12.5px;color:var(--muted)}
+/* 🍳 Cosa cucino oggi · 🎨 sapore · 😮‍💨 sono stanco (24/11/2026) */
+.tplan{border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);background:linear-gradient(160deg,color-mix(in srgb,var(--accent) 12%,var(--card,#16181b)),var(--card,#16181b) 60%)}
+.tplan h3{margin:0 0 10px;font-size:17px}
+.tprec{display:grid;grid-template-columns:76px 1fr;gap:12px;align-items:center}
+.tpimg{width:76px;height:76px;padding:0;border:0;background:none;border-radius:50%;overflow:hidden}.tpimg svg,.tpimg img{width:100%;height:100%}
+.tptx small{display:block;font-size:12px;color:var(--accent);font-weight:800}.tptx b{display:block;font-size:15.5px;line-height:1.25;margin:2px 0}
+.tptx p{margin:0;font-size:12.5px;color:var(--muted)}.tptx em{display:block;font-style:normal;font-size:12.5px;font-weight:800;margin-top:3px}
+.tptx em.ok{color:#6FD39B}.tptx em.hi,.tptx em.hi2{color:#FF9447}.tptx em.lo{color:#7DB4FF}
+.tpbtn{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}.tpbtn .btn{flex:1 1 100%;min-height:48px;font-size:15px}.tpbtn .lnk{flex:1 1 0}
+.tpask,.tpdone{margin:0 0 6px;font-size:14px;line-height:1.45}.tpdone{color:#6FD39B}.tpdone b{color:var(--ink)}
+.tpsap{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;margin-top:12px;padding:11px 12px;border-radius:13px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)}
+.tpsap>span{font-size:24px}.tpsap small{font-size:11.5px;color:var(--muted)}.tpsap b{display:block;font-size:15px}.tpsap p{margin:2px 0;font-size:12.5px;line-height:1.35}.tpsap em{font-style:normal;font-size:11.5px;color:var(--muted)}
+.tptired{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;width:100%;margin-top:10px;padding:12px 14px;border-radius:14px;border:1px solid rgba(125,180,255,.4);background:rgba(125,180,255,.10);color:var(--ink);font:inherit;text-align:left}
+.tptired>span{font-size:26px}.tptired b{display:block;font-size:16px}.tptired small{font-size:12.5px;color:var(--muted)}.tptired>i{font-style:normal;font-size:22px;color:#7DB4FF}
+.tired{margin:12px 0;padding:12px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09)}

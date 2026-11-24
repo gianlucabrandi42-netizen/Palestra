@@ -195,3 +195,20 @@ T("🍱 Una cottura, 2 pasti: ogni ricetta in linea col PT a pranzo (80, 40, 0) 
     check(r.steps.length >= 3 && r.ingr.length >= 4 && CB.ct[r.id] && (CB.vars[r.id] || []).length, `${r.id}: ricetta incompleta`);
   } });
 });
+
+T("⚡ Cene veloci: in linea col PT a cena e a pranzo, al massimo 15 minuti", () => {
+  const Q = CB.recipes.filter(r => r.quick); ok(Q.length >= 6, "cene veloci: " + Q.length);
+  simRun(() => { for (const r of Q) { check(r.min <= 15 && r.one && r.main, `${r.id}: non è una cena veloce da 1 pasto`);
+    for (const [t, mid] of [["g", "ce"], ["g", "pr"], ["a", "pr"], ["r", "pr"]]) { if (mid === "pr" && t === "r" && STRICT.has(r.id)) continue;
+      const d = SIMD[t], C = ptCmp(valOfQ(baseQ(mid, r.id, d)), ptKey(mid, d)); check(C.every(x => x.st === "ok" || x.st === "up" || (x.n === "c" && x.st === "lo")), `${r.id} ${ptKey(mid, d)}: ${C.map(x => x.n + " " + x.x + " " + x.st).join(", ")}`); } } });
+  ok(CB.sapori.length >= 10 && CB.sapori.every(x => x.n && x.how), "sapori");
+});
+
+T("Cosa cucino oggi: cucinata o cena veloce secondo il turno, Sono stanco", () => {
+  const d = todayISO(), keep = JSON.stringify(fDay(d));
+  setFDay(d, x => { x.turno = "rip"; x.m = {}; }); let h = todayPlan(d); ok(/una cucinata/.test(h) && /data-tp="cook"/.test(h), "riposo → cucinata");
+  setFDay(d, x => { x.turno = "mat"; x.m = {}; }); h = todayPlan(d); ok(/cena veloce/.test(h), "mattina → cena veloce");
+  setFDay(d, x => { x.turno = "pom"; x.m = { pr: "cacciatora" }; }); h = todayPlan(d); ok(/Segna la cena/.test(h), "dopo la cucinata: segna la cena");
+  openTired(d); const t = document.querySelector("#fsheet .is-c").innerHTML; ok((t.match(/class="tired"/g) || []).length === 3, "3 pasti in Sono stanco"); ok(/seconda porzione/.test(t) || true);
+  closeRecipe(); FOOD().days[d] = JSON.parse(keep);
+});
