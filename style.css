@@ -1820,3 +1820,46 @@ html{touch-action:manipulation}
 .tptired{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;width:100%;margin-top:10px;padding:12px 14px;border-radius:14px;border:1px solid rgba(125,180,255,.4);background:rgba(125,180,255,.10);color:var(--ink);font:inherit;text-align:left}
 .tptired>span{font-size:26px}.tptired b{display:block;font-size:16px}.tptired small{font-size:12.5px;color:var(--muted)}.tptired>i{font-style:normal;font-size:22px;color:#7DB4FF}
 .tired{margin:12px 0;padding:12px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09)}
+
+/* ===== ✨ VISTA SEMPLICE di Cibo → Oggi (24/11/2026) ===== */
+.dline{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px;color:var(--ink);font:inherit;font-size:14px;font-weight:600}
+.dline span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dline i{font-style:normal;color:var(--accent);font-size:15px;flex:none}
+.dline.dwk span{font-weight:500;color:var(--muted)}
+.dset{margin-bottom:12px;display:grid;gap:10px;border:1px solid var(--accent)}
+.dset h3{margin:0;font-size:16px}
+.dset .pgym{display:grid;gap:6px}
+.dset .pgym>span{font-size:12px;color:var(--muted);font-weight:600}
+.dset .seg4{grid-template-columns:repeat(4,1fr)}
+.dset .note{margin:0}
+.kline{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 14px;margin-bottom:12px;color:var(--ink);font:inherit}
+.kline .pmini{width:34px;height:34px;flex:none}
+.kline div{flex:1;min-width:0;display:grid;gap:6px}
+.kline b{font-size:16px}
+.kline b small{font-size:12.5px;color:var(--muted);font-weight:500}
+.kline .bbar{display:block}
+.kline u{text-decoration:none;color:var(--accent);font-size:16px;flex:none}
+.kline.hi b{color:#FF9447}.kline.hi2 b{color:#FF5F57}
+.meal.hero{border:1.5px solid var(--c);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 14%,transparent)}
+.mhero{margin:0 14px 6px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:800;color:var(--c)}
+.mfold{margin-left:auto;flex:none;width:34px;height:30px;border-radius:10px;border:1px solid var(--line);background:var(--surface2,rgba(255,255,255,.05));color:var(--ink);font-size:15px;line-height:1}
+.mh .mk+.mfold{margin-left:8px}
+.qacts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:2px 0 12px}
+.qa{display:grid;justify-items:center;gap:4px;padding:11px 6px;border-radius:14px;background:var(--surface);border:1px solid var(--line);color:var(--ink);font:inherit;cursor:pointer}
+.qa span{font-size:22px;line-height:1}
+.qa b{font-size:12.5px;font-weight:600}
+.qa.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--surface))}
+.mh2{margin:16px 2px 8px}
+.mrow{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--c);border-radius:14px;padding:12px 12px 12px 12px;margin-bottom:8px;color:var(--ink);font:inherit}
+.mrow i{width:10px;height:10px;border-radius:50%;border:2px solid var(--c);flex:none}
+.mrow.done i{background:var(--c)}
+.mrow b{font-size:14.5px;flex:none}
+.mrow span{flex:1;min-width:0;font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mrow.done span{color:var(--ink)}
+.mrow.skipped{opacity:.6}
+.mrow em{font-style:normal;font-size:12px;color:var(--muted);flex:none}
+.mrow u{text-decoration:none;color:var(--muted);flex:none}
+.tplan.sm h3{margin-bottom:8px}
+.tpmini{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.tplan.sm .tpsap{margin-top:10px}
+.vsw{margin:18px 0 6px;opacity:.85}

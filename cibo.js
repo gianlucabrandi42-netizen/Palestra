@@ -95,8 +95,9 @@ function pickRot(list, d, mid, off) { // la meno usata nelle ultime 4 settimane;
   return L.length ? L[rot(off || 0, L.length)] : null; }
 const sapOf = d => CB.sapori[rot(dayNum(d) + (CS.sapOff || 0), CB.sapori.length)];
 const ptOk = (r, mid, d) => { const L = baseQ(mid, r.id, d); if (!L) return null; return ptTone(ptCmp(valOfQ(L), ptKey(mid, d))); };
-function todayPlan(d) {
+function todayPlan(d, compact) {
   if (!CB.sapori || d < todayISO()) return "";
+  if (compact && !shiftOf(d)) return "";
   const day = fDay(d), m = day.m || {}, sh = (shiftOf(d) || {}).id, sap = sapOf(d), isB = id => (recipeById(id) || {}).batch;
   const sapRow = `<div class="tpsap"><span>🎨</span><div><small>Sapore di ${d === todayISO() ? "oggi" : "domani"}</small><b>${esc(sap.n)}</b><p>${esc(sap.how)}</p><em>su ${esc(sap.su)} · ~${sap.k} kcal</em></div><button class="lnk sm" data-tp="sap"><i>🎲</i>Un altro</button></div>`;
   const tired = `<button class="tptired" data-tp="tired"><span>😮‍💨</span><div><b>Sono stanco</b><small>3 pasti del piano, il più veloce in 4 minuti</small></div><i>›</i></button>`;
@@ -111,6 +112,9 @@ function todayPlan(d) {
   } else if (isB(m.pr)) { const r = recipeById(m.pr);
     main = `<p class="tpdone">✓ Oggi hai cucinato <b>${esc(r.s || r.name)}</b>.${m.ce ? " Pranzo e cena fatti 👌" : sh === "pom" ? " La seconda porzione è la cena da portare al lavoro: 2 minuti al microonde." : " La seconda porzione è la cena: scaldala 2 minuti."}</p>${m.ce ? "" : `<div class="tpbtn"><button class="btn primary" data-tp="ce" data-r="${r.id}">✓ Segna la cena (${esc(r.s || "pasto 2")})</button></div>`}`;
   } else { const r = pickRot(CB.recipes.filter(x => x.batch), d, "pr", CS.tpB); main = r ? recBox(r, "pr", "🍱 Oggi una cucinata: pranzo e cena", sh === "pom" ? "la cena la porti al lavoro" : "") : ""; }
+  // vista semplice (24/11/2026): sapore e "Sono stanco" in due pulsanti piccoli; il sapore si apre al tocco
+  if (compact) return `<div class="card tplan sm"><h3>🍳 Cosa cucino ${d === todayISO() ? "oggi" : "domani"}</h3>${main}
+    <div class="tpmini"><button class="lnk" data-tp="sapo"><i>🎨</i>${esc(sap.n)}</button><button class="lnk" data-tp="tired"><i>😮‍💨</i>Sono stanco</button></div>${CS.sapOpen ? sapRow : ""}</div>`;
   return `<div class="card tplan"><h3>🍳 Cosa cucino ${d === todayISO() ? "oggi" : "domani"}</h3>${main}${sapRow}${tired}</div>`;
 }
 function openTired(d) {
@@ -131,6 +135,7 @@ function openTired(d) {
 document.addEventListener("click", e => {
   const b = e.target.closest && e.target.closest("[data-tp]"); if (!b) return; const a = b.dataset.tp, d = cDay(), r = b.dataset.r, mid = b.dataset.m;
   if (a === "sap") { CS.sapOff = (CS.sapOff || 0) + 1; renderCibo(); }
+  else if (a === "sapo") { CS.sapOpen = !CS.sapOpen; renderCibo(); }
   else if (a === "next") { CS[b.dataset.k] = (CS[b.dataset.k] || 0) + 1; renderCibo(); }
   else if (a === "cook") { closeRecipe(); cook(r, { mid, oid: r }); }
   else if (a === "see") openRecipe(r, { mid, oid: r });
@@ -553,6 +558,8 @@ function renderOggi(box) {
   const days = [...Array(7)].map((_, i) => addDays(today, i - 5));
   const nm = nextMeal(d), done = dayDone(d);
   let h = `<div class="cdays">${days.map(x => { const s = ddShort(x); return `<button data-cd="${x}" aria-pressed="${x === d}"><small>${x === today ? "oggi" : x > today ? "domani" : s.w}</small>${plateSVG(x, "pmini")}<b>${s.n}</b></button>`; }).join("")}</div>`;
+  if (!FOOD().full) { h += oggiSemplice(d); box.innerHTML = h; afterOggi(box, d); return; }
+  h += `<button class="lnk wide vsw" data-vfull="0"><i>✨</i>Vista semplice</button>`;
   // 🏋️ la mattina (o la sera prima, per domani): se ti alleni più tardi, il pranzo deve già saperlo (scala 80/40/0)
   if (d >= today && day.gym == null && !auto) h += `<div class="card gask"><div><b>🏋️ ${d === today ? "Oggi" : "Domani"} ti alleni?</b><small>Decide il pranzo: 80 g di carboidrato se sì, ${isGym(addDays(d, -1)) ? "40" : "niente"} se no. Quando registri l'allenamento lo sa da solo.</small></div><div class="seg2"><button data-gym="1">Sì</button><button data-gym="0">No</button></div></div>`;
   h += `<div class="cplate"><div class="pwrap">${plateSVG(d)}<div class="pmid">${done ? `<b>✓</b><small>tutto<br>fatto</small>` : nm ? `<small>prossimo</small><b>${esc(nm)}</b>` : `<b>👌</b>`}</div></div>
@@ -564,16 +571,86 @@ function renderOggi(box) {
   // 20/11/2026 ("ci sono tanti piatti da scegliere, migliora il layout"): per ogni pasto le 3 idee più adatte (già segnata, frigo,
   // pasto 2 della ricetta del pranzo, compatibili col turno, quelle che usi di più, i tuoi piatti) + "Altre idee" con ricerca;
   // un pasto già segnato si chiude in una riga (tocco = dettagli, "Cambia" = di nuovo le idee).
-  for (const md of CB.meals) {
+  for (const md of CB.meals) h += mealCard(md, d);
+  const loose = (day.x || []).filter(x => (!x.meal || x.meal === "fuori") && !x.bar);
+  h += `<div class="meal extra"><div class="mh"><i></i><b>Fuori pasto</b><span>quello che non è nelle caselle</span></div>${loose.map(x => xRow(x)).join("")}${CS.xform && CS.xform.meal === "fuori" ? xForm() : `<button class="cmore" data-xadd="fuori">+ Aggiungi un cibo</button>`}</div>`;
+  h += weekCard(d);
+  box.innerHTML = h; afterOggi(box, d);
+}
+// ---------- ✨ VISTA SEMPLICE di Oggi (24/11/2026, "molte scelte: rendila più easy per una persona pigra, senza eliminare funzioni") ----------
+// In cima solo quello che serve adesso: com'è la giornata (una riga), quanto hai mangiato (una riga), il pasto di ADESSO aperto,
+// cosa cucinare, 3 azioni rapide. Gli altri pasti sono righe (tocco = si aprono), la settimana è una riga. Tutto il resto è dove era,
+// a un tocco. "Vista completa" in fondo rimette la schermata di prima (FOOD().full).
+function heroMeal(d) {
+  const day = fDay(d), free = k => !mealV(day, k);
+  if (d !== todayISO()) return RING.find(free) || null;
+  const t = new Date(), hr = t.getHours() + t.getMinutes() / 60, i0 = hr < 10.5 ? 0 : hr < 12 ? 1 : hr < 15.5 ? 2 : hr < 18.5 ? 3 : 4;
+  return RING.slice(i0).find(free) || RING.find(free) || null;
+}
+function mealRow(md, d) {
+  const day = fDay(d), m = day.m || {}, v = m[md.id], xs = (day.x || []).filter(x => x.meal === md.id), sel = v && v !== "skip" ? optOf(md, v, d) : null;
+  let kc = sel ? (optVal(md.id, v, d) || [0])[0] : 0; kc += xs.reduce((a, x) => a + ((xVal(x) || [0])[0]), 0);
+  const st = v === "skip" ? "saltato" : sel ? sel.t : xs.length ? xs.map(x => x.t).join(", ") : md.extra ? "facoltativo" : "da segnare";
+  return `<button class="mrow${v || xs.length ? " done" : ""}${v === "skip" ? " skipped" : ""}" style="--c:${md.color}" data-mrow="${md.id}"><i></i><b>${esc(md.name)}</b><span>${v && v !== "skip" || xs.length ? "✓ " : ""}${esc(st)}</span>${kc && !(sel && sel.free) ? `<em>${r50(kc)} kcal</em>` : ""}<u>›</u></button>`;
+}
+function oggiSemplice(d) {
+  const today = todayISO(), day = fDay(d), m = day.m || {}, gym = isGym(d), auto = gymAuto(d), sh = shiftOf(d), done = dayDone(d), T = dayTarget(d), { t, free } = dayVals(d);
+  let h = "";
+  // 1 · com'è la giornata: si chiede una volta (palestra + turno), poi diventa una riga
+  const ask = d >= today && ((day.gym == null && !auto) || !day.turno);
+  if (ask || CS.setOpen) h += `<div class="card dset"><h3>${d === today ? "Com'è oggi?" : d > today ? "Com'è domani?" : "Com'era quel giorno?"}</h3>
+    <div class="pgym"><span>🏋️ Palestra</span><div class="seg2"><button data-gym="1" aria-pressed="${day.gym === true || (day.gym == null && auto)}">Sì</button><button data-gym="0" aria-pressed="${day.gym === false}">No</button></div>${auto && day.gym == null ? `<small>dall'allenamento</small>` : ""}</div>
+    <div class="pgym"><span>🕐 Turno</span><div class="seg4">${CB.shifts.map(x => `<button data-sh="${x.id}" aria-pressed="${day.turno === x.id}">${esc(x.t)}</button>`).join("")}</div></div>
+    ${!ask ? `<button class="btn sm primary" data-setok>Fatto</button>` : `<p class="note">Lo chiedo una volta: decide quanta pasta a pranzo e cosa cucinare.</p>`}</div>`;
+  else h += `<button class="dline" data-setopen><span>${gym ? "🏋️ Palestra" : "🛋 Niente palestra"}${sh ? ` · ${esc(sh.t)}` : ""} · pranzo da ${lunchLvl(d)}</span><i>✎</i></button>`;
+  // 2 · quanto hai mangiato, in una riga (tocco = dettaglio con proteine, carboidrati, grassi)
+  const pc = t[0] / T[0], ov = pc > 1.25 ? " hi2" : pc > 1.1 ? " hi" : "";
+  h += `<button class="kline${ov}" data-bal>${plateSVG(d, "pmini")}<div><b>${done ? "✓ Giornata completa · " : ""}~${fmt(r50(t[0]))} <small>/ ${fmt(T[0])} kcal</small></b><span class="bbar s${ov}"><i style="width:${Math.min(100, pc * 100).toFixed(0)}%"></i></span></div><u>${CS.balOpen ? "⌃" : "›"}</u></button>`;
+  if (CS.balOpen) h += balanceCard(d) || `<p class="note">Segna il primo pasto e qui vedi proteine, carboidrati e grassi del giorno.</p>`;
+  if (free) h += `<p class="note">🍕 Pasto libero oggi: i conti non contano, domani normale.</p>`;
+  // 3 · il pasto di ADESSO, aperto; cosa cucinare subito sopra se è pranzo o cena
+  const hid = heroMeal(d), plan = todayPlan(d, true);
+  if (hid && (hid === "pr" || hid === "ce")) h += plan;
+  if (hid) h += mealCard(mealDef(hid), d, { hero: true });
+  if (!(hid && (hid === "pr" || hid === "ce"))) h += plan;
+  // 4 · azioni rapide
+  const B = (day.x || []).filter(x => x.bar), loose = (day.x || []).filter(x => (!x.meal || x.meal === "fuori") && !x.bar);
+  h += `<div class="qacts"><label class="qa" for="shotIn"><span>📷</span><b>Foto del piatto</b></label><input type="file" id="shotIn" accept="image/*" capture="environment" hidden>
+    <button class="qa${CS.barOpen ? " on" : ""}" data-qa="bar"><span>☕</span><b>Caffè${B.length ? ` ×${B.length}` : ""}</b></button>
+    <button class="qa${CS.xform && CS.xform.meal === "fuori" ? " on" : ""}" data-xadd="fuori"><span>✎</span><b>Fuori pasto${loose.length ? ` ×${loose.length}` : ""}</b></button></div>`;
+  if (CS.barOpen) h += barCard(day);
+  if (loose.length || (CS.xform && CS.xform.meal === "fuori")) h += `<div class="meal extra"><div class="mh"><i></i><b>Fuori pasto</b><span>quello che non è nelle caselle</span></div>${loose.map(x => xRow(x)).join("")}${CS.xform && CS.xform.meal === "fuori" ? xForm() : ""}</div>`;
+  h += frzCard(d);
+  const bag = bagCard(d); if (bag) h += CS.bagOpen ? bag : `<button class="dline" data-bag><span>🎒 Da portare al lavoro</span><i>›</i></button>`;
+  // 5 · gli altri pasti: una riga ciascuno, tocco = si apre (si apre da solo se ci stai scrivendo o lo stai cambiando)
+  const others = CB.meals.filter(md => md.id !== hid);
+  h += `<h2 class="mh2">${hid ? "Gli altri pasti" : "I pasti di oggi"}</h2>`;
+  for (const md of others) {
+    const open = (CS.mopen || {})[md.id] || (CS.xform && CS.xform.meal === md.id) || (CS.mexp || {})[md.id];
+    h += open ? mealCard(md, d, { fold: true, force: true }) : mealRow(md, d);
+  }
+  // 6 · la settimana, in una riga
+  h += CS.wkOpen ? weekCard(d) + `<button class="lnk wide" data-wk><i>⌃</i>Chiudi la settimana</button>` : `<button class="dline dwk" data-wk><span>📅 Questa settimana · pasti liberi ${freeInWeek(d)} di 2 · fame, energia, sonno</span><i>›</i></button>`;
+  h += `<button class="lnk wide vsw" data-vfull="1"><i>☰</i>Vista completa (tutto aperto)</button>`;
+  return h;
+}
+function afterOggi(box, d) {
+  box.querySelectorAll(".tiles").forEach(t => { const x = t.querySelector(".tile.on"), on = x && (x.closest(".tilew") || x); if (on && on.offsetLeft + on.offsetWidth > t.clientWidth) t.scrollLeft = on.offsetLeft - 14; });
+  bindOggi(box, d); frzBind(box); shotBind();
+}
+// un pasto di Oggi (scheda completa con idee, tabellina del PT, scritti a mano). o.hero = "Adesso", o.fold = si può richiudere in una riga
+function mealCard(md, d, o) {
+  o = o || {}; const day = fDay(d), m = day.m || {};
     const v = m[md.id];
-    if (md.extra && !v && !(m.s1 === "skip" && m.s2 === "skip") && !CS.showDc) { h += `<button class="cmore" data-dc="1">+ Dopo cena (facoltativo)</button>`; continue; }
+    if (!o.force && md.extra && !v && !(m.s1 === "skip" && m.s2 === "skip") && !CS.showDc) return `<button class="cmore" data-dc="1">+ Dopo cena (facoltativo)</button>`;
     const opts = optsFor(md, d), sel = v && v !== "skip" ? optOf(md, v, d) : null, w = whereOf(d, md.id);
     const xs = (day.x || []).filter(x => x.meal === md.id), xk = xs.reduce((a, x) => a + ((xVal(x) || [0])[0]), 0);
     const kc = (sel && optVal(md.id, v, d) ? optVal(md.id, v, d)[0] : 0) + xk, bq = sel && !sel.dish ? baseQ(md.id, v, d) : null, kp = bq ? valOfQ(bq)[0] : 0, kov = kp && kc > kp * 1.25 ? " hi2" : kp && kc > kp * 1.1 ? " hi" : "";
     const open = !(sel || v === "skip") || (CS.mexp || {})[md.id];
+    let h = "";
     // 📏 valori del pasto (casella + scritti a mano) per il confronto col PT
     let mv = null; if (v !== "skip" && (sel || xs.length)) { const a = sel ? optVal(md.id, v, d) : null; mv = [0, 0, 0, 0]; if (a) a.forEach((x, i) => mv[i] += x); for (const x of xs) { const t = xVal(x); if (t) t.forEach((y, i) => mv[i] += y || 0); } if (sel && sel.free) mv = null; }
-    h += `<div class="meal${v || xs.length ? " done" : ""}${v === "skip" ? " skipped" : ""}" style="--c:${md.color}"><div class="mh"><i></i><b>${esc(md.name)}</b><span>${v === "skip" ? "saltato" : sel ? "" : xs.length ? "scritto da te" : esc(mealSub(md, d))}</span>${kc ? `<em class="mk${kov}">~${r50(kc)} kcal${kov ? ` · +${r50(kc - kp)}` : ""}</em>` : ""}</div>${v === "skip" ? "" : ptStrip(md.id, d, mv)}${WHERE[w] && open ? `<p class="mwhere">${WHERE[w]}</p>` : ""}`;
+    h += `<div class="meal${v || xs.length ? " done" : ""}${v === "skip" ? " skipped" : ""}${o.hero ? " hero" : ""}" style="--c:${md.color}" data-mid="${md.id}">${o.hero ? `<p class="mhero">Adesso</p>` : ""}<div class="mh"><i></i><b>${esc(md.name)}</b><span>${v === "skip" ? "saltato" : sel ? "" : xs.length ? "scritto da te" : esc(mealSub(md, d))}</span>${kc ? `<em class="mk${kov}">~${r50(kc)} kcal${kov ? ` · +${r50(kc - kp)}` : ""}</em>` : ""}${o.fold ? `<button class="mfold" data-mfold="${md.id}" aria-label="Chiudi">⌃</button>` : ""}</div>${v === "skip" ? "" : ptStrip(md.id, d, mv)}${WHERE[w] && open ? `<p class="mwhere">${WHERE[w]}</p>` : ""}`;
     if (sel && !open) {
       const pic = (sel.r || sel.dish) && foodPic(sel.r || sel.id), img = sel.free ? `<span class="ti">🍕</span>` : pic ? `<img src="${pic}" alt="">` : dishSVG(sel.p || [], sel.box, sel.id, "dish");
       h += `<div class="msel"><button class="mselb" data-m="${md.id}" data-o="${sel.id}">${img}<div><b>${esc(sel.t)}</b><small>${sel.free && (day.lib || {})[md.id] ? "🎉 " + esc(((day.lib[md.id].t || "") || day.lib[md.id].it.map(([f]) => shortN(f)).join(", ")).slice(0, 50)) + (day.lib[md.id].it.length ? ` · ~${r50(valOfQ(day.lib[md.id].it)[0])} kcal fuori conto` : "") : (day.note || {})[md.id] ? "✎ " + esc((day.note || {})[md.id].split("\n")[0].slice(0, 60)) : esc(detOf(md, sel, m))}${day.q && day.q[md.id] && !sel.dish ? " · modificato" : ""}</small></div><span class="chev">›</span></button>
@@ -587,13 +664,7 @@ function renderOggi(box) {
         <div class="mselx"><button class="lnk" data-xadd="${md.id}"><i>✎</i>Scrivo io</button>${md.skip ? `<button class="lnk" data-skip="${md.id}">${v === "skip" ? "<i>↩</i>Non l'ho saltato" : "<i>⤼</i>L'ho saltato"}</button>` : ""}${(CS.mexp || {})[md.id] ? `<button class="lnk" data-mclose="${md.id}"><i>⌃</i>Chiudi</button>` : ""}</div>`;
     }
     h += `${xs.map(x => xRow(x)).join("")}${CS.xform && CS.xform.meal === md.id ? xForm() : ""}</div>`;
-  }
-  const loose = (day.x || []).filter(x => (!x.meal || x.meal === "fuori") && !x.bar);
-  h += `<div class="meal extra"><div class="mh"><i></i><b>Fuori pasto</b><span>quello che non è nelle caselle</span></div>${loose.map(x => xRow(x)).join("")}${CS.xform && CS.xform.meal === "fuori" ? xForm() : `<button class="cmore" data-xadd="fuori">+ Aggiungi un cibo</button>`}</div>`;
-  h += weekCard(d);
-  box.innerHTML = h;
-  box.querySelectorAll(".tiles").forEach(t => { const x = t.querySelector(".tile.on"), on = x && (x.closest(".tilew") || x); if (on && on.offsetLeft + on.offsetWidth > t.clientWidth) t.scrollLeft = on.offsetLeft - 14; });
-  bindOggi(box, d); frzBind(box); shotBind();
+    return h;
 }
 // quante volte hai scelto ogni casella di quel pasto nelle ultime 4 settimane
 function useCounts(mid, d) { const c = {}; for (let i = 1; i <= 28; i++) { const v = (fDay(addDays(d, -i)).m || {})[mid]; if (v) c[v] = (c[v] || 0) + 1; } return c; }
@@ -746,6 +817,14 @@ function bindOggi(box, d) {
   box.querySelectorAll("[data-qm]").forEach(b => b.onclick = () => { const was = (fDay(d).m || {})[b.dataset.qm] === b.dataset.qo; const tw = b.closest(".tilew"); if (tw) tw.querySelector(".tile").classList.add("pop"); logMeal(d, b.dataset.qm, b.dataset.qo, was); setTimeout(renderCibo, was ? 0 : 160); });
   box.querySelectorAll("[data-skip]").forEach(b => b.onclick = () => { const mid = b.dataset.skip, was = (fDay(d).m || {})[mid] === "skip"; logMeal(d, mid, "skip", was); renderCibo(); });
   box.querySelectorAll("[data-dc]").forEach(b => b.onclick = () => { CS.showDc = true; renderCibo(); });
+  // vista semplice
+  const tg = (k, f) => box.querySelectorAll(`[${k}]`).forEach(b => b.onclick = () => { f(b); renderCibo(); });
+  tg("data-vfull", b => { FOOD().full = b.dataset.vfull === "1" ? 1 : 0; save(); scrollTo(0, 0); });
+  tg("data-setopen", () => CS.setOpen = true); tg("data-setok", () => CS.setOpen = false);
+  tg("data-bal", () => CS.balOpen = !CS.balOpen); tg("data-bag", () => CS.bagOpen = true); tg("data-wk", () => CS.wkOpen = !CS.wkOpen);
+  tg("data-qa", () => CS.barOpen = !CS.barOpen);
+  tg("data-mrow", b => { CS.mopen = { ...(CS.mopen || {}), [b.dataset.mrow]: 1 }; if (b.dataset.mrow === "dc") CS.showDc = true; });
+  tg("data-mfold", b => { const k = b.dataset.mfold; delete (CS.mopen || {})[k]; delete (CS.mexp || {})[k]; if (CS.xform && CS.xform.meal === k) CS.xform = null; });
   box.querySelectorAll("[data-more]").forEach(b => b.onclick = () => openPicker(b.dataset.more));
   box.querySelectorAll("[data-bar]").forEach(b => b.onclick = () => { const f = b.dataset.bar, n = (CB.bar.find(x => x[0] === f) || [0, f])[1], su = !!FOOD().barSugar;
     const it = [[f, 1], ...(su ? [["zucchero", 1]] : [])], hh = new Date().toTimeString().slice(0, 5);
@@ -794,7 +873,7 @@ function bindOggi(box, d) {
 }
 // segna (o toglie) un pasto: frase incoraggiante e festa a giornata completa
 function logMeal(d, mid, oid, undo, L) {
-  const before = dayDone(d), fr = !undo && frItem(d, oid); if (CS.mexp) delete CS.mexp[mid]; if (CS.qdraft) delete CS.qdraft[`${d}|${mid}|${oid}`];
+  const before = dayDone(d), fr = !undo && frItem(d, oid); if (CS.mexp) delete CS.mexp[mid]; if (CS.mopen) delete CS.mopen[mid]; if (CS.qdraft) delete CS.qdraft[`${d}|${mid}|${oid}`];
   if (undo || (fDay(d).m || {})[mid]) frUse(d, mid, null, true);
   setFDay(d, x => { if (x.q) delete x.q[mid]; if (undo) { delete x.m[mid]; return; } x.m[mid] = oid; if (fr) x.fr = { ...(x.fr || {}), [oid]: { ...fr } }; });
   if (!undo && /^d_/.test(oid)) { const L2 = L || baseQ(mid, oid, d), x0 = myDish()[oid.slice(2)]; if (L2) setFDay(d, x => { x.q = { ...(x.q || {}), [mid]: L2.map(r => [...r]) }; x.dn = { ...(x.dn || {}), [mid]: x0 ? x0.t : "Il mio piatto" }; }); if (x0) { x0.n = (x0.n || 0) + 1; x0.last = d; save(); } }

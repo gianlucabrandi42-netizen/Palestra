@@ -212,3 +212,29 @@ T("Cosa cucino oggi: cucinata o cena veloce secondo il turno, Sono stanco", () =
   openTired(d); const t = document.querySelector("#fsheet .is-c").innerHTML; ok((t.match(/class="tired"/g) || []).length === 3, "3 pasti in Sono stanco"); ok(/seconda porzione/.test(t) || true);
   closeRecipe(); FOOD().days[d] = JSON.parse(keep);
 });
+
+T("✨ Vista semplice di Oggi: pasto di adesso aperto, gli altri in riga, tutto raggiungibile; vista completa uguale a prima", () => {
+  const d = todayISO(), keep = JSON.stringify(fDay(d)), full = FOOD().full; CS.tab = "oggi"; CS.day = null;
+  FOOD().full = 0; setFDay(d, x => { x.turno = "rip"; x.gym = true; x.m = {}; x.x = []; }); renderCibo();
+  const box = $("cbody"), hid = heroMeal(d);
+  ok(hid && box.querySelector(`.meal.hero[data-mid="${hid}"]`), "pasto di adesso aperto: " + hid);
+  eq(box.querySelectorAll(".meal.hero").length, 1, "un solo pasto aperto");
+  eq(box.querySelectorAll(".mrow").length, CB.meals.length - 1, "gli altri pasti in riga");
+  ok(box.querySelector(".tplan.sm") && box.querySelector("[data-tp=tired]") && box.querySelector("[data-tp=sapo]"), "cosa cucino + sono stanco + sapore");
+  ok(box.querySelector("label.qa[for=shotIn]") && $("shotIn") && box.querySelector("[data-qa=bar]") && box.querySelector(".qa[data-xadd=fuori]"), "azioni rapide");
+  ok(box.querySelector(".dline[data-setopen]") && !box.querySelector(".dset"), "giornata già impostata = una riga");
+  const other = CB.meals.find(m => m.id !== hid && !m.extra).id;
+  box.querySelector(`[data-mrow="${other}"]`).click(); ok($("cbody").querySelector(`.meal[data-mid="${other}"] [data-mfold]`), "la riga si apre");
+  $("cbody").querySelector(`[data-mfold="${other}"]`).click(); ok($("cbody").querySelector(`[data-mrow="${other}"]`), "e si richiude");
+  $("cbody").querySelector("[data-qa=bar]").click(); ok($("cbody").querySelector(".barc"), "caffè si apre");
+  $("cbody").querySelector("[data-bal]").click(); ok($("cbody").textContent.includes("Segna il primo pasto") || $("cbody").querySelector(".bal"), "dettaglio kcal");
+  $("cbody").querySelector("[data-wk]").click(); ok($("cbody").querySelector(".wkc"), "settimana si apre");
+  $("cbody").querySelector("[data-setopen]").click(); ok($("cbody").querySelector(".dset [data-sh]"), "turno modificabile");
+  // segnare il pasto di adesso passa al pasto dopo
+  const o = optsFor(mealDef(hid), d).find(x => !x.free); logMeal(d, hid, o.id); renderCibo(); ok(heroMeal(d) !== hid, "dopo averlo segnato, adesso = il pasto dopo");
+  // senza turno: chiede la giornata
+  setFDay(d, x => { delete x.turno; delete x.gym; }); CS.setOpen = false; renderCibo(); ok($("cbody").querySelector(".dset"), "senza turno chiede com'è oggi");
+  ok(!/NaN|undefined/.test($("cbody").innerHTML), "NaN/undefined");
+  FOOD().full = 1; renderCibo(); ok($("cbody").querySelector(".cplate") && $("cbody").querySelectorAll(".meal").length >= 5 && !$("cbody").querySelector(".mrow"), "vista completa come prima");
+  Object.assign(CS, { barOpen: false, balOpen: false, wkOpen: false, setOpen: false, mopen: {} }); FOOD().full = full; FOOD().days[d] = JSON.parse(keep); renderCibo();
+});
