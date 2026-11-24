@@ -70,6 +70,17 @@ function ptBox(v, mid, d, kk) {
     <p class="ptsrc"><b>Il PT:</b> ${esc(p.src)}</p>${C.map(row).join("")}
     <p class="ptv">${esc(ptVerdict(C, k))}</p><p class="ptleg"><s></s> fascia in linea (±10% sulle kcal) · <u></u> questo pasto</p></div>`;
 }
+// 🍱 i due pasti di una ricetta da 2 (24/11/2026): grammi di ognuno e confronto col pasto del PT, pranzo del giorno e cena
+function twoMeals(r, d) {
+  const box = (mid, lab, sub) => { const L = baseQ(mid, r.id, d); if (!L) return ""; const v = valOfQ(L), k = ptKey(mid, d), C = ptCmp(v, k), tone = ptTone(C);
+    const it = L.filter(([f, q]) => q && !["sale", "erbe"].includes(f)).map(([f, q]) => esc(qText(f, q)));
+    return `<div class="twom ${tone}"><div class="twh"><b>${lab}</b><i>${tone === "ok" ? "✓ in linea col PT" : tone === "lo" ? "un po' sotto il PT" : "sopra il PT"}</i></div>
+      ${sub ? `<p class="twsub">${esc(sub)}</p>` : ""}<p class="twi">${it.join(" · ")}</p><p class="twv">${C.map(x => `<span class="${x.st}">${x.n === "k" ? fmt(x.x) + " kcal" : x.s + " " + x.x + " g"}</span>`).join("")}</p>
+      ${tone !== "ok" ? `<p class="twn">${esc(ptVerdict(C, k))}</p>` : `<p class="twn">PT: ${fmt(ptRef(k).c[0])} kcal · P ${ptRef(k).c[1]} · C ${ptRef(k).c[2]} · G ${ptRef(k).c[3]}</p>`}</div>`; };
+  const lv = lunchLvl(d);
+  return `<div class="twobox"><h3>🍱 Pranzo e cena con una cottura</h3><p class="note">Le dosi di un pasto: cucini tutto insieme e dividi. Il carboidrato cambia col giorno (oggi pranzo da ${lv}).</p>
+    ${box("pr", `Pranzo · da ${lv}`, r.p1)}${box("ce", "Cena", r.p2)}</div>`;
+}
 // tabellina nel pasto di Oggi: PT e (se segnato) il tuo pasto
 function ptStrip(mid, d, v) {
   const k = ptKey(mid, d), p = ptRef(k); if (!p) return ""; const C = v ? ptCmp(v, k) : null;
@@ -1352,12 +1363,12 @@ function hvBind(box) {
 const CATN = { col: "Colazione", sp: "Spuntino", base: "Le basi" };
 const MEALN = { col: "a colazione", s1: "allo spuntino 1", s2: "allo spuntino 2", pr: "a pranzo", ce: "a cena" };
 function renderRicette(box) {
-  const F = [["all", "Tutte"], ...(CB.recipes.some(r => r.mine) ? [["mine", "Le mie"]] : []), ["main", "Pranzo e cena"], ["col", "Colazione"], ["sp", "Spuntini"], ["new", "Da imparare"], ["fast", "Veloci (≤ 12′)"], ["base", "Le basi"]];
-  const ok = r => CS.rf === "all" || (CS.rf === "mine" && r.mine) || (CS.rf === "main" && r.main) || (CS.rf === r.cat) || (CS.rf === "new" && r.lvl === 2) || (CS.rf === "fast" && r.min <= 12);
+  const F = [["all", "Tutte"], ...(CB.recipes.some(r => r.mine) ? [["mine", "Le mie"]] : []), ["batch", "🍱 Una cottura, 2 pasti"], ["main", "Pranzo e cena"], ["col", "Colazione"], ["sp", "Spuntini"], ["new", "Da imparare"], ["fast", "Veloci (≤ 12′)"], ["base", "Le basi"]];
+  const ok = r => CS.rf === "all" || (CS.rf === "mine" && r.mine) || (CS.rf === "main" && r.main) || (CS.rf === "batch" && r.batch) || (CS.rf === r.cat) || (CS.rf === "new" && r.lvl === 2) || (CS.rf === "fast" && r.min <= 12);
   const L = CB.recipes.filter(ok);
   box.innerHTML = `${hvCard()}<div class="rfil">${F.map(([k, n]) => `<button class="chip" data-rf="${k}" aria-pressed="${CS.rf === k}">${n}</button>`).join("")}</div>
     ${CS.rf === "all" ? `<p class="note rtip">Nuovo in cucina? Parti da <button class="lnk in" data-rf="base">Le basi</button>: friggitrice, padella e pasta spiegate passo passo.</p>` : ""}
-    <div class="rgrid">${L.map(r => { const pic = foodPic(r.id); return `<button class="rcard" data-rec="${r.id}">${pic ? `<img src="${pic}" alt="">` : dishSVG(r.p, r.box, r.id, "dish")}<b>${esc(r.name)}</b><small>${r.min} min · ${esc(r.tools)}</small><em>${r.mine ? "la tua · " : ""}${r.main ? (r.one ? "1 pasto" : "2 pasti") : esc(CATN[r.cat] || "")}</em>${r.lvl === 2 ? `<i class="rnew">da imparare</i>` : ""}</button>`; }).join("")}</div>`;
+    <div class="rgrid">${L.map(r => { const pic = foodPic(r.id); return `<button class="rcard" data-rec="${r.id}">${pic ? `<img src="${pic}" alt="">` : dishSVG(r.p, r.box, r.id, "dish")}<b>${esc(r.name)}</b><small>${r.min} min · ${esc(r.tools)}</small><em>${r.mine ? "la tua · " : ""}${r.batch ? "🍱 pranzo + cena" : r.main ? (r.one ? "1 pasto" : "2 pasti") : esc(CATN[r.cat] || "")}</em>${r.lvl === 2 ? `<i class="rnew">da imparare</i>` : ""}</button>`; }).join("")}</div>`;
   box.querySelectorAll("[data-rf]").forEach(b => b.onclick = () => { CS.rf = b.dataset.rf; renderCibo(); });
   hvBind(box);
   box.querySelectorAll("[data-rec]").forEach(b => b.onclick = () => openRecipe(b.dataset.rec));
@@ -1377,6 +1388,7 @@ function openRecipe(id, ctx, keep) {
     ${logs.length ? `<div class="rlog">${logs.map(m => isOn(m) ? `<button class="btn" data-rl="${m}" data-un="1">Togli: non l'ho mangiato ${MEALN[m]}</button>` : `<button class="btn${ctx ? " primary" : ""}" data-rl="${m}">✓ Fatto: mangiato ${MEALN[m]}</button>`).join("")}</div><p class="note rlday">${d === todayISO() ? "Si segna su oggi" : "Si segna sul " + fmtDate(d)}</p>` : ""}
     ${condBox(id)}${varBox(id)}
     ${r.porta ? `<p class="rgo ${r.go}">${r.go === "p" ? "🎒 Si porta al lavoro, niente attrezzi" : r.go === "m" ? "🎒 Al lavoro col microonde" : "🏠 Solo a casa"}<small>${esc(r.porta)}</small></p>` : ""}
+    ${r.main && !r.one ? twoMeals(r, cDay()) : ""}
     <h3>Ingredienti${r.main && !r.one ? " (per 2 pasti)" : ""}</h3><ul class="ringr">${r.ingr.map(i => `<li>${esc(i)}</li>`).join("")}</ul>
     <h3>Passo passo</h3><ol class="rsteps">${r.steps.map((st, i) => `<li>${toolSVG(st.tool, st.p, r.id + i)}<div><small>${i + 1} · ${esc(TOOLN[st.tool] || st.tool)}</small><p>${esc(st.t)}</p>
       ${st.ok ? `<p class="sok">✓ <b>Pronto quando:</b> ${esc(st.ok)}</p>` : ""}${st.tip ? `<p class="stip">💡 ${esc(st.tip)}</p>` : ""}

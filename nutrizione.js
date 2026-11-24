@@ -1116,3 +1116,119 @@ Object.assign(window.CIBO, {
   },
 });
 
+
+// 🍱 UNA COTTURA, PRANZO E CENA (24/11/2026, richiesta dell'utente: "ricette che cucino una volta e valgono sia pranzo che cena,
+// rispettando i macronutrienti del PT"). Costruite sul pasto del PT (200 g di pollo / 200-220 g di carne / 250-280 g di pesce +
+// verdure + 1 cucchiaio d'olio): la parte senza carboidrato (mq) sta tra ~345 e ~375 kcal con 48-55 g di proteine e 9-14 g di grassi,
+// poi il carboidrato lo mette l'app secondo il giorno (pranzo 80 / 40 / 0, cena). Una prova automatica controlla che ognuna sia
+// in linea col pasto del PT a pranzo (80, 40 e 0) e a cena. batch: 1 = filtro "🍱 Una cottura" in Ricette.
+(() => {
+  const C = window.CIBO, U = "Si cucina tutto insieme per 2 pasti: metà subito, metà nel contenitore di vetro in frigo appena tiepida (si tiene 3 giorni). Il carboidrato lo pesi a parte per ogni pasto: le dosi sono nel riquadro «Il tuo piatto».";
+  const R = [
+    { id: "cacciatora", s: "Pollo alla cacciatora", name: "Pollo alla cacciatora in padella", min: 30, lvl: 1, tools: "padella con coperchio", main: true, batch: 1, p: ["pollo", "sugo", "patate"],
+      pp: "200 g di petto di pollo a pezzi", vv: "100 g di peperoni + 100 g di passata", cb: { p1: "Riso", p2: "Patate" }, go: "m", porta: "Nel contenitore col suo sugo: 2-3 minuti al microonde, coperto. Il giorno dopo è ancora più buono.",
+      ingr: ["400 g di petto di pollo a pezzi grandi", "200 g di peperoni (anche surgelati)", "200 g di passata", "60 g di cipolla (o cipolla surgelata)", "8 olive nere", "2 cucchiai d'olio in tutto", "Rosmarino, aglio, un pizzico di peperoncino, sale", "Pranzo: riso · Cena: patate (dosi del giorno)"],
+      steps: [
+        { tool: "padella", p: ["pollo"], t: "Padella grande a fuoco medio-alto con 1 cucchiaio d'olio. Pollo dentro e NON toccarlo per 3 minuti, poi giralo: 6 minuti in tutto.", min: 6, ok: "I pezzi sono dorati fuori (dentro finirà col sugo).", tip: "Asciuga il pollo con la carta prima: bagnato fa il brodino invece della crosticina." },
+        { tool: "padella", p: ["verdure"], t: "Cipolla e peperoni dentro, un pizzico di sale, 4 minuti mescolando ogni tanto.", min: 4 },
+        { tool: "padella", p: ["sugo"], t: "Passata, olive, rosmarino, aglio e peperoncino. Coperchio, fuoco basso, 15 minuti.", min: 15, ok: "Il sugo è denso e il pollo si taglia col cucchiaio." },
+        { tool: "contenitore", p: ["pollo", "sugo"], t: "Spegni, 1 cucchiaio d'olio a crudo sopra. Metà nel piatto, metà nel contenitore. " + U },
+      ], p1: "Cacciatora col riso", p2: "Cacciatora con le patate al microonde (cubetti coperti, 8-10 minuti)", olio: "1 cucchiaio a pasto in tutto" },
+    { id: "currypollo", s: "Pollo al curry e yogurt", name: "Pollo al curry e yogurt con zucchine", min: 25, lvl: 1, tools: "padella", main: true, batch: 1, p: ["pollo", "verdure", "riso"],
+      pp: "200 g di petto di pollo a cubetti", vv: "200 g di zucchine", cb: { p1: "Riso", p2: "Riso" }, go: "m", porta: "Nel contenitore col riso sotto: 2 minuti al microonde con un cucchiaio d'acqua sul riso.",
+      ingr: ["400 g di petto di pollo a cubetti", "400 g di zucchine a rondelle", "100 g di yogurt intero bianco", "60 g di cipolla", "2 cucchiai d'olio in tutto", "2 cucchiaini di curry, un pizzico di peperoncino, sale", "Riso per pranzo e cena (dosi del giorno)"],
+      steps: [
+        { tool: "ciotola", p: ["pollo", "yogurt"], t: "Pollo in una ciotola con lo yogurt, il curry e un pizzico di sale: mescola e lascia 10 minuti (o la sera prima in frigo).", min: 10, tip: "Più resta nello yogurt, più è tenero." },
+        { tool: "cuociriso", p: ["riso"], t: "Intanto il riso nel cuociriso (o in pentola): pesa le dosi di pranzo e cena insieme e cuocile in una volta.", min: 18 },
+        { tool: "padella", p: ["verdure"], t: "Padella a fuoco medio con 1 cucchiaio d'olio: cipolla 2 minuti, poi zucchine 5 minuti.", min: 7 },
+        { tool: "padella", p: ["pollo"], t: "Pollo con tutto lo yogurt dentro la padella, fuoco medio, 8-10 minuti mescolando.", min: 9, ok: "Il cubetto più grosso è bianco dentro e la salsa si è addensata.", tip: "Non a fuoco alto: lo yogurt si separa e diventa granuloso." },
+        { tool: "contenitore", p: ["pollo", "riso", "verdure"], t: "1 cucchiaio d'olio a crudo, metà nel piatto col riso, metà nel contenitore. " + U },
+      ], p1: "Curry col riso", p2: "Uguale: riscaldato è ancora più saporito", olio: "1 cucchiaio a pasto in tutto" },
+    { id: "livornese", s: "Merluzzo alla livornese", name: "Merluzzo alla livornese (pomodorini, olive, capperi)", min: 20, lvl: 1, tools: "padella con coperchio", main: true, batch: 1, p: ["pesce", "pomodorini", "patate"],
+      pp: "280 g di merluzzo (anche surgelato)", vv: "150 g di pomodorini + 30 g di cipolla", cb: { p1: "Cous cous", p2: "Patate" }, go: "m", porta: "Nel contenitore: 90 secondi al microonde, coperto (il pesce si secca se lo scaldi troppo).",
+      ingr: ["560 g di filetti di merluzzo (anche surgelati, scongelati in frigo dalla sera prima)", "300 g di pomodorini tagliati a metà", "60 g di cipolla", "8 olive nere, 1 cucchiaino di capperi sciacquati", "3 cucchiai d'olio in tutto", "Prezzemolo, aglio, un pizzico di peperoncino", "Pranzo: cous cous · Cena: patate (dosi del giorno)"],
+      steps: [
+        { tool: "padella", p: ["pomodorini"], t: "Padella a fuoco medio con 1 cucchiaio d'olio: cipolla e aglio 2 minuti, poi pomodorini, olive, capperi e peperoncino, 5 minuti.", min: 7, ok: "I pomodorini si sono afflosciati e fanno sughetto." },
+        { tool: "padella", p: ["pesce"], t: "Merluzzo asciugato con la carta sopra il sugo, un pizzico di sale. Coperchio, fuoco basso, 8 minuti senza girarlo.", min: 8, ok: "Il pesce è bianco opaco e si sfoglia con la forchetta.", tip: "Non girarlo: si rompe. Cuoce col vapore del coperchio." },
+        { tool: "bollitore", p: ["cous"], t: "Cous cous per il pranzo: stesso peso d'acqua bollente, coperto 5 minuti, poi sgrana con la forchetta.", min: 5 },
+        { tool: "contenitore", p: ["pesce", "pomodorini"], t: "Prezzemolo e 1 cucchiaio d'olio a crudo. Metà nel piatto, metà nel contenitore. " + U },
+      ], p1: "Livornese col cous cous", p2: "Livornese con le patate al microonde", olio: "1 cucchiaio e mezzo a pasto (il pesce è magro)" },
+    { id: "spezzatino", s: "Spezzatino al pomodoro", name: "Spezzatino di manzo al pomodoro con carote", min: 40, lvl: 2, tools: "pentola con coperchio", main: true, batch: 1, p: ["manzo", "sugo", "patate"],
+      pp: "220 g di manzo magro a bocconcini", vv: "100 g di passata + 80 g di carote", cb: { p1: "Patate", p2: "Pane" }, go: "m", porta: "Nel contenitore: 2-3 minuti al microonde, coperto. Come tutti gli stufati, il giorno dopo è più buono.",
+      ingr: ["440 g di manzo magro a bocconcini (fesa o girello)", "160 g di carote a rondelle", "200 g di passata", "60 g di cipolla", "Olio in spruzzino (10 spruzzate)", "Rosmarino, alloro, sale, pepe", "Pranzo: patate · Cena: pane (dosi del giorno)"],
+      steps: [
+        { tool: "pentola", p: ["manzo"], t: "Pentola a fuoco alto, 10 spruzzate d'olio. Bocconcini dentro in un solo strato, 2 minuti per lato senza muoverli.", min: 5, ok: "Hanno la crosticina marrone su almeno due lati.", tip: "Tanti pezzi insieme fanno acqua: se serve rosolali in due volte." },
+        { tool: "pentola", p: ["verdure"], t: "Cipolla e carote dentro, 3 minuti mescolando.", min: 3 },
+        { tool: "pentola", p: ["sugo"], t: "Passata, un bicchiere d'acqua, rosmarino, alloro, sale. Coperchio, fuoco al minimo, 30 minuti; mescola ogni 10 e se si asciuga aggiungi un goccio d'acqua.", min: 30, ok: "La carne si spezza premendola col cucchiaio." },
+        { tool: "contenitore", p: ["manzo", "sugo"], t: "Togli l'alloro. Metà nel piatto, metà nel contenitore. " + U },
+      ], p1: "Spezzatino con patate (cuocile nel sugo gli ultimi 15 minuti)", p2: "Spezzatino col pane per la scarpetta", olio: "solo lo spruzzino: il manzo ha già i suoi grassi" },
+    { id: "arrabbiata", s: "Gamberi all'arrabbiata", name: "Gamberi all'arrabbiata con zucchine", min: 15, lvl: 1, tools: "padella", main: true, batch: 1, p: ["gamberi", "sugo", "pasta"],
+      pp: "250 g di gamberi sgusciati (anche surgelati)", vv: "150 g di zucchine + 150 g di passata", cb: { p1: "Pasta", p2: "Riso" }, go: "m", porta: "Nel contenitore: 90 secondi al microonde (i gamberi diventano gommosi se li scaldi troppo).",
+      ingr: ["500 g di gamberi sgusciati (scongelati in frigo dalla sera prima)", "300 g di zucchine a cubetti", "300 g di passata", "2 spicchi d'aglio, peperoncino a piacere", "4 cucchiai d'olio in tutto", "Prezzemolo, sale", "Pranzo: pasta · Cena: riso (dosi del giorno)"],
+      steps: [
+        { tool: "padella", p: ["verdure"], t: "Padella a fuoco medio con 2 cucchiai d'olio, aglio schiacciato e peperoncino: 1 minuto, poi zucchine 5 minuti.", min: 6, tip: "L'aglio non deve diventare marrone: amaro." },
+        { tool: "padella", p: ["sugo"], t: "Passata e un pizzico di sale, 8 minuti a fuoco medio.", min: 8 },
+        { tool: "padella", p: ["gamberi"], t: "Gamberi asciugati nel sugo, 3 minuti mescolando.", min: 3, ok: "Sono diventati rosa e piegati a C. Se sono a O sono stracotti." },
+        { tool: "contenitore", p: ["gamberi", "sugo"], t: "Prezzemolo e 2 cucchiai d'olio a crudo. Metà sulla pasta, metà nel contenitore (col riso a parte). " + U },
+      ], p1: "Pasta all'arrabbiata coi gamberi", p2: "Gamberi all'arrabbiata col riso", olio: "1 cucchiaio a pasto in tutto (il pesce è magro)" },
+    { id: "limonerosm", s: "Pollo limone e rosmarino", name: "Pollo al limone e rosmarino con verdure in friggitrice", min: 20, lvl: 1, tools: "friggitrice", main: true, batch: 1, p: ["pollo", "verdure", "patate"],
+      pp: "210 g di petto di pollo a cubetti", vv: "150 g di zucchine + 100 g di carote", cb: { p1: "Patate", p2: "Riso" }, go: "m", porta: "Nel contenitore: 2 minuti al microonde, oppure freddo con un filo di limone: è buono anche così.",
+      ingr: ["420 g di petto di pollo a cubetti", "300 g di zucchine e 200 g di carote a bastoncini", "Succo di 1 limone + scorza grattugiata", "3 cucchiai d'olio in tutto", "Rosmarino, aglio in polvere, sale, pepe", "Pranzo: patate (anche in friggitrice) · Cena: riso (dosi del giorno)"],
+      steps: [
+        { tool: "ciotola", p: ["pollo"], t: "Pollo con succo e scorza di limone, rosmarino, aglio, sale, pepe e 1 cucchiaio d'olio. Mescola e lascia 10 minuti.", min: 10 },
+        { tool: "friggitrice", p: ["verdure", "patate"], t: "Verdure (e le patate del pranzo a cubetti) nel cestello con 1 cucchiaio d'olio e un pizzico di sale: 200 °C per 10 minuti.", min: 10 },
+        { tool: "friggitrice", p: ["pollo"], t: "Aggiungi il pollo sopra le verdure, altri 12 minuti a 200 °C; scuoti il cestello a metà.", min: 12, ok: "Il pollo ha i bordi dorati e il cubetto più grosso è bianco dentro." },
+        { tool: "contenitore", p: ["pollo", "verdure"], t: "1 cucchiaio d'olio a crudo e altro limone. Metà nel piatto, metà nel contenitore. " + U },
+      ], p1: "Pollo al limone con patate croccanti", p2: "Pollo al limone col riso", olio: "1 cucchiaio e mezzo a pasto in tutto" },
+    { id: "polpsugo", s: "Polpette di pollo al sugo", name: "Polpette di pollo al sugo", min: 30, lvl: 2, tools: "ciotola + padella con coperchio", main: true, batch: 1, p: ["polpette", "sugo", "pasta"],
+      pp: "200 g di petto di pollo tritato", vv: "150 g di passata + insalata a volontà", cb: { p1: "Pasta", p2: "Pane" }, go: "m", porta: "Polpette e sugo nel contenitore: 2 minuti al microonde, coperto.",
+      ingr: ["400 g di petto di pollo tritato (chiedilo al banco, o macinato di pollo)", "2 albumi", "10 g di parmigiano grattugiato", "300 g di passata", "2 cucchiai d'olio in tutto", "Prezzemolo, aglio, basilico, sale", "Pranzo: pasta · Cena: pane (dosi del giorno)"],
+      steps: [
+        { tool: "ciotola", p: ["pollo"], t: "Pollo tritato, albumi, parmigiano, prezzemolo, un pizzico di sale e aglio: impasta con le mani 1 minuto.", tip: "Mani bagnate: l'impasto non si attacca." },
+        { tool: "tagliere", p: ["polpette"], t: "Fai 14-16 polpette grandi come una noce.", ok: "Sono lisce, senza crepe: se si crepano, schiacciale un po' tra le mani." },
+        { tool: "padella", p: ["sugo"], t: "Padella con 1 cucchiaio d'olio, passata, basilico e un pizzico di sale: quando bolle, polpette dentro.", min: 2 },
+        { tool: "padella", p: ["polpette", "sugo"], t: "Coperchio, fuoco basso, 15 minuti; a metà girale una volta con delicatezza.", min: 15, ok: "Tagliandone una, dentro è bianca senza rosa." },
+        { tool: "contenitore", p: ["polpette", "sugo"], t: "1 cucchiaio d'olio a crudo. Metà sulla pasta, metà nel contenitore. " + U },
+      ], p1: "Pasta con le polpette al sugo", p2: "Polpette al sugo col pane", olio: "1 cucchiaio a pasto in tutto" },
+    { id: "chilipollo", s: "Chili di pollo", name: "Chili di pollo piccante", min: 25, lvl: 1, tools: "padella grande", main: true, batch: 1, p: ["pollo", "sugo", "riso"],
+      pp: "200 g di petto di pollo tritato + 30 g di fagioli", vv: "80 g di peperoni + 100 g di passata", cb: { p1: "Riso", p2: "Piadina (niente olio)" }, go: "m", porta: "Nel contenitore: 2 minuti al microonde. La piadina si scalda 20 secondi in padella o al microonde.",
+      ingr: ["400 g di petto di pollo tritato", "60 g di fagioli rossi sgocciolati", "160 g di peperoni a cubetti (anche surgelati)", "200 g di passata", "2 cucchiai d'olio in tutto", "Cumino, paprika affumicata, peperoncino, origano, sale", "Pranzo: riso · Cena: piadina (dosi del giorno)"],
+      steps: [
+        { tool: "padella", p: ["pollo"], t: "Padella grande a fuoco medio-alto con 1 cucchiaio d'olio. Pollo tritato dentro e sbriciolalo col cucchiaio di legno, 5 minuti.", min: 5, ok: "Niente più rosa." },
+        { tool: "padella", p: ["verdure"], t: "Peperoni e spezie (1 cucchiaino di cumino, 1 di paprika, peperoncino a piacere): 3 minuti.", min: 3 },
+        { tool: "padella", p: ["sugo", "ceci"], t: "Passata, fagioli e un pizzico di sale. Fuoco basso, 10 minuti mescolando ogni tanto.", min: 10, ok: "È denso: col cucchiaio fai una riga sul fondo e resta aperta un attimo." },
+        { tool: "contenitore", p: ["pollo", "sugo"], t: "1 cucchiaio d'olio a crudo. Metà col riso, metà nel contenitore: a cena diventa una piadina arrotolata. " + U },
+      ], p1: "Chili col riso", p2: "Piadina col chili e insalata", olio: "1 cucchiaio a pasto (a cena niente: la piadina ha già i suoi grassi)" },
+  ];
+  C.recipes.push(...R);
+  Object.assign(C.mq, {
+    cacciatora: "pollo 200, peperoni 100, passata 100, cipolla 30, olive 4, olio 1, erbe 1, sale 1",
+    currypollo: "pollo 200, zucchine 200, yogurt 50, cipolla 30, olio 1, erbe 1, sale 1",
+    livornese: "merluzzo 280, pomodorini 10, cipolla 30, olive 4, olio 1.5, erbe 1, sale 1",
+    spezzatino: "manzo 220, passata 100, carote 80, cipolla 30, spruzz 5, erbe 1, sale 1",
+    arrabbiata: "gamberi 250, zucchine 150, passata 150, olio 2, erbe 1, sale 1",
+    limonerosm: "pollo 210, zucchine 150, carote 100, aceto 15, olio 1.5, erbe 1, sale 1",
+    polpsugo: "pollo 200, albume 1, parmigiano 5, passata 150, olio 1, erbe 1, sale 1",
+    chilipollo: { q: "pollo 200, fagioli 30, peperoni 80, passata 100, olio 1, erbe 1, sale 1", p2: "pollo 200, fagioli 30, peperoni 80, passata 100, erbe 1, sale 1" },
+  });
+  Object.assign(C.ct, {
+    cacciatora: "Sale normale: niente soia, copre il pomodoro. Le olive sono già salate: assaggia prima di salare.",
+    currypollo: "Sale e curry. Niente soia. Un pizzico di peperoncino se ti piace piccante.",
+    livornese: "Pochissimo sale: olive e capperi sono già salati. Olio a crudo alla fine, non in cottura.",
+    spezzatino: "Sale e pepe. Niente olio a crudo: il manzo basta.",
+    arrabbiata: "Sale e peperoncino. Olio metà in cottura e metà a crudo.",
+    limonerosm: "Sale e limone. Niente soia (copre il limone).",
+    polpsugo: "Il parmigiano è già salato: poco sale nell'impasto, un pizzico nel sugo.",
+    chilipollo: "Sale e spezie. A cena, nella piadina, 1 cucchiaio di yogurt al posto dell'olio.",
+  });
+  Object.assign(C.vars, {
+    cacciatora: ["Con funghi al posto dei peperoni.", "In bianco: niente passata, mezzo bicchiere d'acqua e più rosmarino.", "Con 220 g di manzo magro al posto del pollo."],
+    currypollo: ["Con melanzane al posto delle zucchine.", "Tandoori: paprika e cumino al posto del curry.", "Con gamberi (250 g) al posto del pollo, cotti solo 3 minuti."],
+    livornese: ["Con orata o branzino (200 g).", "Senza olive e capperi, con origano e limone.", "Con un pizzico di peperoncino in più."],
+    spezzatino: ["Con funghi al posto delle carote.", "Alla paprika: 1 cucchiaino di paprika dolce col pomodoro.", "Con piselli al posto delle carote (solo nei giorni di palestra: più carboidrati)."],
+    arrabbiata: ["Con calamari al posto dei gamberi.", "Con pomodorini invece della passata (più fresco).", "Senza peperoncino, con basilico."],
+    limonerosm: ["All'arancia no (niente frutta): al limone e timo.", "Alla paprika affumicata.", "Con fagiolini al posto delle zucchine."],
+    polpsugo: ["Polpette in friggitrice (200 °C, 12 minuti) e sugo a parte.", "Con merluzzo tritato al posto del pollo.", "Al sugo piccante con peperoncino."],
+    chilipollo: ["Con macinato magro di manzo (170 g + 30 g di fagioli).", "Più verdure: zucchine a cubetti con i peperoni.", "Burrito bowl: tutto nel piatto col riso e insalata."],
+  });
+})();

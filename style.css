@@ -1792,3 +1792,16 @@ html{touch-action:manipulation}
 /* azioni a forma di chip nell'allenamento: pulsanti veri */
 .chip[data-undo],#durGo,#durStart,#siteOff,#histAll{min-height:38px;padding:7px 14px;border-radius:12px;border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);background:color-mix(in srgb,var(--accent) 13%,transparent);color:var(--ink);font-weight:700;font-size:13.5px}
 .fb .lrok,.set .fb .lrok{border-color:color-mix(in srgb,var(--accent) 45%,transparent);background:color-mix(in srgb,var(--accent) 16%,transparent);font-weight:800}
+/* 🍱 ricette "una cottura, 2 pasti": "da imparare" sotto l'etichetta, così non si coprono */
+.rcard em+.rnew{top:36px;left:14px;right:auto}
+/* 🍱 i due pasti di una ricetta (twoMeals) */
+.twobox{margin:12px 0}.twobox h3{margin:0 0 4px}
+.twom{margin:8px 0;padding:11px 12px;border-radius:13px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09)}
+.twom.ok{border-color:rgba(111,211,155,.4)}.twom.hi{border-color:rgba(255,148,71,.45)}.twom.hi2{border-color:rgba(255,95,87,.5)}.twom.lo{border-color:rgba(125,180,255,.45)}
+.twh{display:flex;justify-content:space-between;gap:8px;align-items:baseline}.twh b{font-size:14.5px}.twh i{font-style:normal;font-size:12px;font-weight:800;white-space:nowrap}
+.twom.ok .twh i{color:#6FD39B}.twom.hi .twh i{color:#FF9447}.twom.hi2 .twh i{color:#FF5F57}.twom.lo .twh i{color:#7DB4FF}
+.twi{margin:5px 0;font-size:13.5px;line-height:1.45}
+.twv{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0}.twv span{font-size:12.5px;font-weight:800;padding:3px 8px;border-radius:8px;background:rgba(255,255,255,.06);font-variant-numeric:tabular-nums}
+.twv .ok,.twv .up{color:#6FD39B}.twv .hi{color:#FF9447}.twv .hi2{color:#FF5F57}.twv .lo{color:#7DB4FF}
+.twn{margin:2px 0 0;font-size:12.5px;color:var(--muted);line-height:1.4}
+.twsub{margin:3px 0 0;font-size:12.5px;color:var(--muted)}

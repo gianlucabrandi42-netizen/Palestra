@@ -186,3 +186,12 @@ T("Simula: giornata del PT in linea e dati veri intatti", () => {
   eq(JSON.stringify(FOOD().days), before, "il simulatore ha cambiato i giorni salvati");
   for (const t of ["a", "r"]) { CS.sim.t = t; renderSimula(box); ok(box.querySelectorAll(".simall").length >= 5, "tabella delle idee"); ok(!/NaN|undefined/.test(box.innerHTML), "NaN/undefined nel simulatore"); }
 });
+
+T("🍱 Una cottura, 2 pasti: ogni ricetta in linea col PT a pranzo (80, 40, 0) e a cena", () => {
+  const B = CB.recipes.filter(r => r.batch); ok(B.length >= 8, "ricette 🍱: " + B.length);
+  simRun(() => { for (const r of B) for (const [t, mid] of [["g", "pr"], ["a", "pr"], ["r", "pr"], ["g", "ce"]]) {
+    const d = SIMD[t], L = baseQ(mid, r.id, d); if (!L) { check(false, `${r.id} ${mid}: niente quantità`); continue; }
+    const C = ptCmp(valOfQ(L), ptKey(mid, d)); check(C.every(x => x.st === "ok" || x.st === "up"), `${r.id} ${ptKey(mid, d)}: ${C.map(x => x.n + " " + x.x + " " + x.st).join(", ")}`);
+    check(r.steps.length >= 3 && r.ingr.length >= 4 && CB.ct[r.id] && (CB.vars[r.id] || []).length, `${r.id}: ricetta incompleta`);
+  } });
+});
