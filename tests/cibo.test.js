@@ -238,3 +238,32 @@ T("✨ Vista semplice di Oggi: pasto di adesso aperto, gli altri in riga, tutto 
   FOOD().full = 1; renderCibo(); ok($("cbody").querySelector(".cplate") && $("cbody").querySelectorAll(".meal").length >= 5 && !$("cbody").querySelector(".mrow"), "vista completa come prima");
   Object.assign(CS, { barOpen: false, balOpen: false, wkOpen: false, setOpen: false, mopen: {} }); FOOD().full = full; FOOD().days[d] = JSON.parse(keep); renderCibo();
 });
+
+T("🥫 Con quello che hai: solo ricette possibili, adattate alla proteina che hai, conti che seguono", () => {
+  const d = todayISO(), keepD = JSON.stringify(fDay(d)), keepP = JSON.stringify(FOOD().pantry || {}), keepZ = JSON.stringify(FOOD().frz || []);
+  const setP = o => { FOOD().pantry = { ...o }; FOOD().frz = []; };
+  setFDay(d, x => { x.turno = "rip"; x.m = {}; delete x.ad; });
+  setP({}); ok(!haveNow().known, "senza dati: non lo so"); ok(/Cosa hai in frigo/.test(todayPlan(d, true)), "chiede cosa hai");
+  // solo manzo: ogni cucinata proposta è fattibile (manzo vero o pollo adattato al manzo)
+  setP({ manzo: 1, zucchine: 1 }); const H = haveNow();
+  const cac = canMake(recipeById("cacciatora"), H); ok(cac.ok && cac.use && cac.use.to === "manzo" && cac.use.q >= 150, "cacciatora col manzo: " + JSON.stringify(cac));
+  ok(canMake(recipeById("spezzatino"), H).ok && !canMake(recipeById("spezzatino"), H).use, "spezzatino: hai tutto");
+  ok(!canMake(recipeById("livornese"), H).ok, "livornese (pesce) senza pesce: no");
+  for (let i = 0; i < 6; i++) { CS.tpB = i; const h = todayPlan(d, true), id = (h.match(/data-tp="cook" data-r="([^"]+)"/) || [])[1]; ok(id && canMake(recipeById(id), H).ok, "proposta fattibile: " + id); }
+  CS.tpB = 0;
+  // l'adattamento entra nei conti
+  const before = baseQ("pr", "cacciatora", d); setAd(d, "cacciatora", cac.use); const after = baseQ("pr", "cacciatora", d);
+  ok(before.some(([f]) => f === "pollo") && after.some(([f]) => f === "manzo") && !after.some(([f]) => f === "pollo"), "baseQ col manzo");
+  const C = ptCmp(valOfQ(after), ptKey("pr", d)); ok(C.every(x => x.st === "ok" || x.st === "up" || x.n === "g"), "col manzo ancora vicino al PT: " + C.map(x => x.n + x.st).join(","));
+  setAd(d, "cacciatora", null); eq(JSON.stringify(baseQ("pr", "cacciatora", d)), JSON.stringify(before), "togliere l'adattamento torna al pollo");
+  // solo uova: nessuna cucinata → un pasto veloce fattibile
+  setP({ uovo: 1 }); const h2 = todayPlan(d, true), id2 = (h2.match(/data-tp="cook" data-r="([^"]+)"/) || [])[1]; ok(id2 && recipeById(id2).quick && canMake(recipeById(id2)).ok, "con le uova: pasto veloce " + id2);
+  // niente proteine, pollo nel congelatore
+  setP({ zucchine: 1 }); FOOD().frz = [{ id: "z1", f: "pollo", q: 400, d: d, at: 1 }]; const h3 = todayPlan(d, true);
+  ok(/Ti manca/.test(h3) && /congelatore/.test(h3), "manca + congelatore");
+  // Ricette: filtro "puoi farle" e badge
+  setP({ pollo: 1 }); FOOD().frz = []; CS.tab = "ricette"; CS.rf = "easy"; CS.rfSet = 0; renderCibo(); const rb = $("cbody");
+  ok(CS.rf === "can" && rb.querySelector(".rhv.ok") && !rb.querySelector(".rcard.rno"), "ricette: solo quelle possibili, con badge");
+  ok(!/NaN|undefined/.test(rb.innerHTML), "NaN/undefined in ricette");
+  CS.tab = "oggi"; CS.rf = "easy"; CS.rfSet = 0; FOOD().pantry = JSON.parse(keepP); FOOD().frz = JSON.parse(keepZ); FOOD().days[d] = JSON.parse(keepD); renderCibo();
+});

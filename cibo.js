@@ -101,29 +101,40 @@ function todayPlan(d, compact) {
   const day = fDay(d), m = day.m || {}, sh = (shiftOf(d) || {}).id, sap = sapOf(d), isB = id => (recipeById(id) || {}).batch;
   const sapRow = `<div class="tpsap"><span>🎨</span><div><small>Sapore di ${d === todayISO() ? "oggi" : "domani"}</small><b>${esc(sap.n)}</b><p>${esc(sap.how)}</p><em>su ${esc(sap.su)} · ~${sap.k} kcal</em></div><button class="lnk sm" data-tp="sap"><i>🎲</i>Un altro</button></div>`;
   const tired = `<button class="tptired" data-tp="tired"><span>😮‍💨</span><div><b>Sono stanco</b><small>3 pasti del piano, il più veloce in 4 minuti</small></div><i>›</i></button>`;
-  const recBox = (r, mid, lab, sub) => { const t = ptOk(r, mid, d), t2 = r.batch ? ptOk(r, "ce", d) : null, ok = t === "ok" && (!t2 || t2 === "ok");
-    return `<div class="tprec"><button class="tpimg" data-tp="see" data-r="${r.id}" data-m="${mid}">${dishSVG(r.p, r.box, r.id, "dish")}</button><div class="tptx"><small>${lab}</small><b>${esc(r.name)}</b><p>${r.min} min · ${esc(r.tools)}${sub ? " · " + sub : ""}</p>${ok ? `<em class="ok">✓ in linea col PT${r.batch ? " a pranzo e a cena" : ""}</em>` : ""}</div></div>
+  // 🥫 25/11/2026: propone solo quello che puoi fare con quello che hai (o adattato); se non sa cosa hai, te lo chiede
+  const H = haveNow(), choose = (prim, sec, mid, off) => { if (!H.known) return { r: pickRot(prim, d, mid, off) };
+    const okP = prim.filter(r => canMake(r, H).ok); if (okP.length) return { r: pickRot(okP, d, mid, off) };
+    const okS = (sec || []).filter(r => canMake(r, H).ok); if (okS.length) return { r: pickRot(okS, d, mid, off), alt: true };
+    return { r: pickRot(prim, d, mid, off), none: true }; };
+  const recBox = (r, mid, lab, sub) => { const t = ptOk(r, mid, d), t2 = r.batch ? ptOk(r, "ce", d) : null, ok = t === "ok" && (!t2 || t2 === "ok"), c = H.known ? canMake(r, H) : null;
+    const hv = !c ? "" : c.ok ? (c.use ? `<em class="adk">🔄 con ${esc(qText(c.use.to, c.use.q))} che hai, al posto di ${esc(pname(c.use.from))}</em>` : `<em class="ok">🥫 hai tutto quello che serve</em>`)
+      : `<em class="miss">Ti manca: ${esc(c.miss.map(pname).join(", "))}${c.frz ? ` · 🧊 hai ${esc(pname(c.frz))} nel congelatore: tiralo fuori stasera` : ""}</em>`;
+    return `<div class="tprec"><button class="tpimg" data-tp="see" data-r="${r.id}" data-m="${mid}">${dishSVG(r.p, r.box, r.id, "dish")}</button><div class="tptx"><small>${lab}</small><b>${esc(r.name)}</b><p>${r.min} min · ${esc(r.tools)}${sub ? " · " + sub : ""}</p>${hv}${ok ? `<em class="ok">✓ in linea col PT${r.batch ? " a pranzo e a cena" : ""}</em>` : ""}</div></div>
       <div class="tpbtn"><button class="btn primary" data-tp="cook" data-r="${r.id}" data-m="${mid}">▶ Cucina passo passo</button><button class="lnk" data-tp="see" data-r="${r.id}" data-m="${mid}"><i>📖</i>Vedi</button><button class="lnk" data-tp="next" data-k="${r.batch ? "tpB" : "tpQ"}"><i>🔄</i>Un'altra</button></div>`; };
   let main = "";
   if (!sh) main = `<p class="tpask">Dimmi il turno qui sopra e ti dico cosa cucinare: una cucinata per pranzo e cena nei giorni di riposo o pomeriggio, una cena veloce dopo il turno di mattina.</p>`;
   else if (sh === "mat") {
     if (m.ce) main = `<p class="tpdone">✓ Cena segnata: stasera sei a posto.</p>`;
-    else { const r = pickRot(CB.recipes.filter(x => x.quick), d, "ce", CS.tpQ); main = r ? recBox(r, "ce", "⚡ Stasera cena veloce · a pranzo c'è la mensa", "") : ""; }
+    else { const C = choose(CB.recipes.filter(x => x.quick), null, "ce", CS.tpQ), r = C.r; main = r ? recBox(r, "ce", "⚡ Stasera cena veloce · a pranzo c'è la mensa", "") + (C.none ? noneNote() : "") : ""; }
   } else if (isB(m.pr)) { const r = recipeById(m.pr);
-    main = `<p class="tpdone">✓ Oggi hai cucinato <b>${esc(r.s || r.name)}</b>.${m.ce ? " Pranzo e cena fatti 👌" : sh === "pom" ? " La seconda porzione è la cena da portare al lavoro: 2 minuti al microonde." : " La seconda porzione è la cena: scaldala 2 minuti."}</p>${m.ce ? "" : `<div class="tpbtn"><button class="btn primary" data-tp="ce" data-r="${r.id}">✓ Segna la cena (${esc(r.s || "pasto 2")})</button></div>`}`;
-  } else { const r = pickRot(CB.recipes.filter(x => x.batch), d, "pr", CS.tpB); main = r ? recBox(r, "pr", "🍱 Oggi una cucinata: pranzo e cena", sh === "pom" ? "la cena la porti al lavoro" : "") : ""; }
+    const a = adOf(d, r.id), pf = a ? a.to : (mainProt(r) || [])[0], fin = pf && pantry()[pf] ? `<button class="lnk sm" data-fin="${pf}"><i>🥫</i>Ho finito ${esc(pname(pf))}</button>` : "";
+    main = `<p class="tpdone">✓ Oggi hai cucinato <b>${esc(r.s || r.name)}</b>.${m.ce ? " Pranzo e cena fatti 👌" : sh === "pom" ? " La seconda porzione è la cena da portare al lavoro: 2 minuti al microonde." : " La seconda porzione è la cena: scaldala 2 minuti."}</p><div class="tpbtn">${m.ce ? "" : `<button class="btn primary" data-tp="ce" data-r="${r.id}">✓ Segna la cena (${esc(r.s || "pasto 2")})</button>`}${fin}</div>`;
+  } else { const C = choose(CB.recipes.filter(x => x.batch), CB.recipes.filter(x => x.quick), "pr", CS.tpB), r = C.r;
+    main = r ? recBox(r, "pr", C.alt ? "⚡ Con quello che hai: un pranzo veloce (la cena la scegli dopo)" : "🍱 Oggi una cucinata: pranzo e cena", C.alt ? "" : sh === "pom" ? "la cena la porti al lavoro" : "") + (C.none ? noneNote() : "") : ""; }
+  // cosa hai in frigo: se non lo so te lo chiedo; altrimenti un pulsante per aggiornarlo
+  const pk = !H.known ? `<div class="tpask2"><p>🥫 <b>Cosa hai in frigo?</b> Dimmelo una volta e ti propongo solo ricette che puoi fare davvero.</p>${CS.pkOpen === false ? `<button class="lnk sm" data-pkopen><i>🥫</i>Dimmelo</button>` : pkBox(true)}</div>` : CS.pkOpen ? pkBox() : "";
   // vista semplice (24/11/2026): sapore e "Sono stanco" in due pulsanti piccoli; il sapore si apre al tocco
   if (compact) return `<div class="card tplan sm"><h3>🍳 Cosa cucino ${d === todayISO() ? "oggi" : "domani"}</h3>${main}
-    <div class="tpmini"><button class="lnk" data-tp="sapo"><i>🎨</i>${esc(sap.n)}</button><button class="lnk" data-tp="tired"><i>😮‍💨</i>Sono stanco</button></div>${CS.sapOpen ? sapRow : ""}</div>`;
-  return `<div class="card tplan"><h3>🍳 Cosa cucino ${d === todayISO() ? "oggi" : "domani"}</h3>${main}${sapRow}${tired}</div>`;
+    ${pk}<div class="tpmini">${H.known ? `<button class="lnk${CS.pkOpen ? " on" : ""}" data-pkopen><i>🥫</i>Cosa ho</button>` : ""}<button class="lnk" data-tp="sapo"><i>🎨</i>${esc(sap.n)}</button><button class="lnk" data-tp="tired"><i>😮‍💨</i>Sono stanco</button></div>${CS.sapOpen ? sapRow : ""}</div>`;
+  return `<div class="card tplan"><h3>🍳 Cosa cucino ${d === todayISO() ? "oggi" : "domani"}</h3>${main}${pk}${H.known ? `<button class="lnk sm" data-pkopen><i>🥫</i>${CS.pkOpen ? "Chiudi «cosa ho»" : "Cosa ho in frigo"}</button>` : ""}${sapRow}${tired}</div>`;
 }
 function openTired(d) {
   const sh = $("fsheet"); if (!sh) return; const h = new Date().getHours(), m = fDay(d).m || {};
   const mid = h < 15.5 && !m.pr ? "pr" : "ce", cards = [];
   if (mid === "ce" && m.pr && (recipeById(m.pr) || {}).batch) { const r = recipeById(m.pr); cards.push({ r, lab: "🍱 Ce l'hai già: la seconda porzione della cucinata", how: "Scaldala 2 minuti al microonde, coperta." }); }
-  const Q = CB.recipes.filter(x => x.quick).sort((a, b) => a.min - b.min);
+  const H = haveNow(), Q0 = CB.recipes.filter(x => x.quick).sort((a, b) => a.min - b.min), Qok = H.known ? Q0.filter(r => canMake(r, H).ok) : Q0, Q = Qok.length ? Qok : Q0;
   for (const r of Q) { if (cards.length >= 3) break; if (cards.some(c => c.r.id === r.id)) continue; if (mid === "pr" && STRICT.has(r.id) && lunchLvl(d) === 0) continue;
-    cards.push({ r, lab: r.cold ? "❄️ Zero cottura · " + r.min + " minuti" : "⚡ " + r.min + " minuti", how: r.ingr.slice(0, 3).join(" · ") }); }
+    const cu = H.known && canMake(r, H).use; cards.push({ r, lab: r.cold ? "❄️ Zero cottura · " + r.min + " minuti" : "⚡ " + r.min + " minuti", how: cu ? `🔄 con ${qText(cu.to, cu.q)} che hai, al posto di ${pname(cu.from)}` : r.ingr.slice(0, 3).join(" · ") }); }
   sh.querySelector(".is-h").innerHTML = `<b>😮‍💨 Sono stanco</b><span class="rmeta">${mid === "pr" ? "pranzo" : "cena"} · resta nel piano, col minimo sforzo</span>`;
   sh.querySelector(".is-c").innerHTML = `<p class="note">Stanco non vuol dire pasto libero: questi sono pasti del piano del PT, fatti con ingredienti veri (niente piatti pronti), col minimo sforzo. Scegline uno e non pensarci più.</p>
     ${cards.map(({ r, lab, how }) => { const L = baseQ(mid, r.id, d), v = L && valOfQ(L), C = v && ptCmp(v, ptKey(mid, d));
@@ -134,6 +145,7 @@ function openTired(d) {
 }
 document.addEventListener("click", e => {
   const b = e.target.closest && e.target.closest("[data-tp]"); if (!b) return; const a = b.dataset.tp, d = cDay(), r = b.dataset.r, mid = b.dataset.m;
+  if (r && ["cook", "see", "eat", "ce"].includes(a) && recipeById(r) && !adOf(d, r)) { const c = canMake(recipeById(r)); if (c.use) setAd(d, r, c.use); }
   if (a === "sap") { CS.sapOff = (CS.sapOff || 0) + 1; renderCibo(); }
   else if (a === "sapo") { CS.sapOpen = !CS.sapOpen; renderCibo(); }
   else if (a === "next") { CS[b.dataset.k] = (CS[b.dataset.k] || 0) + 1; renderCibo(); }
@@ -310,6 +322,10 @@ function baseQ(mid, oid, d) {
     const lv = mid === "pr" ? lunchLvl(d) : 40;
     const L = parseQ(typeof spec === "string" ? spec : spec.leg ? (lv === 80 ? spec.gym : lv === 0 ? spec.l0 : spec.q) : (isGym(d) && spec.gym) || (p2 && spec.p2) || spec.q);
     if (fr) L[0] = [fr.f, fr.g];
+    else { const ad = ((fDay(d).ad || {})[key]); if (ad) { const i = L.findIndex(([f]) => f === ad.from || EQ[f] === ad.from); if (i >= 0) { const was = L[i]; L[i] = [ad.to, ad.q];
+      // 🥫 adattata a quello che hai; se la proteina nuova è più grassa, meno olio di altrettanto (come dice la tabella scambi del PT)
+      const df = (FO(ad.to).v[3] * gramsOf(ad.to, ad.q) - FO(was[0]).v[3] * gramsOf(was[0], was[1])) / 100, j = L.findIndex(([f]) => f === "olio");
+      if (df > 1 && j >= 0) { const og = gramsOf("olio", L[j][1]), ng = Math.max(0, og - df), st = FO("olio").s || .5; L[j] = ["olio", Math.max(0, Math.round(ng / FO("olio").g / st) * st)]; } } } }
     let c = null;
     if (key === "mensa") c = ["mpri", { 80: .8, 40: .4, 0: 0 }[lunchLvl(d)]]; // primo della mensa: 0,8 porzione ≈ 200 g cotti ≈ 80 g crudi + condimento
     else { const cn = r ? r.cb[p2 && r.cb.p2 ? "p2" : "p1"] || r.cb.p1 : CB.mcarb[key]; c = cn && carbQ(cn, mid, d, r && r.cb.half, spec.leg && mid === "ce" ? 2 : 0); }
@@ -1360,6 +1376,74 @@ function hvMatch(text, meal, d) {
   return { items, list: list.sort((a, b) => a.sc - b.sc).slice(0, 6) };
 }
 const HVM = [["pr", "Pranzo"], ["ce", "Cena"], ["col", "Colazione"], ["s1", "Spuntino"]];
+// ---------- 🥫 CON QUELLO CHE HAI (25/11/2026) ----------
+// L'utente: "le ricette includono ingredienti che non ho e questo mi scoccia il trovare la ricetta che posso fare".
+// Regola: decide solo l'ingrediente PRINCIPALE (la proteina). Verdure: una vale l'altra (anche surgelate). Carboidrati secchi
+// (riso, pasta, cous cous, farro, pane, patate) e dispensa (olio, spezie, aglio, cipolla, passata, aceto, miele, erbe) si danno per
+// scontati; contorni (olive, carote, parmigiano, yogurt, fagioli…) sono facoltativi. Servono davvero solo piadina e gnocchi quando
+// sono il piatto. Se manca la proteina ma ne hai un'altra della stessa famiglia, la ricetta si ADATTA con i grammi della tabella
+// scambi del PT, e tutti i conti la seguono (day.ad[ricetta] = {from, to, q}, letto da baseQ).
+const PFAM = [["pollo", "manzo"], ["merluzzo", "orata", "gamberi", "salmone", "calamari"], ["macinato"], ["uovo", "albumeg"], ["bresaola", "tacchinoaff"], ["tonno"], ["mozz"]];
+const PROTS = new Set(PFAM.flat());
+const PKEEP = { piadina: 1, gnocchi: 1 }; // carboidrati che servono davvero (quando la ricetta è in STRICT)
+const canonF = f => { if (FO(f) && FO(f).mine) { const p = prods()[f.slice(2)]; f = (p && (p.sub || p.of)) || f; } return EQ[f] || f; };
+function haveNow() { // in casa + scongelato pronto; a parte quello ancora congelato
+  const P = pantry(), have = new Set(Object.keys(P).filter(f => P[f]).map(canonF)), frozen = new Set();
+  for (const x of frz()) { if (!(x.q > 0)) continue; const st = frState(x).s, f = canonF(x.f); if (st === "ready") have.add(f); else if (st === "frz" || st === "thaw") frozen.add(f); }
+  return { have, frozen, known: Object.keys(P).some(f => P[f]) };
+}
+function mainProt(r) {
+  const spec = CB.mq[r.id], L = r.mine ? r.q : spec ? parseQ(typeof spec === "string" ? spec : spec.q) : (r.for && baseQ(Object.keys(r.for)[0], Object.values(r.for)[0], todayISO())) || [];
+  const x = L.find(([f]) => PROTS.has(canonF(f))); return x ? [canonF(x[0]), x[1]] : null;
+}
+// si può fare con quello che hai? { ok, prot, use (adattamento), frz (proteina in congelatore), miss [] }
+function canMake(r, H) {
+  H = H || haveNow(); const mp = mainProt(r), miss = [];
+  for (const f of Object.keys(PKEEP)) if (STRICT.has(r.id) && (CB.mq[r.id] ? JSON.stringify(CB.mq[r.id]) : "").includes(f) && !H.have.has(f)) miss.push(f);
+  if (!mp) return { ok: !miss.length, miss };
+  const [pf, pq] = mp; if (H.have.has(pf)) return { ok: !miss.length, prot: pf, miss };
+  const fam = (PFAM.find(g => g.includes(pf)) || [pf]).filter(x => x !== pf), alt = fam.find(x => H.have.has(x));
+  if (alt) { const sw = swapAlts(pf, pq).find(([x]) => x === alt), q = sw ? sw[1] : PROTG[alt] || pq; return { ok: !miss.length, prot: pf, use: { from: pf, to: alt, q }, miss }; }
+  const fz = [pf, ...fam].find(x => H.frozen.has(x));
+  return { ok: false, prot: pf, frz: fz || null, miss: [pf, ...miss] };
+}
+const pname = f => shortN(f).toLowerCase();
+const adOf = (d, rid) => ((fDay(d).ad || {})[rid]) || null;
+function setAd(d, rid, use) { setFDay(d, x => { x.ad = { ...(x.ad || {}) }; if (use) x.ad[rid] = use; else delete x.ad[rid]; }); }
+// caselle rapide "cosa hai in frigo": proteine e verdure (il resto si dà per scontato)
+const PKQ = [["Carne e pesce", ["pollo", "manzo", "macinato", "merluzzo", "salmone", "gamberi"]], ["Altre proteine", ["uovo", "albumeg", "bresaola", "tacchinoaff", "tonno", "mozz"]],
+  ["Verdure (anche surgelate)", ["vgrill", "insalata", "zucchine", "peperoni", "spinaci", "pomodorini", "broccoli"]], ["Se le hai", ["piadina", "gnocchi"]]];
+function pkBox(compact) {
+  const P = pantry(), H = haveNow(), t = f => FO(f) ? `<button class="ptile${P[f] ? " on" : ""}" data-pk="${f}">${fdOf(f) ? dishSVG([fdOf(f)], null, f, "pico") : "<i class=\"pnone\">•</i>"}<span>${esc(shortN(f))}</span></button>` : "";
+  const fz = [...H.frozen].filter(f => FO(f));
+  return `<div class="pkbox">${compact ? "" : `<p class="note">Tocca quello che hai in frigo: ti propongo solo ricette che puoi fare. Riso, pasta, pane, olio e spezie li do per scontati.</p>`}
+    ${PKQ.map(([n, L]) => `<p class="psub">${n}</p><div class="ptiles">${L.map(t).join("")}</div>`).join("")}
+    ${fz.length ? `<p class="note">🧊 Nel congelatore: ${esc(fz.map(pname).join(", "))} (lo conto quando lo tiri fuori)</p>` : ""}
+    <div class="pkbtn"><label class="lnk" for="hvFrigo"><i>📷</i>Fai una foto al frigo</label><input type="file" id="hvFrigo" accept="image/*" capture="environment" hidden><button class="btn sm primary" data-pkok>Fatto</button></div>${frigoBox()}</div>`;
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest && e.target.closest("[data-pk],[data-pkok],[data-pkopen],[data-adoff],[data-fin]"); if (!b) return;
+  if (b.dataset.pk) { const P = pantry(), f = b.dataset.pk; if (P[f]) delete P[f]; else P[f] = 1; FOOD().pantryAt = Date.now(); save(); try { iosTap(); } catch (_) {} renderCibo(); }
+  else if (b.hasAttribute("data-pkok")) { CS.pkOpen = false; CS.frigo = null; renderCibo(); }
+  else if (b.hasAttribute("data-pkopen")) { CS.pkOpen = !CS.pkOpen; renderCibo(); }
+  else if (b.dataset.adoff) { setAd(cDay(), b.dataset.adoff, null); if (CS.recipe) openRecipe(CS.recipe, CS.recCtx, true); renderCibo(); }
+  else if (b.dataset.fin) { delete pantry()[b.dataset.fin]; save(); toast(`Tolto da «in casa»: ${pname(b.dataset.fin)}`); renderCibo(); }
+});
+function noneNote() { const H = haveNow(), fz = [...H.frozen].filter(f => PROTS.has(f) && FO(f));
+  return `<p class="tpnone">Con quello che hai in frigo non c'è una ricetta del piano.${fz.length ? ` 🧊 Nel congelatore hai ${esc(fz.map(pname).join(", "))}: tiralo fuori stasera.` : ""} Oggi prova <b>😮‍💨 Sono stanco</b>, oppure aggiorna «Cosa ho» se hai comprato qualcosa.</p>`; }
+// riga nella ricetta: hai tutto / adattata / cosa manca
+function hvRecLine(r, d) {
+  if (adOf(d, r.id)) return adBanner(r.id, d);
+  const H = haveNow(); if (!H.known) return ""; const c = canMake(r, H);
+  if (c.use) return `<p class="adban">🥫 Non hai ${esc(pname(c.use.from))}, ma hai ${esc(pname(c.use.to))}: va benissimo. <button class="lnk sm" data-aduse="${r.id}"><i>🔄</i>Usa ${esc(qText(c.use.to, c.use.q))}</button></p>`;
+  if (c.ok) return mainProt(r) ? `<p class="adok">🥫 Hai tutto quello che serve. Verdure: va bene quella che hai.</p>` : "";
+  return `<p class="admiss">🥫 Ti manca: ${esc(c.miss.map(pname).join(", "))}${c.frz ? ` · 🧊 hai ${esc(pname(c.frz))} nel congelatore` : ""}.</p>`;
+}
+document.addEventListener("click", e => { const b = e.target.closest && e.target.closest("[data-aduse]"); if (!b) return; const r = recipeById(b.dataset.aduse), c = r && canMake(r);
+  if (c && c.use) { setAd(cDay(), r.id, c.use); if (CS.qe && CS.qe.oid === r.id) qeInit(CS.qe.d, CS.qe.mid, CS.qe.oid); openRecipe(r.id, CS.recCtx, true); renderCibo(); toast(`🔄 ${shortN(c.use.to)} al posto di ${pname(c.use.from)}`); } });
+// riga "adattata" in cima a ricetta e cucina passo passo
+function adBanner(rid, d) { const a = adOf(d, rid); return a ? `<p class="adban">🔄 Oggi con <b>${esc(qText(a.to, a.q))}</b> al posto di ${esc(pname(a.from))}: grammi e kcal già ricalcolati. <button class="lnk sm" data-adoff="${rid}"><i>↩</i>Usa ${esc(pname(a.from))}</button></p>` : ""; }
+
 // 📷 FOTO DEL FRIGO (22/11/2026, richiesta dell'utente: "faccio una foto al frigo e capisci da solo cosa ho e cosa no").
 // L'IA elenca gli alimenti visti → diventano "in casa"; gli alimenti freschi che erano "in casa" ma non si vedono più
 // vengono proposti come finiti (un tocco li toglie). Più foto (frigo + dispensa) si sommano. Le ricette sotto si aggiornano.
@@ -1499,13 +1583,19 @@ function hvBind(box) {
 const CATN = { col: "Colazione", sp: "Spuntino", base: "Le basi" };
 const MEALN = { col: "a colazione", s1: "allo spuntino 1", s2: "allo spuntino 2", pr: "a pranzo", ce: "a cena" };
 function renderRicette(box) {
-  const F = [["all", "Tutte"], ...(CB.recipes.some(r => r.mine) ? [["mine", "Le mie"]] : []), ["easy", "⭐ Facili"], ["quick", "⚡ Cene veloci"], ["batch", "🍱 Una cottura, 2 pasti"], ["main", "Pranzo e cena"], ["col", "Colazione"], ["sp", "Spuntini"], ["new", "Da imparare"], ["fast", "Veloci (≤ 12′)"], ["base", "Le basi"]];
-  const ok = r => CS.rf === "all" || (CS.rf === "mine" && r.mine) || (CS.rf === "main" && r.main) || (CS.rf === "batch" && r.batch) || (CS.rf === "quick" && r.quick) || (CS.rf === "easy" && (r.batch || r.quick)) || (CS.rf === r.cat) || (CS.rf === "new" && r.lvl === 2) || (CS.rf === "fast" && r.min <= 12);
-  const L = CB.recipes.filter(ok);
-  box.innerHTML = `${hvCard()}<div class="rfil">${F.map(([k, n]) => `<button class="chip" data-rf="${k}" aria-pressed="${CS.rf === k}">${n}</button>`).join("")}</div>
+  const H = haveNow(), cm = r => H.known ? canMake(r, H) : null;
+  const F = [...(H.known ? [["can", "🥫 Puoi farle"]] : []), ["all", "Tutte"], ...(CB.recipes.some(r => r.mine) ? [["mine", "Le mie"]] : []), ["easy", "⭐ Facili"], ["quick", "⚡ Cene veloci"], ["batch", "🍱 Una cottura, 2 pasti"], ["main", "Pranzo e cena"], ["col", "Colazione"], ["sp", "Spuntini"], ["new", "Da imparare"], ["fast", "Veloci (≤ 12′)"], ["base", "Le basi"]];
+  if (CS.rf === "can" && !H.known) CS.rf = "easy"; if (H.known && !CS.rfSet && CS.rf === "easy") CS.rf = "can";
+  const ok = r => CS.rf === "all" || (CS.rf === "can" && cm(r).ok && (r.main || mainProt(r))) || (CS.rf === "mine" && r.mine) || (CS.rf === "main" && r.main) || (CS.rf === "batch" && r.batch) || (CS.rf === "quick" && r.quick) || (CS.rf === "easy" && (r.batch || r.quick)) || (CS.rf === r.cat) || (CS.rf === "new" && r.lvl === 2) || (CS.rf === "fast" && r.min <= 12);
+  // 🥫 25/11/2026: prima quelle che puoi fare con quello che hai
+  const L = CB.recipes.filter(ok).map((r, i) => [r, i, cm(r)]).sort((a, b) => (a[2] && !a[2].ok) - (b[2] && !b[2].ok) || a[1] - b[1]);
+  const badge = c => !c ? "" : c.ok ? (c.use ? `<i class="rhv ad">🔄 con ${esc(pname(c.use.to))}</i>` : `<i class="rhv ok">🥫 puoi farla</i>`) : `<i class="rhv no">manca ${esc(c.miss.map(pname).join(", "))}</i>`;
+  box.innerHTML = `${hvCard()}${!H.known ? `<div class="card tpask2"><p>🥫 <b>Cosa hai in frigo?</b> Dimmelo e metto prima le ricette che puoi fare.</p>${pkBox(true)}</div>` : CS.pkOpen ? `<div class="card">${pkBox()}</div>` : ""}<div class="rfil">${F.map(([k, n]) => `<button class="chip" data-rf="${k}" aria-pressed="${CS.rf === k}">${n}</button>`).join("")}</div>
     ${CS.rf === "all" ? `<p class="note rtip">Nuovo in cucina? Parti da <button class="lnk in" data-rf="base">Le basi</button>: friggitrice, padella e pasta spiegate passo passo.</p>` : ""}
-    <div class="rgrid">${L.map(r => { const pic = foodPic(r.id); return `<button class="rcard" data-rec="${r.id}">${pic ? `<img src="${pic}" alt="">` : dishSVG(r.p, r.box, r.id, "dish")}<b>${esc(r.name)}</b><small>${r.min} min · ${esc(r.tools)}</small><em>${r.mine ? "la tua · " : ""}${r.quick ? (r.cold ? "❄️ zero cottura" : "⚡ " + r.min + " min") : r.batch ? "🍱 pranzo + cena" : r.main ? (r.one ? "1 pasto" : "2 pasti") : esc(CATN[r.cat] || "")}</em>${r.lvl === 2 ? `<i class="rnew">da imparare</i>` : ""}</button>`; }).join("")}</div>`;
-  box.querySelectorAll("[data-rf]").forEach(b => b.onclick = () => { CS.rf = b.dataset.rf; renderCibo(); });
+    ${H.known ? `<button class="lnk sm rpk" data-pkopen><i>🥫</i>${CS.pkOpen ? "Chiudi «cosa ho»" : "Cosa ho in frigo"}</button>` : ""}
+    ${CS.rf === "can" && !L.length ? `<p class="note">Con quello che hai segnato non c'è una ricetta: aggiorna «Cosa ho in frigo» o prova 🧺 qui sopra.</p>` : ""}
+    <div class="rgrid">${L.map(([r, , c]) => { const pic = foodPic(r.id); return `<button class="rcard${c && !c.ok ? " rno" : ""}" data-rec="${r.id}">${pic ? `<img src="${pic}" alt="">` : dishSVG(r.p, r.box, r.id, "dish")}<b>${esc(r.name)}</b><small>${r.min} min · ${esc(r.tools)}</small><em>${r.mine ? "la tua · " : ""}${r.quick ? (r.cold ? "❄️ zero cottura" : "⚡ " + r.min + " min") : r.batch ? "🍱 pranzo + cena" : r.main ? (r.one ? "1 pasto" : "2 pasti") : esc(CATN[r.cat] || "")}</em>${r.lvl === 2 ? `<i class="rnew">da imparare</i>` : ""}${badge(c)}</button>`; }).join("")}</div>`;
+  box.querySelectorAll("[data-rf]").forEach(b => b.onclick = () => { CS.rf = b.dataset.rf; CS.rfSet = 1; renderCibo(); });
   hvBind(box);
   box.querySelectorAll("[data-rec]").forEach(b => b.onclick = () => openRecipe(b.dataset.rec));
 }
@@ -1518,7 +1608,7 @@ function openRecipe(id, ctx, keep) {
   const isOn = m => { const v = (fDay(d).m || {})[m]; return v && v === (ctx && ctx.mid === m ? ctx.oid : r.main ? id : (r.for || {})[m]); };
   sh.querySelector(".is-h").innerHTML = `<b>${esc(r.name)}</b><span class="rmeta">${r.min} min · ${esc(r.tools)}${r.main ? ` · ${r.one ? "1 pasto" : "2 pasti"}` : ""} · ${r.lvl === 2 ? "da imparare" : "facile"}</span>`;
   sh.querySelector(".is-c").innerHTML = `<div class="rhero">${pic ? `<img src="${pic}" alt="Il mio piatto">` : dishSVG(r.p, r.box, r.id, "dish big")}</div>
-    <div class="rpic"><label class="btn sm" for="rPic">📷 ${pic ? "Cambia la foto" : "Foto del mio piatto"}</label><input type="file" id="rPic" accept="image/*" capture="environment" hidden>${pic ? `<button class="btn sm" id="rPicDel">Torna al disegno</button>` : ""}</div>
+    ${hvRecLine(r, d)}<div class="rpic"><label class="btn sm" for="rPic">📷 ${pic ? "Cambia la foto" : "Foto del mio piatto"}</label><input type="file" id="rPic" accept="image/*" capture="environment" hidden>${pic ? `<button class="btn sm" id="rPicDel">Torna al disegno</button>` : ""}</div>
     <div class="rlog"><button class="btn primary cookb" id="cookGo">▶ Cucina passo passo</button></div>
     ${all.length > 1 ? `<div class="qfor"><span>È per</span>${all.map(m => `<button class="chip" data-qf="${m}" aria-pressed="${m === qm}">${esc(mealDef(m).name)}</button>`).join("")}</div>` : ""}${qBox()}
     ${logs.length ? `<div class="rlog">${logs.map(m => isOn(m) ? `<button class="btn" data-rl="${m}" data-un="1">Togli: non l'ho mangiato ${MEALN[m]}</button>` : `<button class="btn${ctx ? " primary" : ""}" data-rl="${m}">✓ Fatto: mangiato ${MEALN[m]}</button>`).join("")}</div><p class="note rlday">${d === todayISO() ? "Si segna su oggi" : "Si segna sul " + fmtDate(d)}</p>` : ""}
@@ -1536,7 +1626,7 @@ function openRecipe(id, ctx, keep) {
   const md = $("myDel"); if (md) md.onclick = () => { if (!md.dataset.sure) { md.dataset.sure = 1; md.textContent = "Tocca di nuovo per eliminarla"; return; } delete myRec()[id.slice(2)]; save(); syncRecipes(); closeRecipe(); renderCibo(); toast("Ricetta eliminata"); };
   if (sh.hidden || !keep) showSheet(sh); else sh.querySelector(".is-c").scrollTop = y;
   qBind(sh); sh.querySelectorAll("[data-qf]").forEach(b => b.onclick = () => { CS.recMid = b.dataset.qf; openRecipe(id, ctx, true); });
-  $("cookGo").onclick = () => { closeRecipe(); cook(id, ctx); };
+  $("cookGo").onclick = () => { if (r.main && !adOf(d, id)) { const c = canMake(r); if (c.use) setAd(d, id, c.use); } closeRecipe(); cook(id, ctx); };
   $("rPic").onchange = e => { const f = e.target.files[0]; if (f) saveFoodPic(id, f); e.target.value = ""; };
   const del = $("rPicDel"); if (del) del.onclick = () => { delete FOOD().pics[id]; picDel("food:" + id); save(); openRecipe(id, ctx, true); renderCibo(); };
   sh.querySelectorAll("[data-kt]").forEach(b => b.onclick = () => kStart(+b.dataset.kt, b.dataset.kl));
@@ -1554,7 +1644,7 @@ function cook(id, ctx, i) {
   const st = r.steps[i - 1], bar = `<div class="cbar">${[...Array(N + 2)].map((_, k) => `<i class="${k <= i ? "on" : ""}"></i>`).join("")}</div>`;
   let body;
   if (i === 0) { const got = CS.cookGot || {};
-    body = `<div class="cpic">${dishSVG(r.p, r.box, r.id, "dish")}</div><h2>${esc(r.name)}</h2><p class="cmeta">${r.min} min · ${esc(r.tools)}</p>
+    body = `<div class="cpic">${dishSVG(r.p, r.box, r.id, "dish")}</div><h2>${esc(r.name)}</h2><p class="cmeta">${r.min} min · ${esc(r.tools)}</p>${adBanner(r.id, cDay())}
       ${plateBox(r, ctx ? ctx.mid : CS.qe && CS.qe.mid, cDay())}<h3>Prima di iniziare, prepara${r.main && !r.one ? " (per 2 pasti)" : ""}</h3><div class="cing">${r.ingr.map((x, k) => `<button data-ci="${k}" class="${got[k] ? "on" : ""}"><i>${got[k] ? "✓" : ""}</i>${esc(x)}</button>`).join("")}</div>`; }
   else if (i <= N) body = `<p class="cstep">Passo ${i} di ${N} · ${esc(TOOLN[st.tool] || st.tool)}</p><div class="cpic">${toolSVG(st.tool, st.p, r.id + (i - 1))}</div><p class="ctext">${esc(st.t)}</p>
       ${st.ok ? `<p class="sok">✓ <b>Pronto quando:</b> ${esc(st.ok)}</p>` : ""}${st.tip ? `<p class="stip">💡 ${esc(st.tip)}</p>` : ""}

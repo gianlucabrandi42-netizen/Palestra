@@ -1863,3 +1863,32 @@ html{touch-action:manipulation}
 .tpmini{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .tplan.sm .tpsap{margin-top:10px}
 .vsw{margin:18px 0 6px;opacity:.85}
+
+/* ===== 🥫 CON QUELLO CHE HAI (25/11/2026) ===== */
+.pkbox{margin-top:10px}
+.pkbox .psub{margin:10px 0 6px}
+.pkbtn{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:12px}
+.tpask2{margin-top:10px;padding:12px;border-radius:14px;background:color-mix(in srgb,var(--accent) 10%,var(--surface));border:1px dashed var(--accent)}
+.tpask2 p{margin:0 0 4px;font-size:14px;line-height:1.4}
+.card.tpask2{margin-bottom:12px}
+.tptx em.adk{display:block;font-style:normal;font-size:12px;color:#7FC7FF;margin-top:3px}
+.tptx em.miss{display:block;font-style:normal;font-size:12px;color:#FF9447;margin-top:3px}
+.tpnone{font-size:13px;color:var(--muted);margin:8px 0 0;line-height:1.4}
+.tpmini .lnk.on{border-color:var(--accent)}
+.adban,.adok,.admiss{margin:10px 0;padding:10px 12px;border-radius:12px;font-size:13.5px;line-height:1.45}
+.adban{background:color-mix(in srgb,#7FC7FF 12%,var(--surface));border:1px solid color-mix(in srgb,#7FC7FF 40%,transparent)}
+.adban .lnk{margin-top:6px}
+.adok{background:color-mix(in srgb,var(--ok,#4CD98A) 10%,var(--surface));border:1px solid color-mix(in srgb,var(--ok,#4CD98A) 35%,transparent)}
+.admiss{background:color-mix(in srgb,#FF9447 10%,var(--surface));border:1px solid color-mix(in srgb,#FF9447 35%,transparent)}
+.rcard{position:relative}
+.rcard .rhv{position:absolute;left:8px;right:8px;bottom:auto;top:auto;font-style:normal;font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;margin-top:6px;position:static;display:inline-block;align-self:flex-start}
+.rhv.ok{background:color-mix(in srgb,var(--ok,#4CD98A) 18%,transparent);color:var(--ok,#4CD98A)}
+.rhv.ad{background:color-mix(in srgb,#7FC7FF 18%,transparent);color:#7FC7FF}
+.rhv.no{background:color-mix(in srgb,#FF9447 14%,transparent);color:#FF9447}
+.rcard.rno{opacity:.62}
+.rpk{margin:0 0 10px}
+.pkbox .ptiles{display:flex;flex-wrap:wrap;gap:6px;grid-template-columns:none}
+.pkbox .ptile{display:inline-flex;flex-direction:row;align-items:center;gap:6px;width:auto;min-height:0;padding:5px 11px 5px 5px;border-radius:999px;aspect-ratio:auto}
+.pkbox .ptile .pico,.pkbox .ptile .pnone{width:24px;height:24px;flex:none}
+.pkbox .ptile span{font-size:12.5px;white-space:nowrap}
+.pkbox .ptile.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 20%,var(--surface))}
