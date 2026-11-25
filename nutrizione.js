@@ -17,8 +17,8 @@ window.CIBO = {
   meals: [
     { id: "col", name: "Colazione", color: "#F2C14E", opts: [
       { id: "paneuovo", t: "Pane all'uovo", d: "3 uova + 1 fetta di pane di segale, croccante in friggitrice · 2 noci a parte", p: ["toast", "noci"], r: "paneuovo", go: "c", porta: "Va mangiato appena fatto: è la colazione dei giorni a casa." },
-      { id: "pancake", t: "Pancake proteici", d: "50 g di fiocchi d'avena frullati + 30 g di proteine + 1 albume · con 3 gallette o 1 cucchiaio di yogurt", p: ["pancake"], r: "pancake", go: "p", porta: "Falli la sera prima: freddi sono buoni. Yogurt in un vasetto a parte." },
-      { id: "A", t: "Torta in tazza", d: "50 g di fiocchi d'avena frullati + 30 g di proteine + 1 albume al microonde · 3 gallette", p: ["torta", "gallette"], box: "tazza", r: "torta", go: "m", porta: "Serve il microonde. Prepara la tazza a casa con gli ingredienti secchi; al lavoro aggiungi albume e latte e 90 secondi." },
+      { id: "pancake", t: "Pancake proteici", d: "50 g di fiocchi d'avena frullati + 30 g di proteine + 1 albume · con 1 galletta", p: ["pancake"], r: "pancake", go: "p", porta: "Falli la sera prima: freddi sono buoni. Yogurt in un vasetto a parte." },
+      { id: "A", t: "Torta in tazza", d: "50 g di fiocchi d'avena frullati + 30 g di proteine + 1 albume al microonde · 1 galletta", p: ["torta", "gallette"], box: "tazza", r: "torta", go: "m", porta: "Serve il microonde. Prepara la tazza a casa con gli ingredienti secchi; al lavoro aggiungi albume e latte e 90 secondi." },
       { id: "C", t: "Yogurt crunch", d: "Yogurt intero 150 g + 60-70 g di cornflakes + cacao amaro e cannella", p: ["yogurt", "cornflakes"], box: "ciotola", r: "yogurtcrunch", go: "p", porta: "Yogurt col cacao in un barattolo, cornflakes in un sacchetto a parte: li unisci al momento." },
       { id: "A2", t: "Shaker e cornflakes", d: "Shaker con 30 g di proteine · 65 g di cornflakes (o 8 gallette, o 120 g di pane)", p: ["shaker", "cornflakes"], box: "ciotola", go: "p", porta: "Polvere già nello shaker, acqua o latte al momento. Cornflakes in un barattolo." },
       { id: "B", t: "Uova sode e segale", d: "3 uova sode · 1 fetta di pane di segale · 2 noci", p: ["uova", "pane", "noci"], r: "uova", go: "p", porta: "Uova sode sgusciate la sera prima nel contenitore, pane in un sacchetto, noci in tasca." },
@@ -34,9 +34,9 @@ window.CIBO = {
       // 20/11/2026: al lavoro servono spuntini da 2 ingredienti, pronti (easy: 1) — vanno per primi quando sei al lavoro
       { id: "yog", t: "Yogurt e noci", d: "Yogurt intero 150 g + 2 noci", p: ["yogurt", "noci"], box: "ciotola", go: "p", easy: 1, porta: "Vasetto in borsa termica, noci in tasca." },
       { id: "bre", t: "Bresaola e gallette", d: "60 g di bresaola + 2 gallette", p: ["bresaola", "gallette"], go: "p", easy: 1, porta: "Bresaola in borsa termica, gallette nel sacchetto." },
-      { id: "shn", t: "Shaker e noci", d: "Shaker con 30 g di proteine in acqua + 3 noci", p: ["shaker", "noci"], go: "p", easy: 1, porta: "Polvere già nello shaker, acqua al momento; noci in tasca. Niente frigo." },
-      { id: "yogc", t: "Yogurt e cornflakes", d: "Yogurt intero 150 g + 30 g di cornflakes", p: ["yogurt", "cornflakes"], box: "ciotola", go: "p", easy: 1, porta: "Vasetto in borsa termica, cornflakes in un sacchetto: li versi nel vasetto." },
-      { id: "fiog", t: "Fiocchi e gallette", d: "1 vasetto di fiocchi di latte + 2 gallette", p: ["fiocchi", "gallette"], box: "ciotola", go: "p", easy: 1, porta: "Vasetto in borsa termica, gallette a parte." },
+      { id: "shn", t: "Shaker e noci", d: "Shaker con 30 g di proteine in acqua + 2 noci", p: ["shaker", "noci"], go: "p", easy: 1, porta: "Polvere già nello shaker, acqua al momento; noci in tasca. Niente frigo." },
+      { id: "yogc", t: "Yogurt e cornflakes", d: "Yogurt intero 150 g + 2 cucchiai di cornflakes (10 g)", p: ["yogurt", "cornflakes"], box: "ciotola", go: "p", easy: 1, porta: "Vasetto in borsa termica, cornflakes in un sacchetto: li versi nel vasetto." },
+      { id: "fiog", t: "Fiocchi e galletta", d: "1 vasetto di fiocchi di latte + 1 galletta", p: ["fiocchi", "gallette"], box: "ciotola", go: "p", easy: 1, porta: "Vasetto in borsa termica, galletta a parte." },
       { id: "moz", t: "Mozzarella e gallette", d: "Mezza mozzarella light + 2 gallette", p: ["mozzarella", "gallette"], go: "p", easy: 1, porta: "Mozzarella nel suo sacchetto in borsa termica, gallette a parte." },
       { id: "uov", t: "2 uova sode", d: "2 uova sode", p: ["uova"], r: "uova", go: "p", easy: 1, porta: "Uova sode sgusciate la sera prima, contenitore." },
       { id: "pizzette", t: "Pizzette di galletta", d: "2 gallette + passata + mezza mozzarella light, 5 minuti in friggitrice", p: ["pizzetta"], r: "pizzette", go: "c", porta: "Solo a casa: dopo 10 minuti la galletta diventa molle." },
@@ -44,7 +44,7 @@ window.CIBO = {
       { id: "uovaripiene", t: "Uova ripiene", d: "2 uova sode ripiene di tuorlo, yogurt e paprika", p: ["uova"], r: "uovaripiene", go: "p", porta: "Preparale la sera prima, contenitore in borsa termica." },
       { id: "bgn", t: "Bresaola, grana e noci", d: "40 g di bresaola + 15 g di grana a scaglie + 2 noci", p: ["bresaola", "noci"], go: "p", easy: 1, porta: "Tutto in un contenitorino, in borsa termica. Niente da preparare." },
       { id: "muf", t: "Muffin di albumi", d: "3 muffin salati di albumi (fatti la domenica)", p: ["frittata", "spinaci"], r: "muffinalbumi", go: "p", easy: 1, porta: "Li fai la domenica: in frigo durano 4 giorni, si mangiano freddi." },
-      { id: "ceci", t: "Ceci croccanti piccanti", d: "120 g di ceci lessati, croccanti in friggitrice con paprika e peperoncino", p: ["ceci"], r: "cecicroccanti", go: "p", easy: 1, porta: "Fatti in anticipo in un barattolo chiuso: restano croccanti 2-3 giorni." },
+      { id: "ceci", t: "Ceci croccanti piccanti", d: "100 g di ceci lessati, croccanti in friggitrice con paprika e peperoncino", p: ["ceci"], r: "cecicroccanti", go: "p", easy: 1, porta: "Fatti in anticipo in un barattolo chiuso: restano croccanti 2-3 giorni." },
       { id: "eda", t: "Edamame sale e peperoncino", d: "120 g di edamame surgelati, 3 minuti al microonde, sale grosso e peperoncino", p: ["piselli"], r: "edamame", go: "m", porta: "Al lavoro col microonde: la busta surgelata in borsa termica, 3 minuti e sono pronti." },
       { id: "rot", t: "Rotolini di tacchino", d: "6 fette di fesa di tacchino arrotolate con 20 g di formaggio spalmabile + 1 galletta", p: ["bresaola", "gallette"], go: "p", easy: 1, porta: "Arrotolati la sera prima, contenitore in borsa termica." },
       { id: "fio", t: "Fiocchi di latte", d: "1 vasetto di fiocchi di latte", p: ["fiocchi"], box: "ciotola", go: "p", easy: 1, porta: "Vasetto in borsa termica." },
@@ -54,8 +54,8 @@ window.CIBO = {
       gym: [ // giorni di palestra: dopo l'allenamento, non si salta. 20/11/2026: l'utente dopo la palestra si fa sempre lo shaker
         { id: "A2", t: "Shaker post-palestra", d: "Shaker con 30 g di proteine + 65 g di cornflakes (o 8 gallette) + 3 noci", p: ["shaker", "cornflakes", "noci"], box: "ciotola", go: "p", easy: 1, porta: "Polvere già nello shaker, cornflakes in un barattolo, noci in tasca." },
         { id: "shg", t: "Shaker, gallette e noci", d: "Shaker con 30 g di proteine + 8 gallette + 3 noci", p: ["shaker", "gallette", "noci"], go: "p", easy: 1, porta: "Polvere nello shaker, gallette nel sacchetto, noci in tasca: niente frigo." },
-        { id: "pancake", t: "Pancake + noci", d: "Pancake proteici (50 g di avena frullata + 30 g di proteine + 1 albume) + 3 gallette + 3 noci", p: ["pancake", "noci"], r: "pancake", go: "p", porta: "Falli la sera prima: freddi sono buoni." },
-        { id: "A", t: "Torta in tazza + noci", d: "Torta in tazza + 3 gallette + 3 noci", p: ["torta", "gallette", "noci"], box: "tazza", r: "torta", go: "m", porta: "Serve il microonde: tazza con gli ingredienti secchi preparata a casa." },
+        { id: "pancake", t: "Pancake + noci", d: "Pancake proteici (50 g di avena frullata + 30 g di proteine + 1 albume) + 1 galletta + 2 noci", p: ["pancake", "noci"], r: "pancake", go: "p", porta: "Falli la sera prima: freddi sono buoni." },
+        { id: "A", t: "Torta in tazza + noci", d: "Torta in tazza + 1 galletta + 2 noci", p: ["torta", "gallette", "noci"], box: "tazza", r: "torta", go: "m", porta: "Serve il microonde: tazza con gli ingredienti secchi preparata a casa." },
         { id: "pan", t: "Panino con bresaola", d: "110 g di pane + 60 g di bresaola + 3 noci", p: ["pane", "bresaola", "noci"], go: "p", porta: "Panino fatto a casa, in borsa termica." },
         { id: "pip", t: "Piadina pollo e salsa yogurt", d: "1 piadina + 80 g di pollo già cotto + insalata + 2 cucchiai di yogurt con sale e paprika", p: ["piadina", "pollo", "insalata"], go: "p", porta: "Arrotolata nella carta forno: si mangia fredda. Usa il pollo avanzato del giorno prima." },
         { id: "shf", t: "Shaker, fette biscottate e miele", d: "Shaker con 30 g di proteine + 6 fette biscottate + 1 cucchiaino di miele + 2 noci", p: ["shaker", "toast", "noci"], go: "p", easy: 1, porta: "Niente frigo: polvere nello shaker, fette nel loro sacchetto." },
@@ -63,20 +63,20 @@ window.CIBO = {
       ],
       opts: [ // giorni senza palestra
         { id: "fio", t: "Toast fiocchi e pomodorini", d: "1 fetta di segale tostata + 1 vasetto di fiocchi di latte + pomodorini e origano", p: ["toast", "fiocchi", "pomodorini"], r: "toastfiocchi", go: "p", porta: "Pane in un sacchetto, fiocchi nel vasetto e pomodorini a parte: componi al momento." },
-        { id: "yog", t: "Yogurt e cornflakes", d: "Yogurt intero 150 g + 30 g di cornflakes", p: ["yogurt", "cornflakes"], box: "ciotola", go: "p", easy: 1, porta: "Vasetto in borsa termica, cornflakes in un sacchetto." },
-        { id: "bre", t: "Bresaola e gallette", d: "60 g di bresaola + 3 gallette", p: ["bresaola", "gallette"], go: "p", easy: 1, porta: "Bresaola in borsa termica, gallette nel sacchetto." },
-        { id: "shn", t: "Shaker e noci", d: "Shaker con 30 g di proteine in acqua + 3 noci", p: ["shaker", "noci"], go: "p", easy: 1, porta: "Polvere già nello shaker, noci in tasca: niente frigo." },
-        { id: "fiog", t: "Fiocchi e gallette", d: "1 vasetto di fiocchi di latte + 2 gallette", p: ["fiocchi", "gallette"], box: "ciotola", go: "p", easy: 1, porta: "Vasetto in borsa termica, gallette a parte." },
-        { id: "pan", t: "Pane e bresaola", d: "50 g di pane + 50 g di bresaola", p: ["pane", "bresaola"], go: "p", porta: "Panino fatto a casa, in borsa termica." },
+        { id: "yog", hide: 1, t: "Yogurt e cornflakes", d: "Yogurt intero 150 g + 30 g di cornflakes", p: ["yogurt", "cornflakes"], box: "ciotola", go: "p", easy: 1, porta: "Vasetto in borsa termica, cornflakes in un sacchetto." }, // 25/11/2026: tolto dalle idee (poche proteine rispetto allo spuntino B del PT); resta per i giorni già segnati
+        { id: "bre", t: "Bresaola e gallette", d: "70 g di bresaola + 4 gallette", p: ["bresaola", "gallette"], go: "p", easy: 1, porta: "Bresaola in borsa termica, gallette nel sacchetto." },
+        { id: "shn", t: "Shaker, noci e gallette", d: "Shaker con 30 g di proteine in acqua + 2 noci + 2 gallette", p: ["shaker", "gallette", "noci"], go: "p", easy: 1, porta: "Polvere già nello shaker, noci e gallette nel sacchetto: niente frigo." },
+        { id: "fiog", t: "Fiocchi e gallette", d: "1 vasetto di fiocchi di latte + 3 gallette", p: ["fiocchi", "gallette"], box: "ciotola", go: "p", easy: 1, porta: "Vasetto in borsa termica, gallette a parte." },
+        { id: "pan", t: "Pane e bresaola", d: "50 g di pane + 50 g di bresaola + qualche scaglia di grana (5 g)", p: ["pane", "bresaola"], go: "p", porta: "Panino fatto a casa, in borsa termica." },
         { id: "muf", t: "Muffin di albumi e segale", d: "3 muffin di albumi + 1 fetta di segale", p: ["frittata", "pane"], r: "muffinalbumi", go: "p", easy: 1, porta: "Freddi dal frigo, in borsa termica." },
-        { id: "bgn", t: "Bresaola, grana e noci", d: "50 g di bresaola + 15 g di grana + 2 noci + 1 galletta", p: ["bresaola", "noci", "gallette"], go: "p", easy: 1, porta: "Contenitorino in borsa termica." },
-        { id: "ceci", t: "Ceci croccanti piccanti", d: "150 g di ceci lessati croccanti in friggitrice con paprika", p: ["ceci"], r: "cecicroccanti", go: "p", easy: 1, porta: "Barattolo chiuso: croccanti 2-3 giorni." },
+        { id: "bgn", t: "Bresaola, grana e noci", d: "50 g di bresaola + 15 g di grana + 1 noce + 2 gallette", p: ["bresaola", "noci", "gallette"], go: "p", easy: 1, porta: "Contenitorino in borsa termica." },
+        { id: "ceci", t: "Ceci croccanti e bresaola", d: "150 g di ceci lessati croccanti in friggitrice con paprika · 30 g di bresaola a parte", p: ["ceci"], r: "cecicroccanti", go: "p", easy: 1, porta: "Barattolo chiuso: croccanti 2-3 giorni." },
       ] },
     { id: "ce", name: "Cena", color: "#B57EDC", main: true },
     { id: "dc", name: "Dopo cena", color: "#9AA5B1", extra: true, opts: [
       { id: "yog", t: "Yogurt e noci", d: "Yogurt intero 150 g + 2 noci", p: ["yogurt", "noci"], box: "ciotola" },
       { id: "fio", t: "Fiocchi di latte", d: "1 vasetto di fiocchi di latte", p: ["fiocchi"], box: "ciotola" },
-      { id: "shn", t: "Shaker e noci", d: "Shaker con 30 g di proteine + 3 noci (se ti alleni la sera, dopo cena)", p: ["shaker", "noci"] },
+      { id: "shn", t: "Shaker e noci", d: "Shaker con 30 g di proteine + 2 noci (se ti alleni la sera, dopo cena)", p: ["shaker", "noci"] },
       { id: "bgn", t: "Bresaola, grana e noci", d: "40 g di bresaola + 15 g di grana + 2 noci", p: ["bresaola", "noci"] },
       { id: "rot", t: "Rotolini di tacchino", d: "6 fette di fesa di tacchino + 20 g di formaggio spalmabile", p: ["bresaola"] },
     ] },
@@ -117,7 +117,7 @@ window.CIBO = {
   // scritti dal PT, NUTRIZIONE_FASE2_VALORI), r = intervallo "in linea" (se manca: kcal ±10% come da regola anti-ossessione, proteine
   // −15%/+30%, carboidrati ±20% (almeno ±8 g), grassi ±5 g). src = cosa ha scritto il PT.
   pt: {
-    col: { t: "Colazione del PT (A, B o C)", c: [365, 27, 40, 11], r: { k: [330, 410], p: [23, 32], c: [15, 66], g: [2, 24] }, src: "A · 30 g di proteine + 50 g di carboidrato · B · 3 uova + 1 fetta di pane di segale + burro d'arachidi · C · yogurt + 60-70 g di cornflakes" },
+    col: { t: "Colazione del PT (A, B o C)", c: [365, 27, 40, 11], r: { k: [330, 410], p: [10, 40], c: [15, 66], g: [2, 24] }, src: "A · 30 g di proteine + 50 g di carboidrato · B · 3 uova + 1 fetta di pane di segale + burro d'arachidi · C · yogurt + 60-70 g di cornflakes" },
     s1: { t: "Spuntino 1 del PT (A o B)", c: [160, 14, 10, 7], r: { k: [135, 195], p: [7, 24], c: [3, 16], g: [1, 14] }, src: "A · yogurt + 10 mandorle (o 2 noci) · B · 60 g di bresaola + 2 gallette" },
     pr80: { t: "Pranzo da 80 del PT (giorno di palestra)", c: [606, 55, 71, 12], src: "80 g di riso (o 75 g di pasta) + 200 g di pollo (200 di carne, 250 di pesce) + verdure + 1 cucchiaio d'olio" },
     pr40: { t: "Pranzo da 40 del PT (giorno dopo la palestra)", c: [473, 53, 39, 12], src: "40 g di riso + 200 g di pollo (200 di carne, 250 di pesce) + verdure + 1 cucchiaio d'olio" },
@@ -178,7 +178,7 @@ window.CIBO = {
         { tool: "piatto", p: ["manzo", "rucola", "pomodorini"], t: "Pasto 1: mettili su rucola e pomodorini, con un filo di aceto balsamico." },
         { tool: "padella", p: ["verdure", "manzo"], t: "Stessa padella, fuoco medio: peperoni con paprika, cumino e peperoncino per 5 minuti mescolando. Poi l'altra metà degli straccetti per 2 minuti.", min: 7 },
       ],
-      p1: "Tagliata su rucola e pomodorini + pane", p2: "Fajitas con peperoni + riso, o arrotolate nella piadina (senza olio)", olio: "1 cucchiaio a pasto in tutto" },
+      p1: "Tagliata su rucola e pomodorini + pane", p2: "Fajitas con peperoni + riso, o arrotolate nella piadina (senza olio)", olio: "mezzo cucchiaio a pasto: il manzo ha già i suoi grassi" },
     { id: "polpette", pp: "200 g di macinato magro (5-6 polpette)", vv: "insalata a volontà (o 75 g di passata nel pasto 2)", cb: { p1: "Patate", p2: "Riso" }, go: "m", porta: "Polpette al sugo nel contenitore: 2-3 minuti al microonde, coperte.", s: "Polpette", name: "Polpette in friggitrice, due sughi", min: 20, lvl: 1, tools: "ciotola + friggitrice", main: true, p: ["polpette", "insalata", "patate"],
       ingr: ["400 g di macinato magro (5-7% di grassi)", "1 albume", "1 spicchio d'aglio o aglio in polvere, prezzemolo o origano, sale", "Facoltativo: 1 cucchiaio di pangrattato", "Pasto 2: 150 g di passata, origano, peperoncino"],
       steps: [
@@ -200,14 +200,14 @@ window.CIBO = {
       ],
       p1: "Pasta gamberi, zucchine e peperoncino", p2: "Gamberi alla paprika + cous cous o patate", olio: "1 cucchiaio a pasto in tutto" },
     { id: "gnocchi", pp: "250 g di gamberi sgusciati", vv: "1 zucchina (circa 150 g)", cb: { p1: "Gnocchi" }, go: "c", porta: "Da mangiare appena fatti: riscaldati perdono la croccantezza.", s: "Gnocchi croccanti", name: "Gnocchi croccanti con gamberi", min: 18, lvl: 2, tools: "friggitrice", main: true, one: true, p: ["gnocchi", "gamberi", "verdure"],
-      ingr: ["Gnocchi di patate da frigo: 200 g nei giorni di palestra, 100 g negli altri, 150 g a cena", "250 g di gamberi sgusciati (scongelati)", "1 zucchina a rondelle", "1 cucchiaino d'olio, paprika, sale, prezzemolo"],
+      ingr: ["Gnocchi di patate da frigo: 200 g nei giorni di palestra, 100 g negli altri, 150 g a cena", "250 g di gamberi sgusciati (scongelati)", "1 zucchina a rondelle", "1 cucchiaio d'olio, paprika, sale, prezzemolo"],
       steps: [
         { tool: "friggitrice", t: "Friggitrice a 200 °C per 3 minuti.", min: 3 },
         { tool: "ciotola", p: ["gnocchi"], t: "Gnocchi crudi (non vanno bolliti!) in una ciotola con 1 cucchiaino d'olio e un pizzico di sale: mescola bene.", tip: "È questo il trucco: in friggitrice da crudi diventano croccanti fuori e morbidi dentro." },
         { tool: "friggitrice", p: ["gnocchi"], t: "Gnocchi nel cestello su carta forno, 200 °C per 10 minuti; scuoti il cestello a metà.", min: 10 },
         { tool: "friggitrice", p: ["gnocchi", "gamberi", "verdure"], t: "Aggiungi gamberi asciugati e zucchine con paprika e sale, mescola, altri 6-7 minuti.", min: 7, ok: "Gnocchi dorati e gamberi rosa piegati a C." },
       ],
-      p1: "Un pasto completo: gnocchi croccanti, gamberi e zucchine", olio: "solo il cucchiaino degli gnocchi" },
+      p1: "Un pasto completo: gnocchi croccanti, gamberi e zucchine", olio: "1 cucchiaio a pasto (i gamberi sono magri)" },
     { id: "salmone", pp: "1 trancio di salmone da 150 g", vv: "insalata a volontà", cb: { p1: "Patate dolci", p2: "Patate dolci" }, go: "m", porta: "Salmone e patate dolci nel contenitore: 2 minuti al microonde.", s: "Salmone", name: "Salmone e patate dolci", min: 22, lvl: 1, tools: "friggitrice", main: true, p: ["salmone", "pdolci", "insalata"],
       ingr: ["2 tranci di salmone da 150 g", "500-550 g di patate dolci", "1 limone, erbe (prezzemolo o erbe di Provenza)", "Paprika, aglio, cipolla in polvere, peperoncino (cajun)"],
       steps: [
@@ -224,16 +224,16 @@ window.CIBO = {
         { tool: "contenitore", p: ["ceci", "pollo"], t: "Dividi in 2: il pasto 1 col riso; il pasto 2 con la pasta, diventa una pasta e ceci col pollo." },
       ],
       p1: "Curry + 40 g di riso (80 nei giorni di palestra)", p2: "Pasta e ceci col pollo (40 g di pasta) o con 50 g di pane", olio: "1 cucchiaio a pasto in tutto" },
-    { id: "risosaltato", pp: "2 uova + 150 g di albume", vv: "150 g di verdure miste surgelate", cb: { p1: "Riso" }, go: "m", porta: "Nel contenitore: 2 minuti al microonde con un cucchiaio d'acqua sopra.", s: "Riso saltato", name: "Riso saltato con uova e verdure", min: 12, lvl: 2, tools: "una padella", main: true, one: true, p: ["riso", "strapazzate", "piselli"],
-      ingr: ["1 porzione di riso già cotto e freddo (dal cuociriso: da 80 g o 40 g crudi)", "2 uova + 150 g di albume", "150 g di verdure surgelate miste (piselli, carote)", "1 cucchiaio di salsa di soia, 1 cucchiaino d'olio, pepe"],
+    { id: "risosaltato", pp: "2 uova + 250 g di albume", vv: "150 g di verdure miste surgelate", cb: { p1: "Riso" }, go: "m", porta: "Nel contenitore: 2 minuti al microonde con un cucchiaio d'acqua sopra.", s: "Riso saltato", name: "Riso saltato con uova e verdure", min: 12, lvl: 2, tools: "una padella", main: true, one: true, p: ["riso", "strapazzate", "piselli"],
+      ingr: ["1 porzione di riso già cotto e freddo (dal cuociriso: da 80 g o 40 g crudi)", "2 uova + 250 g di albume", "150 g di verdure surgelate miste (piselli, carote)", "1 cucchiaio di salsa di soia, 1 cucchiaino d'olio, pepe"],
       steps: [
         { tool: "padella", p: ["verdure"], t: "Padella a fuoco medio-alto con 1 cucchiaino d'olio: verdure surgelate per 4 minuti.", min: 4 },
         { tool: "padella", p: ["strapazzate"], t: "Spostale da un lato. Dall'altro versa uova e albume sbattuti: mescola piano con la paletta finché si rapprendono a pezzetti (1-2 minuti).", min: 2 },
         { tool: "padella", p: ["riso", "strapazzate", "piselli"], t: "Aggiungi il riso freddo sgranato con le mani e la salsa di soia. Mescola tutto 3 minuti a fuoco alto.", min: 3, ok: "Il riso è caldo e qualche chicco è appena tostato.", tip: "Il riso del giorno prima è il segreto: quello appena cotto diventa una colla." },
       ],
       p1: "Un pasto completo, ottimo per finire il riso del cuociriso", olio: "il cucchiaino in padella; la soia non aggiunge grassi" },
-    { id: "pizzapiadina", pp: "1 mozzarella light (125 g) + 100 g di bresaola", vv: "rucola + 3 cucchiai di passata", cb: { p1: "Piadina (niente olio)" }, go: "c", porta: "Da mangiare appena fatta: riscaldata diventa molle.", s: "Pizza di piadina", name: "Pizza di piadina in friggitrice", min: 8, lvl: 2, tools: "friggitrice", main: true, one: true, p: ["pizza"],
-      ingr: ["1 piadina (a cena: ¾, togli una striscia)", "3 cucchiai di passata", "1 mozzarella light (125 g)", "100 g di bresaola (dopo la cottura) o di pollo avanzato", "Origano, rucola, sale"],
+    { id: "pizzapiadina", pp: "mezza mozzarella light + 100 g di bresaola", vv: "rucola + 3 cucchiai di passata", cb: { p1: "Piadina (niente olio)" }, go: "c", porta: "Da mangiare appena fatta: riscaldata diventa molle.", s: "Pizza di piadina", name: "Pizza di piadina in friggitrice", min: 8, lvl: 2, tools: "friggitrice", main: true, one: true, p: ["pizza"],
+      ingr: ["1 piadina (a cena: ¾, togli una striscia)", "3 cucchiai di passata", "Mezza mozzarella light", "100 g di bresaola (dopo la cottura) o di pollo avanzato", "Origano, rucola, sale"],
       steps: [
         { tool: "tagliere", p: ["mozzarella"], t: "Mozzarella a cubetti e lasciala su un foglio di carta da cucina 5 minuti: perde l'acqua.", tip: "Senza questo passaggio la piadina diventa molle." },
         { tool: "piatto", p: ["piadina", "sugo"], t: "Piadina sulla carta forno: passata stesa col dorso del cucchiaio fino a 1 cm dal bordo, sale e origano." },
@@ -249,38 +249,38 @@ window.CIBO = {
         { tool: "piatto", p: ["pasta", "tonno", "pomodorini"], t: "Calda: scola e mescola subito col condimento. Fredda: scolala, passala 10 secondi sotto l'acqua fredda, poi aggiungi tonno, pomodorini, rucola e origano." },
       ],
       p1: "Pasta al tonno calda", p2: "Pasta al tonno fredda con rucola, da portare", olio: "niente: basta quello del tonno" },
-    { id: "frittatapasta", pp: "2 uova + 150 g di albume", vv: "100 g di pomodorini + insalata", cb: { p1: "Pasta" }, go: "p", porta: "Buona anche fredda: tagliata a spicchi nel contenitore.", s: "Frittata di pasta", name: "Frittata di pasta in friggitrice", min: 18, lvl: 2, tools: "ciotola + friggitrice", main: true, one: true, p: ["frittata", "pasta", "pomodorini"],
-      ingr: ["1 porzione di pasta già cotta (anche avanzata dal giorno prima)", "2 uova + 150 g di albume", "Pomodorini, origano o paprika, sale, pepe", "Uno stampo da forno piccolo o la carta forno a vaschetta"],
+    { id: "frittatapasta", pp: "2 uova + 250 g di albume", vv: "100 g di pomodorini + insalata", cb: { p1: "Pasta" }, go: "p", porta: "Buona anche fredda: tagliata a spicchi nel contenitore.", s: "Frittata di pasta", name: "Frittata di pasta in friggitrice", min: 18, lvl: 2, tools: "ciotola + friggitrice", main: true, one: true, p: ["frittata", "pasta", "pomodorini"],
+      ingr: ["1 porzione di pasta già cotta (anche avanzata dal giorno prima)", "2 uova + 250 g di albume", "Pomodorini, origano o paprika, sale, pepe", "Uno stampo da forno piccolo o la carta forno a vaschetta"],
       steps: [
         { tool: "ciotola", p: ["uova"], t: "Sbatti uova e albume con sale, pepe e origano per 30 secondi." },
         { tool: "ciotola", p: ["pasta"], t: "Aggiungi la pasta e mescola finché è tutta bagnata d'uovo." },
         { tool: "friggitrice", p: ["frittata", "pomodorini"], t: "Versa nello stampo o nella carta forno piegata a vaschetta, pomodorini sopra. 180 °C per 14-16 minuti.", min: 15, ok: "Muovi lo stampo: il centro non trema più ed è dorato sopra.", tip: "Se sopra si colora troppo e dentro è ancora molle, copri con un pezzo di carta forno." },
       ],
       p1: "Buona calda e fredda: perfetta da portare al lavoro", olio: "1 cucchiaio a crudo con l'insalata" },
-    { id: "frittata", pp: "2 uova + 150 g di albume", vv: "150 g di verdure + insalata", cb: { p1: "Pane" }, go: "p", porta: "Buona anche fredda: nel contenitore con il pane a parte.", s: "Frittata", name: "Frittata di verdure in friggitrice", min: 15, lvl: 1, tools: "ciotola + friggitrice", main: true, one: true, p: ["frittata", "pane", "insalata"],
-      ingr: ["2 uova + 150 g di albume", "150 g di verdure surgelate (spinaci, zucchine o peperoni)", "Sale, pepe, origano o paprika"],
+    { id: "frittata", pp: "2 uova + 250 g di albume", vv: "150 g di verdure + insalata", cb: { p1: "Pane" }, go: "p", porta: "Buona anche fredda: nel contenitore con il pane a parte.", s: "Frittata", name: "Frittata di verdure in friggitrice", min: 15, lvl: 1, tools: "ciotola + friggitrice", main: true, one: true, p: ["frittata", "pane", "insalata"],
+      ingr: ["2 uova + 250 g di albume", "150 g di verdure surgelate (spinaci, zucchine o peperoni)", "Sale, pepe, origano o paprika"],
       steps: [
         { tool: "microonde", p: ["spinaci"], t: "Verdure surgelate nel contenitore, 3 minuti al microonde. Poi strizzale col cucchiaio e butta l'acqua.", min: 3, tip: "Se non le strizzi, la frittata viene acquosa." },
         { tool: "ciotola", p: ["uova", "spinaci"], t: "Sbatti uova, albume, sale e spezie, aggiungi le verdure." },
         { tool: "friggitrice", p: ["frittata"], t: "Versa in uno stampino o nella carta forno a vaschetta. 180 °C per 10-12 minuti.", min: 11, ok: "Il centro non trema e i bordi sono dorati." },
       ],
       p1: "Frittata + pane o patate + insalata (anche fredda da portare)", olio: "1 cucchiaio" },
-    { id: "farro", pp: "1 mozzarella light (125 g) + 100 g di pollo o bresaola", vv: "pomodorini e rucola", cb: { p1: "Farro o orzo precotti in busta" }, go: "p", porta: "Pronta da mangiare fredda, in borsa termica.", s: "Farro freddo", name: "Insalata fredda di farro", min: 5, lvl: 1, tools: "un contenitore", main: true, one: true, p: ["farro", "mozzarella", "pomodorini", "rucola"],
-      ingr: ["170 g di farro o orzo precotto in busta (85 g nei giorni senza palestra)", "1 mozzarella light", "100 g di pollo avanzato o di bresaola", "Pomodorini, rucola, origano, sale"],
+    { id: "farro", pp: "mezza mozzarella light + 130 g di pollo o bresaola", vv: "pomodorini e rucola", cb: { p1: "Farro o orzo precotti in busta" }, go: "p", porta: "Pronta da mangiare fredda, in borsa termica.", s: "Farro freddo", name: "Insalata fredda di farro", min: 5, lvl: 1, tools: "un contenitore", main: true, one: true, p: ["farro", "mozzarella", "pomodorini", "rucola"],
+      ingr: ["170 g di farro o orzo precotto in busta (85 g nei giorni senza palestra)", "Mezza mozzarella light", "130 g di pollo avanzato o di bresaola", "Pomodorini, rucola, origano, sale"],
       steps: [
         { tool: "contenitore", p: ["farro", "mozzarella", "pomodorini", "rucola"], t: "Apri la busta e sgrana il farro con la forchetta nel contenitore. Aggiungi mozzarella a cubetti, pollo o bresaola a striscioline, pomodorini a metà, rucola, origano e un pizzico di sale. Mescola." },
       ],
-      p1: "Vale un pranzo da 80. Si tiene in frigo fino al giorno dopo", olio: "niente o mezzo cucchiaio: la mozzarella ha già grassi" },
-    { id: "frigo", pp: "2 uova sode + 60 g di bresaola, oppure 100 g di bresaola + 1 vasetto di fiocchi", vv: "verdure in busta a volontà", cb: { p1: "Riso" }, go: "p", porta: "Si compone nel contenitore la sera prima, in borsa termica.", s: "Frigo vuoto", name: "Piatto frigo vuoto", min: 5, lvl: 1, tools: "un contenitore", main: true, one: true, p: ["riso", "uova", "insalata"],
-      ingr: ["1 porzione di carboidrati già pronta (riso del cuociriso, busta precotta o pane)", "2 uova sode + 60 g di bresaola, oppure 100 g di bresaola + 1 vasetto di fiocchi di latte", "Verdure in busta"],
+      p1: "Vale un pranzo da 80. Si tiene in frigo fino al giorno dopo", olio: "niente: la mozzarella ha già i grassi" },
+    { id: "frigo", pp: "2 uova + 100 g di albume + 60 g di bresaola, oppure 100 g di bresaola + 1 vasetto di fiocchi", vv: "verdure in busta a volontà", cb: { p1: "Riso" }, go: "p", porta: "Si compone nel contenitore la sera prima, in borsa termica.", s: "Frigo vuoto", name: "Piatto frigo vuoto", min: 5, lvl: 1, tools: "un contenitore", main: true, one: true, p: ["riso", "uova", "insalata"],
+      ingr: ["1 porzione di carboidrati già pronta (riso del cuociriso, busta precotta o pane)", "2 uova sode + 100 g di albume (90 secondi al microonde in una tazza) + 60 g di bresaola, oppure 100 g di bresaola + 1 vasetto di fiocchi di latte", "Verdure in busta"],
       steps: [
         { tool: "contenitore", p: ["riso", "uova", "insalata"], t: "Componi il piatto con quello che hai già pronto: carboidrato, proteina, verdure, 1 cucchiaio d'olio." },
       ],
-      p1: "Per i giorni in cui non hai cucinato niente", olio: "1 cucchiaio" },
+      p1: "Per i giorni in cui non hai cucinato niente", olio: "mezzo cucchiaio (bresaola e uova hanno già un po' di grassi)" },
 
     // ---------- NUOVI 21/11/2026: più gusto, stessa sostanza (200 g di proteina, verdure, carboidrato del momento) ----------
-    { id: "teriyaki", pp: "200 g di petto di pollo", vv: "200 g di broccoli surgelati", cb: { p1: "Riso", p2: "Riso" }, go: "m", porta: "Riso e pollo nel contenitore: 2 minuti al microonde con un cucchiaio d'acqua sul riso.", s: "Pollo teriyaki", name: "Pollo teriyaki con riso e broccoli", min: 20, lvl: 1, tools: "friggitrice + cuociriso + padella", main: true, p: ["pollo", "riso", "verdure"],
-      ingr: ["400 g di petto di pollo a cubetti", "400 g di broccoli surgelati", "Riso per 2 pasti (dosi nel riquadro «Il tuo piatto»)", "4 cucchiai di salsa di soia, 2 cucchiaini di miele", "Aglio e zenzero in polvere, semi di sesamo (facoltativi)", "Olio in spruzzino"],
+    { id: "teriyaki", pp: "200 g di petto di pollo", vv: "150 g di broccoli surgelati", cb: { p1: "Riso", p2: "Riso" }, go: "m", porta: "Riso e pollo nel contenitore: 2 minuti al microonde con un cucchiaio d'acqua sul riso.", s: "Pollo teriyaki", name: "Pollo teriyaki con riso e broccoli", min: 20, lvl: 1, tools: "friggitrice + cuociriso + padella", main: true, p: ["pollo", "riso", "verdure"],
+      ingr: ["400 g di petto di pollo a cubetti", "300 g di broccoli surgelati", "Riso per 2 pasti (dosi nel riquadro «Il tuo piatto»)", "4 cucchiai di salsa di soia, 2 cucchiaini di miele", "Aglio e zenzero in polvere, semi di sesamo (facoltativi)", "Olio in spruzzino"],
       steps: [
         { tool: "cuociriso", p: ["riso"], t: "Riso sciacquato nel cuociriso con l'acqua fino alla tacca giusta. Accendi e dimenticalo: fa tutto da solo.", min: 20, tip: "Sciacqualo 2 volte finché l'acqua è quasi limpida: così non diventa colla." },
         { tool: "friggitrice", p: ["pollo", "verdure"], t: "Pollo e broccoli (ancora surgelati) sulla carta forno, 4-5 spruzzate d'olio, un pizzico d'aglio. 200 °C per 15 minuti, a metà scuoti il cestello.", min: 15, ok: "Il cubetto più grosso è bianco dentro; i broccoli hanno le punte un po' bruciacchiate (è lì il gusto)." },
@@ -288,9 +288,9 @@ window.CIBO = {
         { tool: "padella", p: ["pollo"], t: "Pollo cotto in padella a fuoco vivo, versa la salsa e mescola per 1-2 minuti finché si attacca al pollo lucida e appiccicosa.", min: 2, ok: "Il sugo si è ristretto e il pollo è lucido.", tip: "Il miele brucia in fretta: fuoco alto ma non andare via, e spegni appena si addensa." },
         { tool: "contenitore", p: ["pollo", "riso", "verdure"], t: "Metà nel piatto con riso e broccoli, sesamo sopra se ce l'hai. L'altra metà nel contenitore, in frigo appena tiepida." },
       ],
-      p1: "Teriyaki con riso e broccoli", p2: "Uguale: riscaldato è buono come appena fatto", olio: "solo lo spruzzino" },
-    { id: "chili", pp: "170 g di macinato magro + 60 g di fagioli rossi", vv: "100 g di peperoni + passata", cb: { p1: "Riso", p2: "Piadina (niente olio)" }, go: "m", porta: "Chili nel contenitore, 2 minuti al microonde; la piadina si scalda 20 secondi. Riscaldato è ancora più buono.", s: "Chili piccante", name: "Chili di manzo piccante (e burrito il giorno dopo)", min: 25, lvl: 1, tools: "una padella grande", main: true, p: ["manzo", "sugo", "riso"],
-      ingr: ["340 g di macinato magro", "1 scatola piccola di fagioli rossi (240 g sgocciolati: ne usi metà, il resto in frigo per 3 giorni)", "200 g di peperoni surgelati a strisce", "300 g di passata", "Cumino, paprika affumicata, peperoncino, origano, aglio e cipolla in polvere", "Pasto 1: riso · Pasto 2: 1 piadina, 1 cucchiaio di yogurt, insalata"],
+      p1: "Teriyaki con riso e broccoli", p2: "Uguale: riscaldato è buono come appena fatto", olio: "mezzo cucchiaio a pasto (o lo spruzzino + un filo a crudo)" },
+    { id: "chili", pp: "200 g di macinato magro + 40 g di fagioli rossi", vv: "100 g di peperoni + passata", cb: { p1: "Riso", p2: "Piadina (niente olio)" }, go: "m", porta: "Chili nel contenitore, 2 minuti al microonde; la piadina si scalda 20 secondi. Riscaldato è ancora più buono.", s: "Chili piccante", name: "Chili di manzo piccante (e burrito il giorno dopo)", min: 25, lvl: 1, tools: "una padella grande", main: true, p: ["manzo", "sugo", "riso"],
+      ingr: ["400 g di macinato magro", "80 g di fagioli rossi sgocciolati (un terzo di scatola: il resto in frigo per 3 giorni)", "200 g di peperoni surgelati a strisce", "240 g di passata", "Cumino, paprika affumicata, peperoncino, origano, aglio e cipolla in polvere", "Pasto 1: riso · Pasto 2: 1 piadina, 1 cucchiaio di yogurt, insalata"],
       steps: [
         { tool: "padella", p: ["manzo"], t: "Padella grande antiaderente a fuoco medio-alto, 4-5 spruzzate d'olio. Macinato dentro e schiaccialo col cucchiaio di legno: deve sbriciolarsi. 5-6 minuti.", min: 6, ok: "Niente più rosa e il fondo comincia a sfrigolare.", tip: "Non mescolare in continuazione: lascialo fermo 1 minuto ogni tanto, così fa la crosticina." },
         { tool: "padella", p: ["manzo", "verdure"], t: "Peperoni surgelati e spezie: 1 cucchiaino di cumino, 1 di paprika, mezzo d'aglio e di cipolla, peperoncino a piacere. Mescola 2 minuti: le spezie tostate profumano il doppio.", min: 2 },
@@ -325,7 +325,7 @@ window.CIBO = {
         { tool: "friggitrice", p: ["pesce", "verdure"], t: "Filetti asciugati con carta da cucina sulla carta forno, panatura premuta sopra. Zucchine intorno con sale e 2 spruzzate d'olio. 190 °C per 12-14 minuti.", min: 13, ok: "Sopra dorato; il pesce si sfalda con la forchetta ed è bianco opaco.", tip: "Se il pesce è bagnato la panatura non si attacca: asciugalo bene." },
         { tool: "contenitore", t: "Qualche goccia di limone sopra appena fuori. Metà nel piatto, metà nel contenitore." },
       ],
-      p1: "Merluzzo gratinato + zucchine + patate", p2: "Merluzzo gratinato + zucchine + cous cous", olio: "1 cucchiaio a pasto, compreso quello della panatura" },
+      p1: "Merluzzo gratinato + zucchine + patate", p2: "Merluzzo gratinato + zucchine + cous cous", olio: "mezzo cucchiaio a pasto, compreso quello della panatura" },
     { id: "bowlmex", pp: "200 g di petto di pollo speziato", vv: "peperoni, mais, insalata + salsa yogurt e lime", cb: { p1: "Riso", p2: "Piadina (niente olio)" }, go: "p", porta: "La bowl si mangia anche fredda: salsa in un vasetto a parte. Il wrap arrotolato nella carta forno.", s: "Burrito bowl", name: "Burrito bowl di pollo (e wrap il giorno dopo)", min: 20, lvl: 1, tools: "friggitrice + cuociriso", main: true, p: ["pollo", "riso", "pomodorini"],
       ingr: ["400 g di petto di pollo a strisce", "160 g di peperoni surgelati, 60 g di mais in scatola", "Insalata, 60 g di yogurt intero, 1 lime", "Paprika affumicata, cumino, aglio, peperoncino, sale", "Pasto 1: riso · Pasto 2: 1 piadina"],
       steps: [
@@ -676,40 +676,40 @@ Object.assign(window.CIBO, {
   carbFood: { "Riso": "riso", "Pasta": "pasta", "Pasta integrale": "pastai", "Cous cous": "cous", "Farro o orzo": "farro", "Quinoa": "quinoa", "Riso precotto in busta": "rprec", "Farro o orzo precotti in busta": "farrop", "Gnocchi": "gnocchi", "Patate": "patate", "Patate dolci": "pdolci", "Pane": "pane", "Pane di segale": "segale", "Piadina (niente olio)": "piadina", "Cornflakes o gallette": "cornflakes" },
   // composizione delle caselle di colazione e spuntini ("s2g" = spuntino 2 nei giorni di palestra)
   comp: {
-    "col.paneuovo": "uovo 3, segale 1, noce 2, spruzz 5, soia 1", "col.pancake": "avena 50, prot 30, albume 1, latte 70, galletta 3", "col.A": "avena 50, prot 30, albume 1, latte 50, cacao 1, galletta 3",
+    "col.paneuovo": "uovo 3, segale 1, noce 2, spruzz 5, soia 1", "col.pancake": "avena 50, prot 30, albume 1, latte 70, galletta 1", "col.A": "avena 50, prot 30, albume 1, latte 50, cacao 1, galletta 1",
     "col.C": "yogurt 150, cornflakes 65, cacao 1", "col.A2": "prot 30, cornflakes 65", "col.B": "uovo 3, segale 1, noce 2, sale 1",
     "s1.pizzette": "galletta 2, passata 30, mozz 0.5", "s1.involtini": "bresaola 60, fiocchi 30, rucola 20, galletta 1", "s1.uovaripiene": "uovo 2, yogurt 15",
-    "s1.yog": "yogurt 150, noce 2", "s1.bre": "bresaola 60, galletta 2", "s1.fio": "fiocchi 150", "s1.uov": "uovo 2, sale 1", "s1.moz": "mozz 0.5, galletta 2", "s1.shn": "prot 30, noce 3", "s1.yogc": "yogurt 150, cornflakes 30", "s1.fiog": "fiocchi 150, galletta 2",
-    "s2g.shg": "prot 30, galletta 8, noce 3", "s2.bre": "bresaola 60, galletta 3", "s2.shn": "prot 30, noce 3", "s2.fiog": "fiocchi 150, galletta 2", "dc.shn": "prot 30, noce 3",
-    "s2g.pancake": "avena 50, prot 30, albume 1, latte 70, galletta 3, noce 3", "s2g.A": "avena 50, prot 30, albume 1, latte 50, cacao 1, galletta 3, noce 3",
+    "s1.yog": "yogurt 150, noce 2", "s1.bre": "bresaola 60, galletta 2", "s1.fio": "fiocchi 150", "s1.uov": "uovo 2, sale 1", "s1.moz": "mozz 0.5, galletta 2", "s1.shn": "prot 30, noce 2", "s1.yogc": "yogurt 150, cornflakes 10", "s1.fiog": "fiocchi 150, galletta 1",
+    "s2g.shg": "prot 30, galletta 8, noce 3", "s2.bre": "bresaola 70, galletta 4", "s2.shn": "prot 30, noce 2, galletta 2", "s2.fiog": "fiocchi 150, galletta 3", "dc.shn": "prot 30, noce 2",
+    "s2g.pancake": "avena 50, prot 30, albume 1, latte 70, galletta 1, noce 2", "s2g.A": "avena 50, prot 30, albume 1, latte 50, cacao 1, galletta 1, noce 2",
     "s2g.A2": "prot 30, cornflakes 65, noce 3", "s2g.pan": "pane 110, bresaola 60, noce 3",
-    "s2.fio": "segale 1, fiocchi 150, pomodorini 5", "s2.yog": "yogurt 150, cornflakes 30", "s2.pan": "pane 50, bresaola 50",
+    "s2.fio": "segale 1, fiocchi 150, pomodorini 5", "s2.yog": "yogurt 150, cornflakes 30", "s2.pan": "pane 50, bresaola 50, parmigiano 5",
     "dc.yog": "yogurt 150, noce 2", "dc.fio": "fiocchi 150",
     // 21/11/2026: nuove colazioni e spuntini
     "col.purg": "uovo 2, albume 2, passata 100, segale 1, olio 1, sale 1", "col.toastc": "pintegrale 2, pcotto 50, mozz 0.5", "col.wrapu": "piadina 0.5, uovo 2, albume 1, bresaola 30, rucola 15, spruzz 3",
     "col.salm": "segale 2, salaff 60, fiocchi 50", "col.tazzau": "uovo 1, albumeg 100, spinaci 30, parmigiano 5, segale 2", "col.frt": "pintegrale 2, uovo 1, albumeg 100, miele 1, spruzz 3",
-    "s1.bgn": "bresaola 40, parmigiano 15, noce 2", "s1.muf": "albumeg 150, uovo 0.5, spinaci 30, parmigiano 5", "s1.ceci": "ceci 120, spruzz 3", "s1.eda": "edamame 120, sale 1", "s1.rot": "tacchinoaff 6, spalmabile 20, galletta 1",
+    "s1.bgn": "bresaola 40, parmigiano 15, noce 2", "s1.muf": "albumeg 150, uovo 0.5, spinaci 30, parmigiano 5", "s1.ceci": "ceci 100, spruzz 3", "s1.eda": "edamame 120, sale 1", "s1.rot": "tacchinoaff 6, spalmabile 20, galletta 1",
     "s2g.pip": "piadina 1, polloc 80, yogurt 30, insalata 30", "s2g.shf": "prot 30, fettebisc 6, miele 1, noce 2", "s2g.tdt": "pintegrale 3, tacchinoaff 6, mozz 0.5",
-    "s2.muf": "albumeg 150, uovo 0.5, spinaci 30, parmigiano 5, segale 1", "s2.bgn": "bresaola 50, parmigiano 15, noce 2, galletta 1", "s2.ceci": "ceci 150, spruzz 3",
+    "s2.muf": "albumeg 150, uovo 0.5, spinaci 30, parmigiano 5, segale 1", "s2.bgn": "bresaola 50, parmigiano 15, noce 1, galletta 2", "s2.ceci": "ceci 150, bresaola 30, spruzz 3",
     "dc.bgn": "bresaola 40, parmigiano 15, noce 2", "dc.rot": "tacchinoaff 6, spalmabile 20",
   },
   // pranzo e cena: un pasto senza il carboidrato (si aggiunge quello del momento: scala 80/40/0 o cena). p2 = pasto 2 se diverso, gym = giorni di palestra
   mq: {
     pollo: "pollo 200, vgrill 200, spruzz 10, olio 1, sale 1", pollocrock: "pollo 200, cornflakes 30, albume 1, insalata 100, spruzz 10, olio 1, sale 1",
     pesce: { q: "merluzzo 250, pomodorini 8, insalata 50, spruzz 5, olio 2, sale 1", p2: "merluzzo 250, insalata 80, yogurt 30, sale 1" },
-    manzo: { q: "manzo 200, rucola 30, pomodorini 5, olio 2, balsamico 1, sale 1", p2: "manzo 200, peperoni 100, olio 2, soia 2" },
+    manzo: { q: "manzo 200, rucola 30, pomodorini 5, olio 1, balsamico 1, sale 1", p2: "manzo 200, peperoni 100, olio 1, soia 2" },
     polpette: { q: "macinato 200, albume 0.5, insalata 100, olio 1, sale 1", p2: "macinato 200, albume 0.5, passata 75, olio 1, sale 1" },
-    gamberi: "gamberi 250, zucchine 100, olio 2, sale 1", gnocchi: "gamberi 250, zucchine 150, olio 1, sale 1", salmone: "salmone 150, insalata 100, soia 2",
+    gamberi: "gamberi 250, zucchine 100, olio 2, sale 1", gnocchi: "gamberi 250, zucchine 150, olio 2, sale 1", salmone: "salmone 150, insalata 100, soia 2",
     curry: { leg: 1, q: "pollo 150, ceci 150, spinaci 75, passata 100, olio 1, sale 1", gym: "pollo 100, ceci 100, spinaci 75, passata 100, olio 1, sale 1", l0: "pollo 200, ceci 200, spinaci 75, passata 100, olio 1, sale 1" },
-    risosaltato: "uovo 2, albumeg 150, vmiste 150, olio 1, soia 3", pizzapiadina: "mozz 1, bresaola 100, passata 45, rucola 20, sale 1",
-    pastatonno: "tonno 150, pomodorini 7, sale 1", frittatapasta: "uovo 2, albumeg 150, pomodorini 7, insalata 50, olio 1, sale 1",
-    frittata: "uovo 2, albumeg 150, verdure 150, insalata 50, olio 1, soia 1", farro: "mozz 1, polloc 100, pomodorini 5, rucola 20, olio 1, sale 1",
-    frigo: "uovo 2, bresaola 60, insalata 150, olio 2, sale 1", altro: "pollo 200, verdure 200, olio 2, sale 1",
+    risosaltato: "uovo 2, albumeg 250, vmiste 150, olio 1, soia 3", pizzapiadina: "mozz 0.5, bresaola 100, passata 45, rucola 20, sale 1",
+    pastatonno: "tonno 150, pomodorini 7, sale 1", frittatapasta: "uovo 2, albumeg 250, pomodorini 7, insalata 50, olio 1, sale 1",
+    frittata: "uovo 2, albumeg 250, verdure 150, insalata 50, olio 1, soia 1", farro: "mozz 0.5, polloc 130, pomodorini 5, rucola 20, sale 1",
+    frigo: "uovo 2, albumeg 100, bresaola 60, insalata 150, olio 1, sale 1", altro: "pollo 200, verdure 200, olio 2, sale 1",
     mensa: "msec 1, verdure 200, olio 2", sala: "pastac 250, verdure 120, parmigiano 5, olio 3", rist: "polloc 150, verdure 200, olio 2",
     // 21/11/2026: nuovi piatti
-    teriyaki: "pollo 200, broccoli 200, soia 3, miele 1, spruzz 5", chili: "macinato 170, fagioli 60, peperoni 100, passata 150, spruzz 5, sale 1",
+    teriyaki: "pollo 200, broccoli 150, soia 3, miele 1, olio 1", chili: "macinato 200, fagioli 40, peperoni 100, passata 120, spruzz 5, sale 1",
     burger: { q: "macinato 200, pomodoro 80, insalata 30, mozz 0.25, ketchup 1", p2: "macinato 200, insalata 100, mozz 0.25, ketchup 1, spruzz 5" },
-    pizzaiola: "pollo 200, passata 100, mozz 0.25, insalata 100, olio 1, sale 1", merluzzogrt: "merluzzo 250, pane 15, parmigiano 5, zucchine 150, olio 2, sale 1",
+    pizzaiola: "pollo 200, passata 100, mozz 0.25, insalata 100, olio 1, sale 1", merluzzogrt: "merluzzo 250, pane 15, parmigiano 5, zucchine 150, olio 1, sale 1",
     bowlmex: "pollo 200, peperoni 80, mais 30, insalata 50, yogurt 30, olio 1, sale 1", pastapollo: "pollo 200, pomodorini 8, rucola 20, parmigiano 5, olio 2, sale 1",
     pastagamberi: "gamberi 250, zucchine 150, pomodorini 5, olio 2, sale 1", pastaragu: "macinato 200, passata 150, cipolla 30, carote 30, olio 1, sale 1",
   },
@@ -1330,4 +1330,75 @@ Object.assign(window.CIBO, {
   ];
   // kit anti-stanchezza: in cima alla lista della spesa
   C.shop.unshift({ cat: "😮‍💨 Kit anti-stanchezza (sempre in casa)", items: ["Bresaola", "Insalata in busta", "Verdure grigliate surgelate", "Albume in brick", "Uova", "Cous cous", "Merluzzo surgelato", "Gamberi surgelati", "Piadine", "Pane (anche in freezer, a fette)"] });
+
+  // ---------- 🍫 DOLCI NEL PIANO (25/11/2026) ----------
+  // L'utente: "mi piacciono i dolci: trova varianti accettabili, gioca con gli ingredienti". Ognuna è costruita sul pasto del PT
+  // che sostituisce (colazione ~365 kcal e 27 g di proteine, spuntino ~160, spuntino 2 ~465 con palestra / ~240 senza, dopo cena ~170).
+  // Gusti: niente frutta, solo noci, niente yogurt greco/skyr, niente proteine in polvere nello yogurt, crema di riso no.
+  const M = id => C.meals.find(m => m.id === id);
+  M("col").opts.push(
+    { id: "porr", sweet: 1, t: "Porridge al cacao", d: "40 g di fiocchi d'avena cotti in 150 ml di latte + 25 g di proteine + cacao amaro · 1 quadratino di fondente che si scioglie sopra", p: ["torta", "cioccolato"], box: "tazza", r: "porridgecacao", go: "m", porta: "Al lavoro col microonde: avena e cacao nella tazza da casa, il latte lo aggiungi lì." },
+    { id: "tira", sweet: 1, t: "Tiramisù in tazza", d: "4 fette biscottate bagnate nel caffè + crema di 100 g di ricotta e 15 g di proteine + cacao amaro sopra", p: ["toast", "crema"], box: "tazza", r: "tiramisu", go: "p", porta: "Fallo la sera prima in un barattolo: la mattina è perfetto, freddo dal frigo." },
+    { id: "crepe", sweet: 1, t: "Crêpe al cioccolato", d: "Crêpe di 100 g di albume + 40 g di avena + 20 g di proteine · dentro 1 cucchiaino di crema spalmabile al cacao", p: ["pancake", "cioccolato"], r: "crepecioc", go: "c", porta: "Meglio a casa, calda: 6 minuti in padella." },
+  );
+  M("s1").opts.push(
+    { id: "yogcac", sweet: 1, t: "Yogurt al cacao e noce", d: "Yogurt intero 150 g mescolato con cacao amaro e cannella + 1 noce sbriciolata", p: ["crema", "noci"], box: "ciotola", go: "p", easy: 1, porta: "Cacao già mescolato nel vasetto, noce in tasca." },
+    { id: "ricac", sweet: 1, t: "Crema di ricotta al cacao", d: "80 g di ricotta + cacao amaro + 1 cucchiaino di miele e cannella: sembra una mousse", p: ["crema"], box: "ciotola", go: "p", easy: 1, porta: "Già mescolata in un barattolino, in borsa termica." },
+    { id: "ciocc", sweet: 1, t: "Cioccolata calda proteica", d: "150 ml di latte + 25 g di proteine + 1 cucchiaino di cacao, 60-90 secondi al microonde", p: ["shaker", "cioccolato"], box: "tazza", r: "cioccolata", go: "m", porta: "Polvere e cacao nello shaker, latte al lavoro: microonde 60 secondi." },
+  );
+  M("s2").gym.push(
+    { id: "pcac", sweet: 1, t: "Pancake al cacao col miele", d: "Pancake proteici (50 g di avena + 30 g di proteine + 1 albume + cacao) · 1 cucchiaino di miele sopra · 2 gallette e 1 noce", p: ["pancake", "cioccolato"], r: "pancake", go: "p", porta: "Falli la sera prima: freddi sono buoni, il miele al momento." },
+    { id: "cfl", sweet: 1, t: "Latte al cacao e cornflakes", d: "200 ml di latte frullato con 30 g di proteine e cacao, versato su 50 g di cornflakes · 1 noce", p: ["shaker", "cornflakes", "noci"], box: "ciotola", go: "p", easy: 1, porta: "Shaker con polvere e cacao, cornflakes in un barattolo: latte al momento." },
+  );
+  M("s2").opts.push(
+    { id: "fdol", sweet: 1, t: "Fiocchi di latte dolci", d: "1 vasetto di fiocchi di latte + 20 g di cornflakes + 1 cucchiaino di miele e cannella", p: ["fiocchi", "cornflakes"], box: "ciotola", go: "p", easy: 1, porta: "Vasetto in borsa termica, cornflakes in un sacchetto: li unisci al momento." },
+    { id: "ciocg", sweet: 1, t: "Cioccolata proteica e gallette", d: "Cioccolata calda proteica (150 ml di latte + 25 g di proteine + cacao) + 2 gallette", p: ["shaker", "gallette", "cioccolato"], box: "tazza", r: "cioccolata", go: "m", porta: "Polvere e cacao nello shaker; gallette nel sacchetto." },
+  );
+  M("dc").opts.push(
+    { id: "yogfond", sweet: 1, t: "Yogurt al cacao e fondente", d: "Yogurt intero 150 g con cacao amaro + 1 quadratino di cioccolato fondente a pezzetti", p: ["crema", "cioccolato"], box: "ciotola" },
+    { id: "ciocc", sweet: 1, t: "Cioccolata calda proteica", d: "150 ml di latte + 25 g di proteine + 1 cucchiaino di cacao, calda: perfetta la sera d'inverno", p: ["shaker", "cioccolato"], box: "tazza", r: "cioccolata" },
+    { id: "ricac", sweet: 1, t: "Crema di ricotta al cacao", d: "80 g di ricotta + cacao amaro + 1 cucchiaino di miele e cannella", p: ["crema"], box: "ciotola" },
+  );
+  Object.assign(C.comp, {
+    "col.porr": "avena 40, latte 150, prot 25, cacao 1, cioccolato 1", "col.tira": "fettebisc 4, ricotta 100, prot 15, cacao 1, latte 20, caffe 1",
+    "col.crepe": "albumeg 100, avena 40, latte 50, prot 20, nutella 1, spruzz 3",
+    "s1.yogcac": "yogurt 150, cacao 1, noce 1", "s1.ricac": "ricotta 80, cacao 1, miele 1", "s1.ciocc": "prot 25, latte 150, cacao 1",
+    "s2g.pcac": "avena 50, prot 30, albume 1, latte 70, cacao 1, miele 1, galletta 2, noce 1", "s2g.cfl": "prot 30, latte 200, cacao 1, cornflakes 50, noce 1",
+    "s2.fdol": "fiocchi 150, cornflakes 20, miele 1", "s2.ciocg": "prot 25, latte 150, cacao 1, galletta 2",
+    "dc.yogfond": "yogurt 150, cacao 1, cioccolato 1", "dc.ciocc": "prot 25, latte 150, cacao 1", "dc.ricac": "ricotta 80, cacao 1, miele 1",
+  });
+  C.recipes.push(
+    { id: "porridgecacao", sweet: 1, go: "m", porta: "Al lavoro col microonde: avena e cacao nella tazza, il latte lo aggiungi lì.", s: "Porridge al cacao", name: "Porridge al cacao con quadratino fondente", min: 5, lvl: 1, tools: "tazza grande + microonde", for: { col: "porr" }, cat: "col", box: "tazza", p: ["torta", "cioccolato"],
+      ingr: ["40 g di fiocchi d'avena", "150 ml di latte", "25 g di proteine in polvere", "1 cucchiaino di cacao amaro, cannella", "1 quadratino di cioccolato fondente"],
+      steps: [
+        { tool: "microonde", p: ["torta"], t: "Avena e latte nella tazza grande: microonde 2 minuti, mescola, altri 30 secondi.", min: 3, ok: "È diventato una crema densa.", tip: "Tazza grande: il latte sale e trabocca." },
+        { tool: "ciotola", p: ["shaker"], t: "Aspetta 1 minuto, poi mescola dentro proteine, cacao e cannella; se è troppo denso un goccio di latte.", tip: "Le proteine nel porridge bollente fanno grumi: prima fallo intiepidire." },
+        { tool: "piatto", p: ["cioccolato"], t: "Il quadratino di fondente sopra: si scioglie in 1 minuto. Mescola o lascialo a chiazze.", ok: "Sa di budino al cioccolato." },
+      ], p1: "Colazione dolce e calda, come una colazione A del PT" },
+    { id: "tiramisu", sweet: 1, go: "p", porta: "Fallo la sera prima in un barattolo: la mattina è perfetto.", s: "Tiramisù in tazza", name: "Tiramisù proteico in tazza", min: 5, lvl: 1, tools: "tazza o barattolo + ciotola", for: { col: "tira" }, cat: "col", box: "tazza", p: ["toast", "crema"],
+      ingr: ["4 fette biscottate", "1 tazzina di caffè (anche avanzato, freddo)", "100 g di ricotta", "15 g di proteine in polvere (vaniglia se ce l'hai)", "1-2 cucchiai di latte", "Cacao amaro per la spolverata"],
+      steps: [
+        { tool: "ciotola", p: ["crema"], t: "Ricotta, proteine e 1-2 cucchiai di latte: mescola con la forchetta 1 minuto.", ok: "È una crema liscia, senza grumi bianchi." },
+        { tool: "piatto", p: ["toast"], t: "Spezza le fette biscottate e bagnale nel caffè, un secondo per lato.", tip: "Più di un secondo e si sfaldano." },
+        { tool: "contenitore", p: ["toast", "crema"], t: "Nella tazza: uno strato di fette, metà crema, altre fette, il resto della crema. Spolvera di cacao.", ok: "Sopra è tutto marrone di cacao." },
+        { tool: "contenitore", p: ["crema"], t: "In frigo almeno 1 ora (meglio la notte): le fette diventano morbide come savoiardi." },
+      ], p1: "Colazione dolce da preparare la sera prima" },
+    { id: "crepecioc", sweet: 1, go: "c", porta: "Meglio a casa, calda.", s: "Crêpe al cioccolato", name: "Crêpe proteica al cioccolato", min: 8, lvl: 2, tools: "frullatore o forchetta + padella antiaderente", for: { col: "crepe" }, cat: "col", p: ["pancake", "cioccolato"],
+      ingr: ["100 g di albume in brick", "40 g di fiocchi d'avena (frullati: diventano farina)", "50 ml di latte", "20 g di proteine in polvere", "1 cucchiaino di crema spalmabile al cacao", "Olio in spruzzino, cannella"],
+      steps: [
+        { tool: "ciotola", p: ["pancake"], t: "Frulla (o sbatti con la forchetta) albume, avena, latte, proteine e cannella.", ok: "Pastella liquida come latte denso, senza grumi." },
+        { tool: "padella", p: ["pancake"], t: "Padella antiaderente a fuoco medio, 3 spruzzate d'olio. Versa la pastella e ruota la padella per allargarla.", min: 2, ok: "I bordi si staccano da soli e sopra non è più lucido.", tip: "Fuoco alto = fuori bruciata, dentro cruda." },
+        { tool: "padella", p: ["pancake"], t: "Girala con la paletta (aiutati con un piatto) e cuoci 1 minuto dall'altro lato.", min: 1 },
+        { tool: "piatto", p: ["cioccolato"], t: "Spalma il cucchiaino di crema al cacao finché è calda e arrotolala.", ok: "La crema si scioglie e cola un po': è il momento." },
+      ], p1: "Colazione dolce da colazione della domenica" },
+    { id: "cioccolata", sweet: 1, go: "m", porta: "Polvere e cacao nello shaker; latte e microonde al momento.", s: "Cioccolata proteica", name: "Cioccolata calda proteica", min: 3, lvl: 1, tools: "shaker + tazza + microonde", for: { s1: "ciocc", dc: "ciocc" }, cat: "sp", box: "tazza", p: ["shaker", "cioccolato"],
+      ingr: ["150 ml di latte freddo", "25 g di proteine in polvere (cioccolato o vaniglia)", "1 cucchiaino di cacao amaro", "Cannella o un pizzico di peperoncino (facoltativi)"],
+      steps: [
+        { tool: "ciotola", p: ["shaker"], t: "Latte FREDDO, proteine e cacao nello shaker: agita 20 secondi.", tip: "Con il latte già caldo le proteine fanno grumi." },
+        { tool: "microonde", p: ["cioccolato"], t: "Versa nella tazza: microonde 30 secondi, mescola, altri 30-45 secondi.", min: 1, ok: "È calda e fuma appena, senza bollire.", tip: "Se bolle diventa granulosa." },
+      ], p1: "Spuntino o dopo cena dolce, caldo" },
+  );
+  for (const id of ["pancake", "torta", "yogurtcrunch", "frenchtoast"]) { const r = C.recipes.find(x => x.id === id); if (r) r.sweet = 1; }
+  for (const o of M("col").opts) if (["pancake", "A", "C", "frt"].includes(o.id)) o.sweet = 1;
+  for (const o of M("s2").gym) if (["pancake", "A", "shf"].includes(o.id)) o.sweet = 1;
 })();

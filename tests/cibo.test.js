@@ -170,13 +170,14 @@ T("Pasto del PT: obiettivi del giorno = somma dei pasti del PT", () => {
 T("Pasto del PT: confronto e verdetto", () => {
   const C = ptCmp([606, 55, 71, 12], "pr80"); ok(C.every(r => r.st === "ok"), "il pasto del PT è in linea con se stesso");
   eq(ptVerdict(C, "pr80"), "In linea col pasto del PT ✓");
-  const H = ptCmp([830, 55, 71, 28], "pr80"); eq([H[0].st, H[3].st], ["hi2", "hi2"], "kcal e grassi molto sopra");
+  const H = ptCmp([900, 55, 71, 28], "pr80"); eq([H[0].st, H[3].st], ["hi2", "hi2"], "kcal e grassi molto sopra");
+  eq(ptCmp([690, 55, 71, 12], "pr80")[0].st, "near", "appena sopra: tolleranza, niente colore"); eq(ptCmp([740, 55, 71, 12], "pr80")[0].st, "hi", "sopra davvero: arancio");
   ok(/grassi \+16 g \(≈ 2 cucchiai d'olio/.test(ptVerdict(H, "pr80")), ptVerdict(H, "pr80"));
   eq(ptCmp([606, 80, 71, 12], "pr80")[1].st, "up", "proteine in più non sono un errore");
   ok(/proteine/.test(ptVerdict(ptCmp([600, 30, 80, 14], "pr80"), "pr80")), "proteine basse segnalate");
   // il PT dice: colazione A, B e C sono tutte del piano
   for (const o of ["A2", "B"]) { const v = valOfQ(baseQ("col", o, D0)); ok(!ptBad(ptCmp(v, "col")), `colazione ${o} del PT fuori dalla fascia: ${v}`); }
-  const Cc = ptCmp(valOfQ(baseQ("col", "C", D0)), "col"); eq(Cc.map(r => r.st), ["ok", "lo", "ok", "ok"], "colazione C del PT: solo le proteine basse");
+  const Cc = ptCmp(valOfQ(baseQ("col", "C", D0)), "col"); eq(Cc.map(r => r.st), ["ok", "ok", "ok", "ok"], "colazione C del PT: in linea (opzione del PT)");
 });
 
 T("Simula: giornata del PT in linea e dati veri intatti", () => {
@@ -200,7 +201,7 @@ T("⚡ Cene veloci: in linea col PT a cena e a pranzo, al massimo 15 minuti", ()
   const Q = CB.recipes.filter(r => r.quick); ok(Q.length >= 6, "cene veloci: " + Q.length);
   simRun(() => { for (const r of Q) { check(r.min <= 15 && r.one && r.main, `${r.id}: non è una cena veloce da 1 pasto`);
     for (const [t, mid] of [["g", "ce"], ["g", "pr"], ["a", "pr"], ["r", "pr"]]) { if (mid === "pr" && t === "r" && STRICT.has(r.id)) continue;
-      const d = SIMD[t], C = ptCmp(valOfQ(baseQ(mid, r.id, d)), ptKey(mid, d)); check(C.every(x => x.st === "ok" || x.st === "up" || (x.n === "c" && x.st === "lo")), `${r.id} ${ptKey(mid, d)}: ${C.map(x => x.n + " " + x.x + " " + x.st).join(", ")}`); } } });
+      const d = SIMD[t], C = ptCmp(valOfQ(baseQ(mid, r.id, d)), ptKey(mid, d)); check(C.every(x => x.st === "ok" || x.st === "up" || x.st === "near" || (x.n === "c" && x.st === "lo")), `${r.id} ${ptKey(mid, d)}: ${C.map(x => x.n + " " + x.x + " " + x.st).join(", ")}`); } } });
   ok(CB.sapori.length >= 10 && CB.sapori.every(x => x.n && x.how), "sapori");
 });
 
@@ -254,7 +255,7 @@ T("🥫 Con quello che hai: solo ricette possibili, adattate alla proteina che h
   // l'adattamento entra nei conti
   const before = baseQ("pr", "cacciatora", d); setAd(d, "cacciatora", cac.use); const after = baseQ("pr", "cacciatora", d);
   ok(before.some(([f]) => f === "pollo") && after.some(([f]) => f === "manzo") && !after.some(([f]) => f === "pollo"), "baseQ col manzo");
-  const C = ptCmp(valOfQ(after), ptKey("pr", d)); ok(C.every(x => x.st === "ok" || x.st === "up" || x.n === "g"), "col manzo ancora vicino al PT: " + C.map(x => x.n + x.st).join(","));
+  const C = ptCmp(valOfQ(after), ptKey("pr", d)); ok(C.every(x => x.st === "ok" || x.st === "up" || x.st === "near" || x.n === "g"), "col manzo ancora vicino al PT: " + C.map(x => x.n + x.st).join(","));
   setAd(d, "cacciatora", null); eq(JSON.stringify(baseQ("pr", "cacciatora", d)), JSON.stringify(before), "togliere l'adattamento torna al pollo");
   // solo uova: nessuna cucinata → un pasto veloce fattibile
   setP({ uovo: 1 }); const h2 = todayPlan(d, true), id2 = (h2.match(/data-tp="cook" data-r="([^"]+)"/) || [])[1]; ok(id2 && recipeById(id2).quick && canMake(recipeById(id2)).ok, "con le uova: pasto veloce " + id2);
@@ -266,4 +267,22 @@ T("🥫 Con quello che hai: solo ricette possibili, adattate alla proteina che h
   ok(CS.rf === "can" && rb.querySelector(".rhv.ok") && !rb.querySelector(".rcard.rno"), "ricette: solo quelle possibili, con badge");
   ok(!/NaN|undefined/.test(rb.innerHTML), "NaN/undefined in ricette");
   CS.tab = "oggi"; CS.rf = "easy"; CS.rfSet = 0; FOOD().pantry = JSON.parse(keepP); FOOD().frz = JSON.parse(keepZ); FOOD().days[d] = JSON.parse(keepD); renderCibo();
+});
+
+T("📏 Ogni idea e ricetta vicina al pasto del PT (con gli scambi del PT) · 🍫 dolci nel piano", () => {
+  const bad = simRun(() => { const out = [];
+    for (const d of Object.values(SIMD)) for (const mid of ["col", "s1", "pr", "s2", "ce", "dc"]) for (const x of simOpts(mid, d)) {
+      if (mid === "pr" && lunchLvl(d) === 0 && STRICT.has(x.o.id)) continue;
+      const b = x.C.filter(r => ["hi", "hi2", "lo"].includes(r.st)); if (b.length) out.push(`${mid} ${x.o.id} ${ptKey(mid, d, x.o.id)}: ${b.map(r => r.n + " " + r.x + " " + r.st).join(", ")}`); }
+    return out; });
+  check(!bad.length, "fuori dal pasto del PT: " + bad.join(" | "));
+  // scambi del PT: salmone 150 senza olio e legumi + pollo hanno il loro riferimento
+  const d = SIMD.r; ok(/salmone/.test(simRun(() => ptKey("pr", d, "salmone"))), "salmone confrontato con lo scambio del PT");
+  ok(ptRef("pr0|leg").c[0] > 500, "pranzo con legumi: riferimento del PT (~560 kcal)");
+  // dolci: almeno 3 colazioni, 3 spuntini, 3 dopo cena e 2 spuntini 2 per giorno, tutti in linea
+  const S = simRun(() => ({ col: simOpts("col", SIMD.r), s1: simOpts("s1", SIMD.r), s2g: simOpts("s2", SIMD.g), s2r: simOpts("s2", SIMD.r), dc: simOpts("dc", SIMD.r) }));
+  for (const [k, n] of [["col", 5], ["s1", 3], ["s2g", 3], ["s2r", 2], ["dc", 3]]) { const L = S[k].filter(x => x.o.sweet); between(L.length, n, 99, `dolci ${k}`); check(L.every(x => x.tone === "ok"), `dolci ${k} in linea: ` + L.map(x => x.o.id + " " + x.tone).join(", ")); }
+  ok(CB.recipes.filter(r => r.sweet).length >= 7, "ricette dolci");
+  // gusti: niente yogurt greco, frutta, crema di riso, proteine nello yogurt
+  for (const [k, v] of Object.entries(CB.comp)) { ok(!/ygreco|crema |crema$|banana|mela/.test(v), "gusti " + k); if (/yogurt/.test(v)) ok(!/prot /.test(v), "niente proteine nello yogurt " + k); }
 });

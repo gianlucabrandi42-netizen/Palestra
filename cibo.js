@@ -31,8 +31,24 @@ const dayTarget = d => isGym(d) ? CB.target.gym : lunchLvl(d) === 80 ? CB.target
 // Richiesta dell'utente: "per ogni pasto ben scritte le calorie e tutto quello che mi serve in rapporto a quello che ha scritto il PT".
 // CB.pt (nutrizione.js) = il pasto del PT per ogni pasto e tipo di giorno; qui il confronto: tabellina nel pasto di Oggi, riquadro
 // "Rispetto al piano del PT" nelle idee e nelle ricette (si aggiorna mentre cambi le quantità), pallino di colore sulle caselle.
-const ptKey = (mid, d) => mid === "pr" ? "pr" + lunchLvl(d) : mid === "s2" ? (isGym(d) ? "s2g" : "s2r") : mid;
+// 25/11/2026 ("sostituzioni fedeli al PT"): un piatto di pranzo/cena con una proteina della tabella scambi del PT si confronta col
+// pasto del PT fatto con QUELLO scambio (es. salmone 150 g senza olio, macinato 200 con mezzo cucchiaio, legumi + pollo della sua scala)
+const SWREF = { macinato: { q: "macinato 200, olio 1", n: "macinato 200 g, mezzo cucchiaio d'olio" }, salmone: { q: "salmone 150", n: "salmone 150 g, niente olio" },
+  tonno: { q: "tonno 150", n: "tonno sott'olio 150 g, niente olio" }, orata: { q: "orata 200, olio 1", n: "orata 200 g, mezzo cucchiaio d'olio" },
+  leg: { pr80: "pollo 100, ceci 100, olio 2", pr40: "pollo 150, ceci 150, olio 2", pr0: "pollo 200, ceci 200, olio 2", ce: "pollo 150, ceci 150, olio 2", n: "legumi + pollo (scala del PT)" } };
+const PTBASE = "pollo 200, olio 2"; // nel pasto del PT: 200 g di pollo + 1 cucchiaio d'olio
+function ptSwap(mid, d, oid) {
+  if (!oid || (mid !== "pr" && mid !== "ce")) return ""; const spec = CB.mq[oid]; if (spec && spec.leg) return "leg";
+  let L; try { L = baseQ(mid, oid, d); } catch (_) { L = null; } if (!L) return "";
+  const x = L.find(([f]) => ["pollo", "manzo", "merluzzo", "gamberi", "uovo", "albumeg", "bresaola", "polloc", "mozz", ...Object.keys(SWREF)].includes(EQ[f] || f));
+  const f = x && (EQ[x[0]] || x[0]); return f && SWREF[f] ? f : "";
+}
+const ptKey = (mid, d, oid) => { const k = mid === "pr" ? "pr" + lunchLvl(d) : mid === "s2" ? (isGym(d) ? "s2g" : "s2r") : mid, sw = ptSwap(mid, d, oid); return sw ? k + "|" + sw : k; };
 function ptRef(k) {
+  if (CB.pt && !CB.pt[k] && k.includes("|")) { const [b, sw] = k.split("|"), base = CB.pt[b], S = SWREF[sw]; if (!base || !S) return null;
+    const dv = valOfQ(parseQ(S[b] || S.q)).map((x, i) => x - valOfQ(parseQ(PTBASE))[i]), c = base.c.map((x, i) => Math.round(x + dv[i]));
+    const r = base.r ? Object.fromEntries(Object.entries(base.r).map(([n, [lo, hi]]) => { const i = { k: 0, p: 1, c: 2, g: 3 }[n]; return [n, [Math.max(0, Math.round(lo + dv[i])), Math.round(hi + dv[i])]]; })) : undefined;
+    CB.pt[k] = { t: base.t + " · scambio: " + S.n, c, r, src: base.src + " → scambio del PT: " + S.n }; }
   const p = CB.pt && CB.pt[k]; if (!p) return null; if (p._r) return p;
   const c = p.c, w = (x, f, m) => [Math.max(0, Math.round(x - Math.max(m, x * f))), Math.round(x + Math.max(m, x * f))];
   p._r = { k: [Math.round(c[0] * .9), Math.round(c[0] * 1.1)], p: [Math.round(c[1] * .85), Math.round(c[1] * 1.3)], c: w(c[2], .2, 8), g: w(c[3], 0, 5), ...(p.r || {}) };
@@ -43,7 +59,10 @@ const PTN = [["k", "Calorie", "kcal", "kcal"], ["p", "Proteine", "g", "prot."], 
 function ptCmp(v, k) {
   const p = ptRef(k); if (!p || !v) return null;
   return PTN.map(([n, l, u, s], i) => { const [lo, hi] = p._r[n], x = Math.round(v[i] || 0), far = n === "k" ? Math.max(100, p.c[0] * .25) : Math.max(6, p.c[i] * .3);
-    const st = x > hi ? (n === "p" ? "up" : x > hi + far ? "hi2" : "hi") : x < lo ? "lo" : "ok"; return { n, l, u, s, x, lo, hi, c: p.c[i], st }; });
+    // 25/11/2026 ("non mettere il rosso appena si sfora un minimo"): un margine di tolleranza oltre la fascia resta neutro ("near");
+    // arancio solo oltre il margine, rosso solo molto oltre
+    const tol = n === "k" ? Math.max(40, p.c[0] * .08) : Math.max(4, p.c[i] * .15), far2 = n === "k" ? Math.max(160, p.c[0] * .35) : Math.max(10, p.c[i] * .5);
+    const st = x > hi ? (n === "p" ? "up" : x > hi + far2 ? "hi2" : x > hi + tol ? "hi" : "near") : x < lo ? (x < lo - tol ? "lo" : "near") : "ok"; return { n, l, u, s, x, lo, hi, c: p.c[i], st }; });
 }
 const ptBad = C => C && C.some(r => r.st === "hi" || r.st === "hi2" || (r.st === "lo" && (r.n === "p" || r.n === "k")));
 const ptTone = C => !C ? "" : C.some(r => r.st === "hi2") ? "hi2" : C.some(r => r.st === "hi" && (r.n === "k" || r.n === "g" || r.n === "c")) ? "hi" : C.some(r => r.st === "lo" && (r.n === "k" || r.n === "p")) ? "lo" : "ok";
@@ -72,7 +91,7 @@ function ptBox(v, mid, d, kk) {
 }
 // 🍱 i due pasti di una ricetta da 2 (24/11/2026): grammi di ognuno e confronto col pasto del PT, pranzo del giorno e cena
 function twoMeals(r, d) {
-  const box = (mid, lab, sub) => { const L = baseQ(mid, r.id, d); if (!L) return ""; const v = valOfQ(L), k = ptKey(mid, d), C = ptCmp(v, k), tone = ptTone(C);
+  const box = (mid, lab, sub) => { const L = baseQ(mid, r.id, d); if (!L) return ""; const v = valOfQ(L), k = ptKey(mid, d, r.id), C = ptCmp(v, k), tone = ptTone(C);
     const it = L.filter(([f, q]) => q && !["sale", "erbe"].includes(f)).map(([f, q]) => esc(qText(f, q)));
     return `<div class="twom ${tone}"><div class="twh"><b>${lab}</b><i>${tone === "ok" ? "✓ in linea col PT" : tone === "lo" ? "un po' sotto il PT" : "sopra il PT"}</i></div>
       ${sub ? `<p class="twsub">${esc(sub)}</p>` : ""}<p class="twi">${it.join(" · ")}</p><p class="twv">${C.map(x => `<span class="${x.st}">${x.n === "k" ? fmt(x.x) + " kcal" : x.s + " " + x.x + " g"}</span>`).join("")}</p>
@@ -94,7 +113,7 @@ function pickRot(list, d, mid, off) { // la meno usata nelle ultime 4 settimane;
   const L = list.slice().sort((a, b) => (used[a.id] || 0) - (used[b.id] || 0) || hs(a.id) - hs(b.id));
   return L.length ? L[rot(off || 0, L.length)] : null; }
 const sapOf = d => CB.sapori[rot(dayNum(d) + (CS.sapOff || 0), CB.sapori.length)];
-const ptOk = (r, mid, d) => { const L = baseQ(mid, r.id, d); if (!L) return null; return ptTone(ptCmp(valOfQ(L), ptKey(mid, d))); };
+const ptOk = (r, mid, d) => { const L = baseQ(mid, r.id, d); if (!L) return null; return ptTone(ptCmp(valOfQ(L), ptKey(mid, d, r.id))); };
 function todayPlan(d, compact) {
   if (!CB.sapori || d < todayISO()) return "";
   if (compact && !shiftOf(d)) return "";
@@ -137,7 +156,7 @@ function openTired(d) {
     const cu = H.known && canMake(r, H).use; cards.push({ r, lab: r.cold ? "❄️ Zero cottura · " + r.min + " minuti" : "⚡ " + r.min + " minuti", how: cu ? `🔄 con ${qText(cu.to, cu.q)} che hai, al posto di ${pname(cu.from)}` : r.ingr.slice(0, 3).join(" · ") }); }
   sh.querySelector(".is-h").innerHTML = `<b>😮‍💨 Sono stanco</b><span class="rmeta">${mid === "pr" ? "pranzo" : "cena"} · resta nel piano, col minimo sforzo</span>`;
   sh.querySelector(".is-c").innerHTML = `<p class="note">Stanco non vuol dire pasto libero: questi sono pasti del piano del PT, fatti con ingredienti veri (niente piatti pronti), col minimo sforzo. Scegline uno e non pensarci più.</p>
-    ${cards.map(({ r, lab, how }) => { const L = baseQ(mid, r.id, d), v = L && valOfQ(L), C = v && ptCmp(v, ptKey(mid, d));
+    ${cards.map(({ r, lab, how }) => { const L = baseQ(mid, r.id, d), v = L && valOfQ(L), C = v && ptCmp(v, ptKey(mid, d, r.id));
       return `<div class="tired"><div class="tprec"><div class="tpimg">${dishSVG(r.p, r.box, r.id, "dish")}</div><div class="tptx"><small>${esc(lab)}</small><b>${esc(r.name)}</b><p>${esc(how)}</p>${v ? `<em class="${ptTone(C)}">${fmt(v[0])} kcal · P ${v[1]} · C ${v[2]} · G ${v[3]}${ptTone(C) === "ok" ? " · ✓ in linea col PT" : ""}</em>` : ""}</div></div>
         <div class="tpbtn"><button class="btn primary" data-tp="eat" data-r="${r.id}" data-m="${mid}">✓ L'ho mangiato</button>${r.steps.length > 1 ? `<button class="lnk" data-tp="cook" data-r="${r.id}" data-m="${mid}"><i>▶</i>Fallo con me</button>` : ""}</div></div>`; }).join("")}
     <p class="note">Per non restare mai senza: il <b>😮‍💨 Kit anti-stanchezza</b> in cima a Cibo → Spesa (ingredienti semplici da cucinare, non piatti pronti).</p>`;
@@ -156,8 +175,8 @@ document.addEventListener("click", e => {
   else if (a === "eat") { closeRecipe(); logMeal(d, mid, r); }
 });
 // tabellina nel pasto di Oggi: PT e (se segnato) il tuo pasto
-function ptStrip(mid, d, v) {
-  const k = ptKey(mid, d), p = ptRef(k); if (!p) return ""; const C = v ? ptCmp(v, k) : null;
+function ptStrip(mid, d, v, oid) {
+  const k = ptKey(mid, d, oid), p = ptRef(k); if (!p) return ""; const C = v ? ptCmp(v, k) : null;
   const cell = (r, i) => `<b class="${r ? r.st : ""}">${fmt(r ? r.x : p.c[i])}</b>`;
   return `<div class="ptstrip${C ? " " + ptTone(C) : ""}"><span></span>${PTN.map(([, , , s]) => `<small>${s}</small>`).join("")}
     <em>PT</em>${p.c.map(x => `<i>${fmt(x)}</i>`).join("")}${C ? `<em>Tu</em>${C.map((r, i) => cell(r, i)).join("")}` : ""}</div>${C && ptTone(C) !== "ok" ? `<p class="ptsv">${esc(ptVerdict(C, k))}</p>` : ""}`;
@@ -165,7 +184,7 @@ function ptStrip(mid, d, v) {
 // valori di una casella per il pallino (solo se calcolabili dalle quantità)
 function tilePt(md, o, d) {
   if (o.free || ["skip", "x", "mensa", "sala", "rist"].includes(o.id)) return "";
-  const L = !o.dish && baseQ(md.id, o.id, d); if (!L) return ""; const v = valOfQ(L), C = ptCmp(v, ptKey(md.id, d)); if (!C) return "";
+  const L = !o.dish && baseQ(md.id, o.id, d); if (!L) return ""; const v = valOfQ(L), C = ptCmp(v, ptKey(md.id, d, o.id)); if (!C) return "";
   return `<i class="tk ${ptTone(C)}">${r10(v[0])} kcal</i>`;
 }
 const r10 = n => Math.round(n / 10) * 10;
@@ -185,7 +204,7 @@ const SIMDEF = { col: "A2", s1: "yog", pr: "pollo", s2g: "A2", s2r: "fio", ce: "
 function simOpts(mid, d) {
   const md = mealDef(mid);
   return optsFor(md, d).filter(o => !o.free && !o.fr && !["skip", "x", "mensa", "sala", "rist", "libero"].includes(o.id)).map(o => {
-    const L = baseQ(mid, o.id, d); if (!L) return null; const v = valOfQ(L), C = ptCmp(v, ptKey(mid, d));
+    const L = baseQ(mid, o.id, d); if (!L) return null; const v = valOfQ(L), C = ptCmp(v, ptKey(mid, d, o.id));
     return { o, v, C, tone: ptTone(C), dist: C ? C.reduce((a, r) => a + Math.abs(r.x - r.c) / Math.max(r.c, r.n === "k" ? 100 : 8), 0) : 9 };
   }).filter(Boolean);
 }
@@ -207,7 +226,7 @@ function renderSimula(box) {
         <div class="simtab"><span>Idea</span><span>kcal</span><span>P</span><span>C</span><span>G</span>${L.slice().sort((a, b) => a.dist - b.dist).map(x => `<button data-simp="${md.id}|${x.o.id}">${esc(x.o.t)}${x.o.r ? " 📖" : ""}</button>${x.C.map(r => `<b class="${r.st}">${fmt(r.x)}</b>`).join("")}`).join("")}</div>
         <p class="ptleg">verde = in linea · arancio/rosso = sopra il PT · azzurro = sotto · tocca un nome per metterlo nella giornata simulata</p></details>`);
     }
-    const bar = (i, n) => { const x = tot[i], t = T[i], pc = t ? x / t : 0, cls = i === 1 ? (pc < .85 ? " lo" : "") : pc > 1.25 ? " hi2" : pc > 1.1 ? " hi" : pc < .85 ? " lo" : "";
+    const bar = (i, n) => { const x = tot[i], t = T[i], pc = t ? x / t : 0, cls = i === 1 ? (pc < .8 ? " lo" : "") : pc > 1.35 ? " hi2" : pc > 1.15 ? " hi" : pc < .8 ? " lo" : "";
       return `<div class="simb${cls}"><span>${n}</span><b>${fmt(x)}<small>/${fmt(t)}${i ? " g" : ""}</small></b><div class="ptbar"><s style="left:${90 / 1.4}%;width:${20 / 1.4}%"></s><u style="left:${Math.min(100, pc / 1.4 * 100)}%"></u></div><em>${sgn(x - t)}${i ? " g" : ""}</em></div>`; };
     const dk = tot[0] - T[0], verdict = Math.abs(dk) <= T[0] * .1 && tot[1] >= T[1] * .85 && tot[3] <= T[3] * 1.1 ? "In linea col piano del PT ✓" : [dk > T[0] * .1 ? `${sgn(dk)} kcal sopra il piano` : dk < -T[0] * .1 ? `${sgn(dk)} kcal sotto il piano` : "", tot[3] > T[3] * 1.1 ? `grassi ${sgn(tot[3] - T[3])} g (≈ ${Math.max(1, Math.round((tot[3] - T[3]) / 10))} cucchiai d'olio)` : "", tot[2] > T[2] * 1.1 ? `carboidrati ${sgn(tot[2] - T[2])} g` : "", tot[1] < T[1] * .85 ? `proteine ${sgn(tot[1] - T[1])} g` : ""].filter(Boolean).join(" · ");
     return `<div class="card sim"><h3>🧪 Simula una giornata</h3><p class="note">Scegli il tipo di giorno e un'idea per ogni pasto: vedi subito a quanto arrivi di calorie, proteine, carboidrati e grassi rispetto al piano del PT. È solo una prova: non segna niente.</p>
@@ -273,7 +292,7 @@ function rememberDish(meal, t, it) {
     const ks = Object.keys(M).filter(k => M[k].meal === meal); if (ks.length > 30) { const old = ks.sort((a, b) => (M[a].n || 0) - (M[b].n || 0) || (M[a].at || 0) - (M[b].at || 0))[0]; delete M[old]; } }
   save(); return id;
 }
-const optsFor = (m, d) => m.main ? [...frOpts(d), ...mainRecipes().map(r => ({ id: r.id, t: r.s || r.name, d: r.one ? r.p1 : `Pasto 1: ${r.p1} · Pasto 2: ${r.p2}`, p: r.p, r: r.id, box: r.box, go: r.go, porta: r.porta })), ...dishOpts(m.id), ...CB.mainExtra.filter(e => !e.only || e.only === m.id)] : [...(m.gym && isGym(d) ? m.gym : m.opts), ...dishOpts(m.id), ...CB.recipes.filter(r => r.mine && r.for && r.for[m.id]).map(r => ({ id: r.id, t: r.s, d: "La tua ricetta", p: r.p, r: r.id, go: r.go, porta: r.porta }))];
+const optsFor = (m, d) => m.main ? [...frOpts(d), ...mainRecipes().map(r => ({ id: r.id, t: r.s || r.name, d: r.one ? r.p1 : `Pasto 1: ${r.p1} · Pasto 2: ${r.p2}`, p: r.p, r: r.id, box: r.box, go: r.go, porta: r.porta })), ...dishOpts(m.id), ...CB.mainExtra.filter(e => !e.only || e.only === m.id)] : [...(m.gym && isGym(d) ? m.gym : m.opts).filter(o => !o.hide), ...dishOpts(m.id), ...CB.recipes.filter(r => r.mine && r.for && r.for[m.id]).map(r => ({ id: r.id, t: r.s, d: "La tua ricetta", p: r.p, r: r.id, go: r.go, porta: r.porta }))];
 const shiftOf = d => CB.shifts.find(x => x.id === fDay(d).turno) || null;
 const whereOf = (d, mid) => { const sh = shiftOf(d); return sh ? sh.where[mid] || "casa" : "casa"; };
 const fits = (o, w) => w === "zero" ? !o.go || o.go === "p" : w === "micro" ? !o.go || o.go !== "c" : true;
@@ -447,6 +466,8 @@ const mealV = (day, k) => (day.m || {})[k] || ((day.x || []).some(x => x.meal ==
 function rng(seed) { let h = 2166136261; for (const c of String(seed)) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return () => { h += 0x6D2B79F5; let t = h; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 // [quanti pezzi, raggio minimo libero, funzione che disegna un pezzo in x,y]
 const FD = {
+  cioccolato: [2, 7, (x, y) => `<rect x="${x - 5}" y="${y - 4}" width="10" height="8" rx="1.2" fill="#5A341C" stroke="#3B2112" stroke-width=".7"/><path d="M${x},${y - 4}v8M${x - 5},${y}h10" stroke="#3B2112" stroke-width=".6"/>`],
+  crema: [1, 0, (x, y) => `<circle cx="${x}" cy="${y}" r="17" fill="#8B5A3C"/><path d="M${x - 9},${y - 2} q9,-8 18,0 q-9,7 -18,0" fill="none" stroke="#B07A55" stroke-width="1.6"/><circle cx="${x + 5}" cy="${y + 6}" r="1.4" fill="#5E3B22"/>`],
   sugo: [1, 0, (x, y, r) => `<path d="M${x - 15},${y} q2,-13 15,-14 q14,1 15,12 q0,13 -15,14 q-15,0 -15,-12z" fill="#C0392B" opacity=".88"/>`],
   yogurt: [1, 0, (x, y) => `<circle cx="${x}" cy="${y}" r="17" fill="#FCFBF7"/><path d="M${x - 9},${y - 3} q9,-7 18,0 q-9,8 -18,0" fill="none" stroke="#E7E1D3" stroke-width="1.4"/>`],
   riso: [70, 0, (x, y, r) => `<ellipse cx="${x}" cy="${y}" rx="1.9" ry=".95" transform="rotate(${r() * 180} ${x} ${y})" fill="#FFFDF7" stroke="#D3C9B6" stroke-width=".35"/>`],
@@ -620,7 +641,7 @@ function oggiSemplice(d) {
     ${!ask ? `<button class="btn sm primary" data-setok>Fatto</button>` : `<p class="note">Lo chiedo una volta: decide quanta pasta a pranzo e cosa cucinare.</p>`}</div>`;
   else h += `<button class="dline" data-setopen><span>${gym ? "🏋️ Palestra" : "🛋 Niente palestra"}${sh ? ` · ${esc(sh.t)}` : ""} · pranzo da ${lunchLvl(d)}</span><i>✎</i></button>`;
   // 2 · quanto hai mangiato, in una riga (tocco = dettaglio con proteine, carboidrati, grassi)
-  const pc = t[0] / T[0], ov = pc > 1.25 ? " hi2" : pc > 1.1 ? " hi" : "";
+  const pc = t[0] / T[0], ov = pc > 1.3 ? " hi2" : pc > 1.15 ? " hi" : "";
   h += `<button class="kline${ov}" data-bal>${plateSVG(d, "pmini")}<div><b>${done ? "✓ Giornata completa · " : ""}~${fmt(r50(t[0]))} <small>/ ${fmt(T[0])} kcal</small></b><span class="bbar s${ov}"><i style="width:${Math.min(100, pc * 100).toFixed(0)}%"></i></span></div><u>${CS.balOpen ? "⌃" : "›"}</u></button>`;
   if (CS.balOpen) h += balanceCard(d) || `<p class="note">Segna il primo pasto e qui vedi proteine, carboidrati e grassi del giorno.</p>`;
   if (free) h += `<p class="note">🍕 Pasto libero oggi: i conti non contano, domani normale.</p>`;
@@ -661,12 +682,12 @@ function mealCard(md, d, o) {
     if (!o.force && md.extra && !v && !(m.s1 === "skip" && m.s2 === "skip") && !CS.showDc) return `<button class="cmore" data-dc="1">+ Dopo cena (facoltativo)</button>`;
     const opts = optsFor(md, d), sel = v && v !== "skip" ? optOf(md, v, d) : null, w = whereOf(d, md.id);
     const xs = (day.x || []).filter(x => x.meal === md.id), xk = xs.reduce((a, x) => a + ((xVal(x) || [0])[0]), 0);
-    const kc = (sel && optVal(md.id, v, d) ? optVal(md.id, v, d)[0] : 0) + xk, bq = sel && !sel.dish ? baseQ(md.id, v, d) : null, kp = bq ? valOfQ(bq)[0] : 0, kov = kp && kc > kp * 1.25 ? " hi2" : kp && kc > kp * 1.1 ? " hi" : "";
+    const kc = (sel && optVal(md.id, v, d) ? optVal(md.id, v, d)[0] : 0) + xk, bq = sel && !sel.dish ? baseQ(md.id, v, d) : null, kp = bq ? valOfQ(bq)[0] : 0, kov = kp && kc > kp * 1.4 && kc - kp > 150 ? " hi2" : kp && kc > kp * 1.2 && kc - kp > 60 ? " hi" : "";
     const open = !(sel || v === "skip") || (CS.mexp || {})[md.id];
     let h = "";
     // 📏 valori del pasto (casella + scritti a mano) per il confronto col PT
     let mv = null; if (v !== "skip" && (sel || xs.length)) { const a = sel ? optVal(md.id, v, d) : null; mv = [0, 0, 0, 0]; if (a) a.forEach((x, i) => mv[i] += x); for (const x of xs) { const t = xVal(x); if (t) t.forEach((y, i) => mv[i] += y || 0); } if (sel && sel.free) mv = null; }
-    h += `<div class="meal${v || xs.length ? " done" : ""}${v === "skip" ? " skipped" : ""}${o.hero ? " hero" : ""}" style="--c:${md.color}" data-mid="${md.id}">${o.hero ? `<p class="mhero">Adesso</p>` : ""}<div class="mh"><i></i><b>${esc(md.name)}</b><span>${v === "skip" ? "saltato" : sel ? "" : xs.length ? "scritto da te" : esc(mealSub(md, d))}</span>${kc ? `<em class="mk${kov}">~${r50(kc)} kcal${kov ? ` · +${r50(kc - kp)}` : ""}</em>` : ""}${o.fold ? `<button class="mfold" data-mfold="${md.id}" aria-label="Chiudi">⌃</button>` : ""}</div>${v === "skip" ? "" : ptStrip(md.id, d, mv)}${WHERE[w] && open ? `<p class="mwhere">${WHERE[w]}</p>` : ""}`;
+    h += `<div class="meal${v || xs.length ? " done" : ""}${v === "skip" ? " skipped" : ""}${o.hero ? " hero" : ""}" style="--c:${md.color}" data-mid="${md.id}">${o.hero ? `<p class="mhero">Adesso</p>` : ""}<div class="mh"><i></i><b>${esc(md.name)}</b><span>${v === "skip" ? "saltato" : sel ? "" : xs.length ? "scritto da te" : esc(mealSub(md, d))}</span>${kc ? `<em class="mk${kov}">~${r50(kc)} kcal${kov ? ` · +${r50(kc - kp)}` : ""}</em>` : ""}${o.fold ? `<button class="mfold" data-mfold="${md.id}" aria-label="Chiudi">⌃</button>` : ""}</div>${v === "skip" ? "" : ptStrip(md.id, d, mv, v && v !== "skip" && !xs.length ? v : "")}${WHERE[w] && open ? `<p class="mwhere">${WHERE[w]}</p>` : ""}`;
     if (sel && !open) {
       const pic = (sel.r || sel.dish) && foodPic(sel.r || sel.id), img = sel.free ? `<span class="ti">🍕</span>` : pic ? `<img src="${pic}" alt="">` : dishSVG(sel.p || [], sel.box, sel.id, "dish");
       h += `<div class="msel"><button class="mselb" data-m="${md.id}" data-o="${sel.id}">${img}<div><b>${esc(sel.t)}</b><small>${sel.free && (day.lib || {})[md.id] ? "🎉 " + esc(((day.lib[md.id].t || "") || day.lib[md.id].it.map(([f]) => shortN(f)).join(", ")).slice(0, 50)) + (day.lib[md.id].it.length ? ` · ~${r50(valOfQ(day.lib[md.id].it)[0])} kcal fuori conto` : "") : (day.note || {})[md.id] ? "✎ " + esc((day.note || {})[md.id].split("\n")[0].slice(0, 60)) : esc(detOf(md, sel, m))}${day.q && day.q[md.id] && !sel.dish ? " · modificato" : ""}</small></div><span class="chev">›</span></button>
@@ -696,8 +717,8 @@ function rankOpts(md, d, opts) {
 function openPicker(mid) {
   const md = mealDef(mid), d = cDay(), sh = $("fsheet"), w = whereOf(d, mid), m = fDay(d).m || {}; CS.pick = CS.pick && CS.pick.mid === mid ? CS.pick : { mid, q: "", f: "all" };
   const P = CS.pick, all = rankOpts(md, d, optsFor(md, d));
-  const F = [["all", "Tutte"], ...(w !== "casa" ? [["work", "Per il lavoro"]] : []), ["fast", "Veloci"], ["mine", "Le mie"], ...(md.main ? [["rec", "Ricette"]] : [])];
-  const ok = o => (!P.q || normT(o.t + " " + (o.d || "")).includes(normT(P.q))) && (P.f === "all" || (P.f === "work" && fits(o, w)) || (P.f === "fast" && (o.easy || (o.r && (recipeById(o.r) || {}).min <= 12))) || (P.f === "mine" && (o.dish || (o.r && (recipeById(o.r) || {}).mine) || o.fr)) || (P.f === "rec" && o.r));
+  const F = [["all", "Tutte"], ...(w !== "casa" ? [["work", "Per il lavoro"]] : []), ["fast", "Veloci"], ...(md.main ? [] : [["sweet", "🍫 Dolci"]]), ["mine", "Le mie"], ...(md.main ? [["rec", "Ricette"]] : [])];
+  const ok = o => (!P.q || normT(o.t + " " + (o.d || "")).includes(normT(P.q))) && (P.f === "all" || (P.f === "sweet" && (o.sweet || (o.r && (recipeById(o.r) || {}).sweet))) || (P.f === "work" && fits(o, w)) || (P.f === "fast" && (o.easy || (o.r && (recipeById(o.r) || {}).min <= 12))) || (P.f === "mine" && (o.dish || (o.r && (recipeById(o.r) || {}).mine) || o.fr)) || (P.f === "rec" && o.r));
   const L = all.filter(ok);
   sh.querySelector(".is-h").innerHTML = `<b>${esc(md.name)} · tutte le idee</b><span class="rmeta">${all.length} idee${WHERE[w] ? " · " + WHERE[w] : ""}</span>`;
   sh.querySelector(".is-c").innerHTML = `<input id="pkQ" class="pkq" placeholder="Cerca (es. pollo, pasta, uova)" value="${esc(P.q)}" autocomplete="off">
@@ -746,9 +767,9 @@ function balanceCard(d) {
   else if (pc < .85) msg = "Oggi un po' sotto al piano: se hai fame, il dopo cena è lì apposta.";
   else msg = "In linea col piano 👌";
   if (done && !free && t[1] < 120) msg += " Proteine un po' basse oggi: domani scegli spuntini con bresaola, fiocchi o uova.";
-  // 20/11/2026 (richiesta dell'utente): sopra al piano le barre si colorano (arancio oltre +10%, rosso oltre +25%); le proteine in più vanno bene
-  const over = r => r > 1.25 ? " hi2" : r > 1.1 ? " hi" : "";
-  return `<div class="card bal"><div class="bh${over(pc)}"><b>~${fmt(r50(t[0]))} kcal</b><span>stima di oggi · piano ~${fmt(T[0])}${pc > 1.1 ? ` · <i class="ovr">+${fmt(r50(t[0] - T[0]))}</i>` : ""}</span></div>
+  // sopra al piano le barre si colorano; 25/11/2026 più tolleranza: arancio oltre +15%, rosso oltre +30% (le proteine in più vanno bene)
+  const over = r => r > 1.3 ? " hi2" : r > 1.15 ? " hi" : "";
+  return `<div class="card bal"><div class="bh${over(pc)}"><b>~${fmt(r50(t[0]))} kcal</b><span>stima di oggi · piano ~${fmt(T[0])}${pc > 1.15 ? ` · <i class="ovr">+${fmt(r50(t[0] - T[0]))}</i>` : ""}</span></div>
     <div class="bbar${over(pc)}"><i style="width:${Math.min(100, pc * 100).toFixed(0)}%"></i></div>
     <div class="bmac">${N.map(([n, i]) => { const r = t[i] / T[i], o = i === 1 ? "" : over(r); return `<div class="${o}"><small>${n}</small><b>${Math.round(t[i])} g${o ? ` <i class="ovr">+${Math.round(t[i] - T[i])}</i>` : ""}</b><span class="bbar s${o}"><i style="width:${Math.min(100, r * 100).toFixed(0)}%"></i></span><em>su ~${T[i]}</em></div>`; }).join("")}</div>
     <p class="note">${esc(msg)}${nox ? ` · ${nox} cib${nox > 1 ? "i" : "o"} scritt${nox > 1 ? "i" : "o"} che non ho capito: non contat${nox > 1 ? "i" : "o"}.` : ""}</p></div>`;
@@ -1061,7 +1082,9 @@ function rowsHTML(L, base) {
   const B = base ? new Map(base.map(([f, q]) => [f, q])) : null;
   return L.map(([f, q], i) => { const o = FO(f); if (!o) return ""; const v = valOfQ([[f, q]])[0];
     // sopra la quantità del piano (oltre +10%) o ingrediente aggiunto: riga colorata (20/11/2026)
-    const b0 = B ? B.get(f) : undefined, up = B && q && (b0 == null ? !CONDF.includes(f) || q > 0 : q > b0 * 1.1 + 1e-9) ? (b0 == null ? " add" : (q > b0 * 1.25 ? " up2" : " up")) : "";
+    // 25/11/2026: colorata solo se cambia davvero qualcosa (oltre +25% e +40 kcal sul piano; rossa oltre +60% e +120 kcal)
+    const b0 = B ? B.get(f) : undefined, dk = b0 != null ? valOfQ([[f, q - b0]])[0] : 0;
+    const up = B && q && (b0 == null ? !CONDF.includes(f) || q > 0 : q > b0 * 1.25 + 1e-9 && dk > 40) ? (b0 == null ? " add" : (q > b0 * 1.6 && dk > 120 ? " up2" : " up")) : "";
     const diff = up && b0 != null ? `<small class="qdiff">piano ${qLabel(f, b0)} · +${valOfQ([[f, q - b0]])[0]} kcal</small>` : up ? `<small class="qdiff">aggiunto</small>` : "";
     const of = ofFood(f), bt = of && !(nobrand()[of] && !o.mine) ? `<button class="qbr${o.mine ? " on" : ""}" data-qb="${i}">🏷 ${o.mine ? esc(o.b || "marca") : "marca?"}</button>` : "";
     const nm = o.mine && of ? FO(of).n : o.n;
@@ -1115,7 +1138,7 @@ function qBox() {
     ${swapBox(e.L)}
     <div class="qadd">${CS.qAdd ? `<input id="qAddI" placeholder="Cerca (es. parmigiano, noci, pane)" autocomplete="off" value="${esc(CS.qAddT || "")}"><div class="qhits">${hitBtns(CS.qAddT)}</div>` : `<button class="lnk" id="qAddB"><i>＋</i>Aggiungi un ingrediente</button>`}${!sameQ(e.L, base) ? `<button class="lnk" id="qReset"><i>↺</i>Come da piano</button>` : ""}</div>
     ${scaleGuide()}<p class="qbrand">🏷 Tocca «marca?» accanto a un ingrediente confezionato: la marca resta per le prossime volte. Per i valori esatti <button class="lnk in" data-qscan="1">scansiona la confezione</button>.</p>
-    <p class="qtot${base && t[0] > valOfQ(base)[0] * 1.1 ? (t[0] > valOfQ(base)[0] * 1.25 ? " hi2" : " hi") : ""}"><b>~${fmt(t[0])} kcal${base && t[0] > valOfQ(base)[0] * 1.1 ? ` <i class="ovr">+${t[0] - valOfQ(base)[0]} sul piano</i>` : ""}</b><span>proteine ${t[1]} g · carboidrati ${t[2]} g · grassi ${t[3]} g</span></p>${e.mid ? ptBox(t, e.mid, e.d) : ""}</div>`;
+    <p class="qtot${base && t[0] > valOfQ(base)[0] * 1.2 && t[0] - valOfQ(base)[0] > 60 ? (t[0] > valOfQ(base)[0] * 1.4 && t[0] - valOfQ(base)[0] > 150 ? " hi2" : " hi") : ""}"><b>~${fmt(t[0])} kcal${base && t[0] - valOfQ(base)[0] > 60 ? ` <i class="ovr">+${t[0] - valOfQ(base)[0]} sul piano</i>` : ""}</b><span>proteine ${t[1]} g · carboidrati ${t[2]} g · grassi ${t[3]} g</span></p>${e.mid ? ptBox(t, e.mid, e.d, ptKey(e.mid, e.d, e.oid)) : ""}</div>`;
 }
 function qBind(sh) {
   const box = sh.querySelector(".qbox"); if (!box || !CS.qe) return; const e = CS.qe;
@@ -1150,7 +1173,7 @@ function swapAlts(f, q) {
 }
 function swapBox(L) {
   const rows = L.map(([f, q], i) => [i, f, q, swapAlts(f, q)]).filter(r => r[3].length); if (!rows.length) return "";
-  return `<div class="swp"><button class="lnk wide" data-swt="1"><i>🔄</i>${CS.qSw ? "Chiudi le sostituzioni" : "Sostituisci un ingrediente (grammi già calcolati)"}</button>
+  return `<div class="swp"><button class="lnk wide" data-swt="1"><i>🔄</i>${CS.qSw ? "Chiudi le sostituzioni" : "Sostituisci un ingrediente"}</button>
     ${CS.qSw ? rows.map(([i, f, q, al]) => `<div class="swrow"><p><b>${esc(qText(f, q))}</b> → </p><div class="rchips">${al.map(([x, qq]) => `<button class="chip" data-sw="${i}|${x}|${qq}">${esc(qText(x, qq))}</button>`).join("")}</div></div>`).join("") + `<p class="note">Carne e pesce: tabella scambi del PT (col macinato e l'orata metà olio, col salmone niente olio) · affettati e latticini: stesse proteine · pane, pasta, riso: stesse kcal · verdure: stessi grammi.</p>` : ""}</div>`;
 }
 // 🍳 varianti di gusto per ricetta (CB.vars)
@@ -1353,7 +1376,7 @@ const VEG = new Set(["vgrill", "vmiste", "verdure", "zucchine", "peperoni", "spi
 const CARBS = new Set(["riso", "risoc", "rprec", "pasta", "pastac", "pastai", "cous", "farro", "farrop", "quinoa", "gnocchi", "patate", "patatec", "pdolci", "pane", "panino", "piadina"]);
 const PANTRY = new Set([...CONDF, "cacao", "passata"]);
 const EQ = { polloc: "pollo", pastac: "pasta", pastai: "pasta", risoc: "riso", rprec: "riso", farrop: "farro", albume: "albumeg", mozzn: "mozz", pescec: "merluzzo", patatec: "patate" };
-const STRICT = new Set(["wrappollo", "pastatonno", "frittatapasta", "pizzapiadina", "gnocchi", "risosaltato", "farro", "pastapollo", "pastagamberi", "pastaragu"]);
+const STRICT = new Set(["pollocrock", "wrappollo", "pastatonno", "frittatapasta", "pizzapiadina", "gnocchi", "risosaltato", "farro", "pastapollo", "pastagamberi", "pastaragu"]);
 function grpOf(f, flexCarb) { if (FO(f) && FO(f).mine) { const p = prods()[f.slice(2)]; f = p && p.sub || f; } if (VEG.has(f)) return "veg"; if (flexCarb && CARBS.has(f)) return "carb"; return EQ[f] || f; }
 function needOf(r, meal, d) {
   const mid = r.main ? (meal === "ce" ? "ce" : "pr") : Object.keys(r.for || {})[0], oid = r.main ? r.id : (r.for || {})[mid];
@@ -1584,9 +1607,9 @@ const CATN = { col: "Colazione", sp: "Spuntino", base: "Le basi" };
 const MEALN = { col: "a colazione", s1: "allo spuntino 1", s2: "allo spuntino 2", pr: "a pranzo", ce: "a cena" };
 function renderRicette(box) {
   const H = haveNow(), cm = r => H.known ? canMake(r, H) : null;
-  const F = [...(H.known ? [["can", "🥫 Puoi farle"]] : []), ["all", "Tutte"], ...(CB.recipes.some(r => r.mine) ? [["mine", "Le mie"]] : []), ["easy", "⭐ Facili"], ["quick", "⚡ Cene veloci"], ["batch", "🍱 Una cottura, 2 pasti"], ["main", "Pranzo e cena"], ["col", "Colazione"], ["sp", "Spuntini"], ["new", "Da imparare"], ["fast", "Veloci (≤ 12′)"], ["base", "Le basi"]];
+  const F = [...(H.known ? [["can", "🥫 Puoi farle"]] : []), ["all", "Tutte"], ...(CB.recipes.some(r => r.mine) ? [["mine", "Le mie"]] : []), ["easy", "⭐ Facili"], ["sweet", "🍫 Dolci"], ["quick", "⚡ Cene veloci"], ["batch", "🍱 Una cottura, 2 pasti"], ["main", "Pranzo e cena"], ["col", "Colazione"], ["sp", "Spuntini"], ["new", "Da imparare"], ["fast", "Veloci (≤ 12′)"], ["base", "Le basi"]];
   if (CS.rf === "can" && !H.known) CS.rf = "easy"; if (H.known && !CS.rfSet && CS.rf === "easy") CS.rf = "can";
-  const ok = r => CS.rf === "all" || (CS.rf === "can" && cm(r).ok && (r.main || mainProt(r))) || (CS.rf === "mine" && r.mine) || (CS.rf === "main" && r.main) || (CS.rf === "batch" && r.batch) || (CS.rf === "quick" && r.quick) || (CS.rf === "easy" && (r.batch || r.quick)) || (CS.rf === r.cat) || (CS.rf === "new" && r.lvl === 2) || (CS.rf === "fast" && r.min <= 12);
+  const ok = r => CS.rf === "all" || (CS.rf === "sweet" && r.sweet) || (CS.rf === "can" && cm(r).ok && (r.main || mainProt(r))) || (CS.rf === "mine" && r.mine) || (CS.rf === "main" && r.main) || (CS.rf === "batch" && r.batch) || (CS.rf === "quick" && r.quick) || (CS.rf === "easy" && (r.batch || r.quick)) || (CS.rf === r.cat) || (CS.rf === "new" && r.lvl === 2) || (CS.rf === "fast" && r.min <= 12);
   // 🥫 25/11/2026: prima quelle che puoi fare con quello che hai
   const L = CB.recipes.filter(ok).map((r, i) => [r, i, cm(r)]).sort((a, b) => (a[2] && !a[2].ok) - (b[2] && !b[2].ok) || a[1] - b[1]);
   const badge = c => !c ? "" : c.ok ? (c.use ? `<i class="rhv ad">🔄 con ${esc(pname(c.use.to))}</i>` : `<i class="rhv ok">🥫 puoi farla</i>`) : `<i class="rhv no">manca ${esc(c.miss.map(pname).join(", "))}</i>`;

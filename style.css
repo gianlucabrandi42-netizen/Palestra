@@ -1892,3 +1892,23 @@ html{touch-action:manipulation}
 .pkbox .ptile .pico,.pkbox .ptile .pnone{width:24px;height:24px;flex:none}
 .pkbox .ptile span{font-size:12.5px;white-space:nowrap}
 .pkbox .ptile.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 20%,var(--surface))}
+
+/* ===== PULSANTI ALLINEATI E SIMMETRICI nel Cibo (25/11/2026: "spesso si toccano e non sono simmetrici") ===== */
+/* righe di pulsanti: stessa larghezza, a capo tutte intere quando non ci stanno, mai attaccati */
+#v-cibo .row,#fsheet .row,#cook .row{gap:10px;margin-top:10px}
+#v-cibo .row>.btn,#fsheet .row>.btn,#cook .row>.btn{flex:1 1 140px;min-width:0;justify-content:center;text-align:center;white-space:normal;min-height:46px;margin:0}
+#v-cibo .row>input,#fsheet .row>input{flex:2 1 160px;min-width:0}
+/* "Cosa cucino oggi": i 3 pulsanti piccoli in 3 colonne uguali, icona sopra */
+.tpmini{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.tpmini .lnk{flex-direction:column;justify-content:center;gap:4px;min-height:60px;padding:8px 4px;margin:0;width:100%;font-size:12.5px;line-height:1.15;text-align:center}
+.tpmini .lnk i{font-size:18px;margin:0}
+.tpmini .lnk:only-child{grid-column:1/-1}
+.tpbtn{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.tpbtn>*{margin:0!important;min-height:46px;width:100%}
+.tpbtn>.btn.primary,.tpbtn>:only-child,.tpbtn>.btn.primary+:last-child{grid-column:1/-1}
+/* foto del piatto nelle ricette e nella cucina: pulsanti a tutta larghezza */
+.rpic{display:flex;gap:10px;justify-content:center;margin:12px 0}
+.rpic>.btn{flex:1 1 0;justify-content:center;min-height:44px}
+/* pulsanti d'azione a tutta larghezza uno sotto l'altro: stessa distanza */
+.lnk.wide+.lnk.wide,.swp+.lnk.wide,.lnk.wide+.swp{margin-top:10px}
+#fsheet .lnk.wide,#v-cibo .lnk.wide{min-height:46px;justify-content:center}
